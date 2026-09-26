@@ -12,7 +12,7 @@
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "test:photon": "node src/services/testPhotonApi.ts",
-    "test": "node src/agent/testTenantAgent.ts && node src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts"
+    "test": "node src/agent/testTenantAgent.ts && node --experimental-test-module-mocks src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts"
   },
   "dependencies": {
     "mongodb": "^7.6.0",

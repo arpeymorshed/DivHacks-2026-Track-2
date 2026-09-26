@@ -10,7 +10,7 @@ export async function POST() {
       results,
     });
   } catch (error) {
-    console.error("Rent day failed:", error);
+    console.error("Rent day failed:", error instanceof Error ? error.name : "UnknownError");
 
     return NextResponse.json(
       {

@@ -1,7 +1,18 @@
 import { deepStrictEqual, equal, match, ok } from "node:assert/strict";
-import { runRentDay } from "./mainAgent.ts";
-import { dues, tenants } from "../data/demoBuilding.ts";
+import { mock } from "node:test";
+import { building, dues, tenants, tenantAgents } from "../data/demoBuilding.ts";
 import { outbox } from "../data/outbox.ts";
+
+// Keep unit tests offline; production uses the MongoDB repository.
+mock.module("../services/rentRepository.ts", {
+  namedExports: {
+    getBuilding: async () => building,
+    getTenants: async () => tenants,
+    getTenantAgents: async () => tenantAgents,
+    getDues: async (month: string) => dues.filter((due) => due.month === month),
+  },
+});
+const { runRentDay } = await import("./mainAgent.ts");
 
 equal(outbox.length, 0);
 const results = await runRentDay();
@@ -104,4 +115,31 @@ try {
   console.warn = originalWarn;
 }
 
-console.log("Rent-day checks passed: mock payments, cap rejection, missing due, and queued messages.");
+// A tenant without a stored agent must not receive a payment or queued message.
+const originalAgents = [...tenantAgents];
+const queuedBeforeMissingAgent = outbox.length;
+try {
+  tenantAgents.splice(2, 1);
+  warnings.length = 0;
+  console.warn = (message: string) => warnings.push(message);
+  const remainingResults = await runRentDay();
+  deepStrictEqual(remainingResults.map((result) => result.tenantId), ["abhimanyu", "kashish"]);
+  deepStrictEqual(warnings, ["No tenant agent found for Musammat"]);
+  equal(outbox.length, queuedBeforeMissingAgent + 2);
+} finally {
+  tenantAgents.splice(0, tenantAgents.length, ...originalAgents);
+  console.warn = originalWarn;
+}
+
+// An unseeded month must not fall back to October's dues.
+const queuedBeforeOtherMonth = outbox.length;
+try {
+  console.warn = () => undefined;
+  deepStrictEqual(await runRentDay("2026-11"), []);
+  equal(outbox.length, queuedBeforeOtherMonth);
+} finally {
+  console.warn = originalWarn;
+  mock.restoreAll();
+}
+
+console.log("Rent-day checks passed: repository reads, month filtering, missing agents/dues, mock payments, cap rejection, and queued messages.");

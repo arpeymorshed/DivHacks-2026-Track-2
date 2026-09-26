@@ -1,8 +1,9 @@
 import {
-  building,
-  tenants,
-  dues,
-} from "../data/demoBuilding.ts";
+  getBuilding,
+  getTenants,
+  getTenantAgents,
+  getDues,
+} from "../services/rentRepository.ts";
 
 import {
   createPaymentIntent,
@@ -16,7 +17,13 @@ import type {
   RentDayResult,
 } from "../../types/rent";
 
-export async function runRentDay(): Promise<RentDayResult[]> {
+export async function runRentDay(month = "2026-10"): Promise<RentDayResult[]> {
+  const [building, tenants, tenantAgents, dues] = await Promise.all([
+    getBuilding(),
+    getTenants(),
+    getTenantAgents(),
+    getDues(month),
+  ]);
   const results: RentDayResult[] = [];
 
   for (const tenant of tenants) {
@@ -28,6 +35,12 @@ export async function runRentDay(): Promise<RentDayResult[]> {
       console.warn(
         `No due found for ${tenant.name}`
       );
+      continue;
+    }
+
+    const agent = tenantAgents.find((agent) => agent.tenantId === tenant.id);
+    if (!agent) {
+      console.warn(`No tenant agent found for ${tenant.name}`);
       continue;
     }
 

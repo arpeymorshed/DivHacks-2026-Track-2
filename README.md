@@ -235,6 +235,10 @@ curl -X POST http://localhost:3000/api/rent-day
 
 The endpoint returns `{ success: true, results: [...] }` with Abhimanyu's
 $1,488, Kashish's $1,488, and Musammat's $1,952 intents for `rARPEY_DEMO`.
+Rent day reads the building, tenants, agents, and dues from Atlas through
+`src/services/rentRepository.ts`. `runRentDay(month)` defaults to `2026-10`, filters
+dues by month, and skips tenants missing a due or agent. Seed the database first.
+Changes to stored amounts are reflected in the next request without editing seed files.
 Each result contains `tenantId`, `intent`, `guardianDecision`, and `payment`.
 The demo Guardian rejects an incorrect landlord destination or an amount above the
 tenant's cap. Approved results include a payment with `status: "mock-paid"` and a
@@ -273,7 +277,7 @@ Connection secrets are not returned or logged. Restart the server if the URI cha
 
 All database access goes through `getDb()` in `src/lib/mongodb.ts`, which reuses one
 MongoClient connection promise per server process, including development reloads.
-Rent-day data still comes from the demo arrays. Loading it from MongoDB is a later step.
+Rent day now reads from MongoDB. Chat and phone lookup still use the demo arrays.
 
 ## Seed the demo data in Atlas
 
@@ -292,7 +296,8 @@ Abhimanyu and Kashish share 4B; Musammat is in 2A. Tenant phone values come from
 the local environment and are stored in Atlas, never as literals in committed files.
 
 The temporary seed route returns HTTP 403 in production before accessing MongoDB.
-It does not switch rent day or chat to MongoDB reads, or persist outbox messages.
+Seeding refreshes the data read by rent day. Chat still uses demo arrays, and outbox
+messages remain in memory.
 
 ## Photon integration (P2 / P4)
 
