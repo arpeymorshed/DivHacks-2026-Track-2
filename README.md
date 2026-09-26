@@ -218,6 +218,31 @@ landlord **Arpey**.
 - **KYC?** Tenants are verified at onboarding. Agent identity is on-chain via Credentials.
 - **Cost at scale?** Each agent wallet holds a small XRP reserve, paid by the landlord's ops account. It's cents per tenant.
 
+## Run the rent-day API locally
+
+Use Node.js 24 or newer. Install dependencies and start the Next.js development server:
+
+```bash
+npm ci
+npm run dev
+```
+
+In another terminal, trigger rent day:
+
+```bash
+curl -X POST http://localhost:3000/api/rent-day
+```
+
+The endpoint returns `{ success: true, paymentIntents: [...] }` with Abhimanyu's
+$1,488, Kashish's $1,488, and Musammat's $1,952 intents for `rARPEY_DEMO`.
+Unexpected failures return HTTP 500 and `{ success: false, error: "Failed to run rent day" }`.
+This currently generates intents only; Guardian checks and XRPL submission are future work.
+Next.js loads the ignored `.env.local` automatically. No phone numbers are included in
+the response. The route lives at `src/app/api/rent-day/route.ts`; `@/` resolves to `src/`
+and `@/types/` resolves to the existing root `types/` directory.
+
+Checks: `npm test`, `npm run typecheck`, and `npm run build`.
+
 ## Local demo phone mapping (P2 / P4)
 
 The current shared contracts live in `types/rent.ts`. Demo tenants read
