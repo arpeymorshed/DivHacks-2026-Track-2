@@ -148,10 +148,10 @@ type AuditEntry = { id: string; time: string; intent: PaymentIntent; decision: G
 ## Team roles
 | | Owns | First milestone (about H+4) |
 |---|---|---|
-| **P1: Money layer** | XRPL setup, `lib/xrpl` (build, agent-sign, multisign, submit, spawn, top-up), Guardian, credentials | 2-key RLUSD payment from a tenant wallet to the landlord, co-signed by the Guardian, with an explorer link |
-| **P2: Agents + backend** (merges `main`) | Agent runtime, demo clock + tick, dues and late-fee engine, Gemini, MongoDB, all API routes | Tick on "rent day" produces correct PaymentIntents (XRPL mocked) |
-| **P3: Frontend** | Tenant phone view + web chat, landlord console grid, spawn animation, attack panel, demo controls | Both views render from mock `/api/state` JSON |
-| **P4: Photon + ship** | Spectrum bot, `.tech` domain, Vercel/env, fixtures (ConEd bill, scam text), preflight, deck, Devpost, backup video, testing | App deployed at the domain, and a Photon bot replying in iMessage |
+| **Arpey: Money layer** | XRPL setup, `lib/xrpl` (build, agent-sign, multisign, submit, spawn, top-up), Guardian, credentials | 2-key RLUSD payment from a tenant wallet to the landlord, co-signed by the Guardian, with an explorer link |
+| **Musammat: Agents + backend** (merges `main`) | Agent runtime, demo clock + tick, dues and late-fee engine, Gemini, MongoDB, all API routes | Tick on "rent day" produces correct PaymentIntents (XRPL mocked) |
+| **Kashish: Frontend** | Tenant phone view + web chat, landlord console grid, spawn animation, attack panel, demo controls | Both views render from mock `/api/state` JSON |
+| **Abhimanyu Dudeja: Photon + ship** | Spectrum bot, `.tech` domain, Vercel/env, fixtures (ConEd bill, scam text), preflight, deck, Devpost, backup video, testing | App deployed at the domain, and a Photon bot replying in iMessage |
 
 **Team rules:**
 - One branch per person, and each person edits only their own folders.
