@@ -9,7 +9,7 @@ export const building: Building = {
   id: "building-1",
   name: "RentRelay Demo Building",
   landlordName: "Arpey",
-  landlordWallet: "rLANDLORD_DEMO",
+  landlordWallet: "rARPEY_DEMO",
   units: [
     {
       id: "unit-4b",
