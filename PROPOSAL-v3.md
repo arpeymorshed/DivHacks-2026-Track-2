@@ -68,6 +68,7 @@ A **main agent** runs the building's rent account for the landlord. For every te
 3. **Only the tenant can move their money.** The landlord's main agent has no key to any tenant wallet. It can only *ask*.
 4. **Credentials for agents (KYA).** Each tenant agent carries an on-chain credential issued by the main agent. Tenant agents ignore instructions from any "landlord agent" that doesn't hold the landlord's credential.
 5. **On-chain audit.** Every payment has a memo with the hash of its decision record (what was owed, why, which rules passed).
+6. **Legal late-fee cap.** The Guardian refuses any late fee that's above min($50, 5% of rent), charged within the 5-day grace period, or charged twice for the same month.
 
 **Attack panel: "What could go wrong?"**
 | Scenario | Stopped by |
@@ -75,7 +76,27 @@ A **main agent** runs the building's rent account for the landlord. For every te
 | 📱 Scam text: *"Landlord here, new bank account, send rent to rXYZ"* | Guardian: not the landlord's verified address |
 | 🧾 Inflated or misread ConEd bill: Maya's share reads $380 instead of $38 | Over Maya's cap → not paid, and the agent asks Maya instead |
 | 🔁 Main agent (buggy or hacked) asks for September rent twice | Guardian: already paid for this month |
+| 💸 Main agent adds a $200 late fee, or charges one on day 2 | Guardian: over the NY legal cap / still in the grace period |
 | 🔑 Someone steals a tenant agent's key | **The ledger itself** rejects it: 2 keys required |
+
+## Late payments: a daily late fee, capped by NY law
+**Goal:** give tenants a real reason not to delay rent, while staying legal and fair.
+
+**NY rule we build around** (NY Real Property Law §238-a, from the 2019 Housing Stability and Tenant Protection Act; *verify before the pitch*): a late fee is allowed only when rent is **more than 5 days late**, and it can be at most **$50 or 5% of the monthly rent, whichever is less**. Open-ended interest isn't allowed on NYC apartments, so our "interest" grows daily but stops at the legal cap.
+
+**How it works:**
+| Days after the due date | What happens |
+|---|---|
+| −3 to 0 | Friendly reminders: *"Rent $1,450 due Friday; your rent wallet is $250 short."* |
+| 1–5 (grace period) | **No fee.** Reminders get more urgent: *"2 days left before a late fee starts."* The agent can offer the landlord's pay-later option. |
+| 6 onward | The late fee **accrues $5/day**, up to the cap: min($50, 5% of rent). On $1,450 rent that's $50, reached on day 15. |
+| When paid | The tenant agent pays **rent + the accrued fee** in one payment. The memo records both amounts and the days late, and the fee stops. |
+
+**Fair to roommates:** the fee lands **only on the roommate who's late**, never on the whole unit. If Jordan is late, Maya pays nothing extra. That solves the "my roommate's lateness costs me" problem. If several roommates are late in the same month, the unit's single legal cap is split between them by share.
+
+**Enforced where the agent can't cheat (the Ripple angle):** the main agent calculates the fee, but the **Guardian re-checks it before co-signing**. The fee must be under the legal cap, the rent must really be more than 5 days late, and a fee can't be charged twice for the same month. A greedy or buggy landlord agent can't overcharge a tenant.
+
+**Carrot as well as stick (Tier 3):** an "on-time streak" on the tenant page (e.g. *"11 months on time"*) that tenants can show as a rental reference.
 
 ## MVP scope, in build order (cut from the bottom if behind)
 Deadline **Sun 10:30 AM**.
@@ -91,18 +112,19 @@ Deadline **Sun 10:30 AM**.
 6. **Spawn a tenant agent live:** the landlord adds a tenant → a new wallet is created and funded by the main agent, and it appears in the grid.
 7. Gemini reads the building ConEd bill → per-unit shares → added to each tenant's amount due.
 8. Reminders + "what do I owe?" in a **web chat panel** on the tenant page. This is the fallback if Photon fails.
-9. Attack panel: the 4 scenarios above.
+9. Attack panel: the 5 scenarios above.
+10. **Late fees (about 1.5h):** days-late tracking, the capped daily fee, escalating reminders, and the Guardian's legal-cap check. See "Late payments" above.
 
 **Tier 2.5: Photon (about 3–4h, only after Tier 1 works end to end)**
-10. Tenant agents text tenants in iMessage through Spectrum: reminders, answers, payment receipts, and the unit's roommate group chat.
+11. Tenant agents text tenants in iMessage through Spectrum: reminders, answers, payment receipts, and the unit's roommate group chat.
 
 **Tier 3: extras**
-11. On-chain credentials for tenant agents (KYA) and the "fake landlord agent" check.
-12. "Can I pay on the 5th?" → Gemini negotiates within the landlord's grace policy.
-13. The main agent pays the building's ConEd bill from collected rent (the landlord's own 2-key account).
-14. `.tech` domain (**do this early, 10 minutes**), deck, backup video.
+12. On-chain credentials for tenant agents (KYA) and the "fake landlord agent" check.
+13. "Can I pay on the 5th?" → Gemini negotiates within the landlord's grace policy.
+14. The main agent pays the building's ConEd bill from collected rent (the landlord's own 2-key account).
+15. `.tech` domain (**do this early, 10 minutes**), deck, backup video.
 
-**Cut line:** drop 11–13 first, then Photon (kill switch: Tier 1 not working by about midnight; the web chat panel covers the demo). Never drop the autonomous rent day or the attack panel.
+**Cut line:** drop 12–14 first, then Photon (kill switch: Tier 1 not working by about midnight; the web chat panel covers the demo). Never drop the autonomous rent day or the attack panel.
 
 ## Architecture and team split (4 people)
 ```
@@ -129,14 +151,14 @@ Deadline **Sun 10:30 AM**.
 | **P3: Frontend** | Landlord console (building grid, live agent status), tenant page (rules, wallet, chat panel), attack panel | Console renders from mock building JSON |
 | **P4: Photon + ship** | Spectrum iMessage bot, `.tech` domain, deploy/env, fixtures (ConEd building bill, scam text), preflight/reset scripts, deck, backup video | Hello-world bot replying in iMessage, and the app deployed at the domain |
 
-**Shared data formats (agreed in hour 1):** `Building`, `Unit`, `Tenant {unitId, share, capUsd, walletAddress, agentId}`, `TenantAgent {id, tenantId, credentialId?, status}`, `Due {tenantId, month, rentUsd, utilitiesUsd, reason}`, `PaymentIntent`, `GuardianDecision`, `AuditEntry`.
+**Shared data formats (agreed in hour 1):** `Building`, `Unit`, `Tenant {unitId, share, capUsd, walletAddress, agentId}`, `TenantAgent {id, tenantId, credentialId?, status}`, `Due {tenantId, month, rentUsd, utilitiesUsd, dueDate, daysLate, lateFeeUsd, reason}`, `PaymentIntent`, `GuardianDecision`, `AuditEntry`.
 
 ## Demo script (~3 min)
 1. **(20s) Hook:** "Rent's due Friday. Your roommate still owes you last month's ConEd, and you just got a text saying your landlord changed bank accounts. Sound familiar?"
-2. **(30s) Spawn:** the landlord adds a new tenant → a new agent appears in the building grid, with its own wallet on-ledger.
+2. **(25s) Spawn:** the landlord adds a new tenant → a new agent appears in the building grid, with its own wallet on-ledger.
 3. **(30s) Remind:** hold up the phone: the tenant agent's iMessage: *"Rent $1,450 + ConEd $38 due Friday."* Ask "why is ConEd $38?" → it explains the split.
-4. **(30s) Rent day:** the timer fires → every tenant agent pays its share on its own → the building grid turns green → open a transaction on the explorer.
-5. **(50s) What could go wrong:** scam bank-change text, inflated ConEd bill, double charge, stolen key. All four are blocked, with the reason shown.
+4. **(40s) Rent day:** the timer fires → every tenant agent pays its share on its own → the grid turns green, **except Jordan**, whose rent wallet is short. Skip ahead 8 days: his reminders escalated, and his agent pays rent + a **$15 late fee** (3 days past grace at $5/day, capped by NY law). Maya paid nothing extra. Open the transaction on the explorer.
+5. **(45s) What could go wrong:** scam bank-change text, inflated ConEd bill, double charge, illegal $200 late fee, stolen key. All five are blocked, with the reason shown.
 6. **(20s) Close:** "Every tenant gets a personal rent agent. It reminds you, explains, and pays on time, but it can only ever do what you allowed. The AI decides. The ledger enforces."
 
 ## Risks and honest flags
@@ -150,3 +172,4 @@ Deadline **Sun 10:30 AM**.
 2. Should the main agent be connected to a **real-feeling bank** for the landlord? Capital One's Nessie API could play that role, but you dropped Capital One. Keep it dropped?
 3. Name and domain (RentRelay / KeyRing / RentPilot `.tech`).
 4. Adopt v3 over v2?
+5. **Late-fee numbers:** $5/day after a 5-day grace, capped at min($50, 5% of rent)? Should a tenant on an agreed payment plan have fees paused? (Verify the NY rule with a quick check before the pitch; we're not giving legal advice.)
