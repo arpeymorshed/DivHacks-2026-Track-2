@@ -57,3 +57,28 @@ export async function acknowledgeOutboxMessage(id: string): Promise<boolean> {
   if (result.matchedCount > 0) return true;
   return (await outbox.findOne({ id, status: "sent" }, { projection: { _id: 1 } })) !== null;
 }
+
+export async function resetDemoOutbox() {
+  const db = await getDb();
+
+  const result = await db.collection<OutboxMessage>("outbox").updateMany(
+    {
+      tenantId: {
+        $in: ["abhimanyu", "kashish", "musammat"],
+      },
+    },
+    {
+      $set: {
+        status: "pending",
+      },
+      $unset: {
+        sentAt: "",
+      },
+    }
+  );
+
+  return {
+    matched: result.matchedCount,
+    modified: result.modifiedCount,
+  };
+}
