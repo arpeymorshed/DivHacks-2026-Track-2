@@ -2,7 +2,9 @@
 
 > **⚠️ PROPOSAL ONLY: nothing is confirmed.** This is a candidate idea for our team to discuss (idea, stack and scope are all open). Leave comments or suggestions!
 
-> 🆕 **Latest: [Proposal v2, SplitSafe](PROPOSAL-v2.md)**: one roommate-payments app for Live Better + Ripple + Photon + Gemini + .Tech.
+> 🆕 **Latest: [Proposal v3, RentRelay](PROPOSAL-v3.md)**: a landlord main agent that spawns one personal rent agent per tenant (Live Better + Ripple + Photon + Gemini + .Tech).
+>
+> Previous: [Proposal v2, SplitSafe](PROPOSAL-v2.md), the roommate-payments app.
 
 ## Hackathon context (2026-09-26)
 - **DivHacks 2026 @ Columbia**, theme **"Concrete Jungle"**: smarter solutions for NYC communities (food, housing, transportation).
