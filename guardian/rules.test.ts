@@ -113,3 +113,12 @@ test("credential URI round-trips wallet limits (T35 spawn)", async () => {
   assert.deepEqual(decodeLimits(encodeLimits(limits)), limits);
   assert.equal(decodeLimits("68656C6C6F"), null); // "hello": not our format
 });
+
+test("refuses a transaction with a missing or invalid network fee", () => {
+  for (const Fee of [undefined, "abc", "-1"]) {
+    const r = checkRules(input({ tx: { Fee } }));
+    assert.equal(r.approved, false, `Fee=${Fee} should be refused`);
+    assert.equal(r.rule, "tx-shape");
+  }
+  assert.equal(checkRules(input({ tx: { Fee: "6000" } })).approved, false);
+});
