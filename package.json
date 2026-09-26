@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
+    "test:photon": "node src/services/testPhotonApi.ts",
     "test": "node src/agent/testTenantAgent.ts && node src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts"
   },
   "dependencies": {

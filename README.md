@@ -275,6 +275,45 @@ All database access goes through `getDb()` in `src/lib/mongodb.ts`, which reuses
 MongoClient connection promise per server process, including development reloads.
 Rent-day data still comes from the demo arrays; no real collections have been seeded.
 
+## Photon integration (P2 / P4)
+
+P4 maps the sender's phone number to `tenantId` before calling P2. The shared
+`ChatRequest`, `ChatResponse`, and `OutboxMessage` contracts live in `types/rent.ts`.
+
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"tenantId":"musammat","text":"What do I owe?"}'
+```
+
+Returns `{ "reply": "You owe $1952 for 2026-10: $1900 rent + $52 utilities." }`.
+Replies are deterministic for now: an "owe" question returns the current demo due;
+other text returns a greeting. Missing, blank, or non-string fields and malformed
+JSON return HTTP 400; an unknown tenant returns 404. Gemini is a later step.
+
+`POST /api/rent-day` queues a total reminder for each processed tenant after its mock
+Guardian/payment result. The reminder states the amount owed, not a claim that real
+money was paid. Retrieve queued messages with:
+
+```bash
+curl http://localhost:3000/api/outbox
+```
+
+The response is an array of `{ id, tenantId, text }`, initially `[]` in a fresh
+process. The temporary array is shared across routes within one server process,
+survives development reloads, and resets when that process restarts. It is not shared
+between separate server instances. MongoDB outbox persistence is a later step.
+
+**Acknowledgement contract pending with P4:** After Photon successfully sends a
+message, how should it acknowledge that message ID so P2 stops returning it?
+Until this is agreed, polling returns the same messages and IDs and does not remove
+them. Repeated rent-day runs append new messages. No sent/acknowledgement endpoint
+has been introduced.
+
+Run `npm run test:photon` with the local server running to verify chat responses,
+validation, and rent-day-to-outbox delivery. This test runs mock rent day once and
+adds three messages to the temporary queue.
+
 ## Local demo phone mapping (P2 / P4)
 
 The current shared contracts live in `types/rent.ts`. Demo tenants read
@@ -291,12 +330,12 @@ for `DEMO_*_PHONE`. Its **Texts On** column provides the bot destination numbers
 `DEMO_*_PHOTON_NUMBER`: these are the numbers each person texts to reach Photon.
 Keep both sets only in `.env.local`. Tenant lookup matches personal sender numbers,
 not Photon destination numbers. The destination variables are reserved for P4's
-integration; this change does not send messages or create a Photon endpoint.
+integration. P2 exposes chat/outbox APIs; P4 is responsible for sending iMessages.
 
 `getTenantByPhone()` in `src/services/tenantLookup.ts` returns the matching tenant,
 including its `agentId`, or `undefined` for unknown, empty, or malformed numbers.
-This lookup is for incoming messages; payment-intent generation still uses the
-tenant and its due directly.
+The helper is available for phone-based lookups, but `/api/chat` uses P4's `tenantId`
+directly. Payment-intent generation still uses the tenant and its due directly.
 
 With the current Node 24 setup, load `.env.local` explicitly when running a script:
 
@@ -309,16 +348,6 @@ The lookup test uses synthetic numbers and does not require team phone numbers.
 Environment values are read when the demo data module loads, so restart the process
 after editing `.env.local`.
 
-Proposed Photon → P2 request contract for P4, exported as `PhotonMessage`:
-
-```typescript
-type PhotonMessage = {
-  from: string; // Sender's E.164 phone number
-  message: string;
-};
-```
-
-The future `POST /api/message` endpoint will use `from` to select the tenant agent
-and return `{ tenantId: string, reply: string }` on success. An unknown number will
-return HTTP 404 with `{ error: "Unknown tenant phone number" }`. This endpoint is
-not implemented yet; the rent-day pipeline is unchanged.
+The current `{ tenantId, text }` → `{ reply }` chat contract replaces the earlier
+proposed `{ from, message }` contract. No `/api/message` endpoint is needed for P4's
+current integration.

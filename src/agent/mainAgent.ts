@@ -10,6 +10,7 @@ import {
 
 import { checkPaymentIntent } from "../services/mockGuardian.ts";
 import { submitMockPayment } from "../services/mockXrpl.ts";
+import { queueMessage } from "../data/outbox.ts";
 
 import type {
   RentDayResult,
@@ -49,6 +50,7 @@ export async function runRentDay(): Promise<RentDayResult[]> {
         guardianDecision,
         payment: null,
       });
+      queueMessage(tenant.id, `${tenant.name}, your ${due.month} total is $${intent.amountUsd}.`);
       continue;
     }
 
@@ -60,6 +62,7 @@ export async function runRentDay(): Promise<RentDayResult[]> {
       guardianDecision,
       payment,
     });
+    queueMessage(tenant.id, `${tenant.name}, your ${due.month} total is $${intent.amountUsd}.`);
   }
 
   return results;

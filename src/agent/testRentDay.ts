@@ -1,9 +1,18 @@
 import { deepStrictEqual, equal, match, ok } from "node:assert/strict";
 import { runRentDay } from "./mainAgent.ts";
 import { dues, tenants } from "../data/demoBuilding.ts";
+import { outbox } from "../data/outbox.ts";
 
+equal(outbox.length, 0);
 const results = await runRentDay();
 const intents = results.map((result) => result.intent);
+
+deepStrictEqual(outbox.map(({ tenantId, text }) => ({ tenantId, text })), [
+  { tenantId: "abhimanyu", text: "Abhimanyu, your 2026-10 total is $1488." },
+  { tenantId: "kashish", text: "Kashish, your 2026-10 total is $1488." },
+  { tenantId: "musammat", text: "Musammat, your 2026-10 total is $1952." },
+]);
+equal(new Set(outbox.map((message) => message.id)).size, 3);
 
 deepStrictEqual(intents, [
   {
@@ -73,6 +82,8 @@ try {
     equal(result.guardianDecision.approved, true);
     equal(result.payment?.status, "mock-paid");
   }
+  equal(outbox.length, 6);
+  equal(outbox[3].text, "Abhimanyu, your 2026-10 total is $1488.");
 } finally {
   tenants[0].capUsd = originalCap;
 }
@@ -87,9 +98,10 @@ try {
   const remainingResults = await runRentDay();
   deepStrictEqual(remainingResults.map((result) => result.intent), [intents[0], intents[2]]);
   deepStrictEqual(warnings, ["No due found for Kashish"]);
+  deepStrictEqual(outbox.slice(6).map((message) => message.tenantId), ["abhimanyu", "musammat"]);
 } finally {
   dues.splice(0, dues.length, ...originalDues);
   console.warn = originalWarn;
 }
 
-console.log("Rent-day checks passed: three mock payments, cap rejection, and missing due.");
+console.log("Rent-day checks passed: mock payments, cap rejection, missing due, and queued messages.");

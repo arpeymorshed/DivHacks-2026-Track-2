@@ -9,9 +9,19 @@ export type Tenant = {
   phoneNumber: string; // E.164; empty when not configured
 };
 
-export type PhotonMessage = {
-  from: string; // E.164 sender phone number
-  message: string;
+export type ChatRequest = {
+  tenantId: string;
+  text: string;
+};
+
+export type ChatResponse = {
+  reply: string;
+};
+
+export type OutboxMessage = {
+  id: string;
+  tenantId: string;
+  text: string;
 };
 
 export type Unit = {
