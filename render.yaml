@@ -1,0 +1,16 @@
+# Render Blueprint for the Guardian co-signing service (T13). Only the Guardian's own key goes here.
+services:
+  - type: web
+    name: rentrelay-guardian
+    runtime: node
+    plan: starter # free tier sleeps after ~15 min idle; wake it via /health before a demo if you use free
+    buildCommand: npm install
+    startCommand: npm run start:guardian
+    healthCheckPath: /health
+    envVars:
+      - key: GUARDIAN_SEED # from .secrets/guardian.env
+        sync: false
+      - key: GUARDIAN_ADMIN_TOKEN # from .secrets/guardian.env
+        sync: false
+      - key: GUARDIAN_POLICY # one-line JSON of .secrets/guardian-policy.json
+        sync: false
