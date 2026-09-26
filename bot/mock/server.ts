@@ -15,6 +15,7 @@ type Tenant = {
   utilities: number;
   walletBalance: number;
   dueDate: string;
+  utilityNote: string; // how the share comes from the building bill (fixtures/demo-script.md)
 };
 
 type OutboxMessage = { id: string; tenantId: string; text: string };
@@ -22,9 +23,12 @@ type OutboxMessage = { id: string; tenantId: string; text: string };
 const PORT = Number(process.env.MOCK_PORT ?? 4000);
 
 const tenants: Record<string, Tenant> = {
-  abhimanyu: { name: "Abhimanyu", rent: 1450, utilities: 42, walletBalance: 1492, dueDate: "Thu Oct 1" },
-  kashish: { name: "Kashish", rent: 1450, utilities: 38, walletBalance: 1238, dueDate: "Thu Oct 1" },
-  musammat: { name: "Musammat", rent: 1450, utilities: 40, walletBalance: 1600, dueDate: "Thu Oct 1" },
+  abhimanyu: { name: "Abhimanyu", rent: 1450, utilities: 38, walletBalance: 1488, dueDate: "Thu Oct 1",
+    utilityNote: "The building bill was $114. Unit 4B used 380 kWh ($76), split 50/50 with Kashish" },
+  kashish: { name: "Kashish", rent: 1450, utilities: 38, walletBalance: 1238, dueDate: "Thu Oct 1",
+    utilityNote: "The building bill was $114. Unit 4B used 380 kWh ($76), split 50/50 with Abhimanyu" },
+  musammat: { name: "Musammat", rent: 1450, utilities: 38, walletBalance: 1488, dueDate: "Thu Oct 1",
+    utilityNote: "The building bill was $114. Unit 2A used 190 kWh ($38)" },
 };
 
 const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
@@ -33,17 +37,17 @@ const outbox: OutboxMessage[] = [
   {
     id: "msg-001",
     tenantId: "kashish",
-    text: "Hi Kashish, rent $1,450 + utilities $38 = $1,488 is due Thu Oct 1. Your rent wallet is $250 short.",
+    text: "Hi Kashish, rent $1,450 + utilities $38 = $1,488 is due Thu Oct 1. Your rent wallet has $1,238, so please top up $250 before then.",
   },
   {
     id: "msg-002",
     tenantId: "abhimanyu",
-    text: "Hi Abhimanyu, rent $1,450 + utilities $42 = $1,492 is due Thu Oct 1. Your rent wallet is fully funded, you're all set.",
+    text: "Hi Abhimanyu, rent $1,450 + utilities $38 = $1,488 is due Thu Oct 1. Your rent wallet has $1,488, so you're all set. I'll pay it automatically on the 1st.",
   },
   {
     id: "msg-003",
     tenantId: "musammat",
-    text: "Hi Musammat, rent $1,450 + utilities $40 = $1,490 is due Thu Oct 1. Your wallet has $110 extra, which will roll over to November.",
+    text: "Hi Musammat, rent $1,450 + utilities $38 = $1,488 is due Thu Oct 1. Your rent wallet has $1,488, so you're all set.",
   },
 ];
 let nextId = outbox.length + 1;
@@ -63,7 +67,7 @@ function replyFor(tenantId: string, text: string): string {
     return `Your next payment of ${usd(total)} is due ${t.dueDate}.`;
   }
   if (q.includes("util")) {
-    return `Your share of utilities this month is ${usd(t.utilities)} (electric + internet, split three ways).`;
+    return `${t.utilityNote}, so your share is ${usd(t.utilities)}.`;
   }
   if (q.includes("wallet") || q.includes("balance") || q.includes("short")) {
     if (diff < 0) return `Your rent wallet has ${usd(t.walletBalance)}. You're ${usd(-diff)} short of the ${usd(total)} due ${t.dueDate}.`;
