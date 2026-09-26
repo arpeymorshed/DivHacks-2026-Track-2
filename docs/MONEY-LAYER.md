@@ -212,9 +212,31 @@ return Response.json(result);                          // { title, blocked, bloc
 - `ATTACKS[name].title` and `.live` feed P3's panel (T38). `reason` is the "Blocked by:" line.
 - Check it all: `npm run test:attacks` (pays one rent for a fresh run, then fires all 7).
 
-### T33 (P1)
+### T33: `POST /api/topup` (tenant's "Top up" button)
 
-`POST /api/topup` is a thin wrapper on `topUp(client, bank, walletAddress, usd)`. Coming next.
+```ts
+import { MAX_TOPUP_USD, TopUpError, topUpRentWallet } from "@/lib/xrpl/topup";
+
+const { tenantId, usd } = await req.json();            // amount from the tenant; everything else server-side
+const tenant = await db.tenants.findOne({ id: tenantId }); // 404 if missing
+try {
+  const r = await withClient((client) =>
+    topUpRentWallet(client, Wallet.fromSeed(process.env.XRPL_BANK_SEED!), tenant.walletAddress, Number(usd)));
+  return Response.json(r);                             // { txHash, explorer, usd, walletBalanceUsd, bankBalanceUsd }
+} catch (e) {
+  if (e instanceof TopUpError)                          // bad-amount → 400, not-a-rent-wallet → 400, bank-empty → 409
+    return Response.json({ code: e.code, message: e.message }, { status: e.code === "bank-empty" ? 409 : 400 });
+  throw e;
+}
+```
+
+- Limits: $0.01 to **$2,000** (`MAX_TOPUP_USD`) per top-up, in whole cents. Only real rent wallets (RLUSD trust
+  line + master key disabled), so the landlord or bank can't be "topped up".
+- **Take the wallet address from the DB, never from the request body.**
+- No Guardian involved: a top-up only adds money to the tenant's own wallet.
+- Demo story (checked by `npm run test:topup`): Jordan is short → tops up → on day 8 his agent pays
+  $1,450 + $38 + $15 late fee and the Guardian co-signs it.
+- `bank-empty` means the float ran out. A demo reset recycles it (landlord → bank).
 
 ---
 
