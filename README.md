@@ -52,6 +52,7 @@ Framing: *"Your agent's job is to make sure you never pay a late fee. And if you
 - **Next.js (TypeScript)**: web app + API routes + agent runtime, on **Vercel**, at the `.tech` domain. **Vercel Cron** calls `/api/tick`.
 - **Guardian:** a **separate** small Node/Express service with its own key and deploy (second Vercel project or Render). It never shares keys with the app.
 - **XRPL Testnet** via **xrpl.js**. **RLUSD** from tryrlusd.com. Uses multi-signing, Credentials (XLS-70), memos. Explorer: testnet.xrpl.org.
+- **Decision 2026-09-26: RLUSD is scaled 1:1000 on-ledger.** The faucet gives only 10 RLUSD per 24h per GitHub account, and the Ripple booth declined a larger grant. The app always shows real dollars ($1,450), and the ledger moves dollars ÷ 1000 (1.45 RLUSD). There's one constant, `RLUSD_PER_USD = 0.001` in `lib/xrpl/config.ts`; set it to 1 if more RLUSD ever appears. **Demo reset recycles the float** (landlord → bank → tenant wallets), so ~5–10 RLUSD runs the demo indefinitely.
 - **Gemini API**: vision (bills), function calling (payment intents, negotiation), text (messages).
 - **MongoDB Atlas** free tier.
 - **Photon Spectrum** (TypeScript) for iMessage, in `/bot`.
@@ -158,7 +159,9 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
   2. `agentWallet.sign(tx, true)`, sent to the Guardian
   3. The Guardian runs `xrpl.decode(blob)`, checks `Account`, `Destination` and `Amount` (currency, issuer, value) against its rules, then `guardianWallet.sign(tx, true)`
   4. `xrpl.multisign([agentBlob, guardianBlob])` → `client.submitAndWait`
-- **Memos:** `Memos: [{Memo: {MemoType: hex("rentrelay/audit"), MemoData: hex(sha256(decisionRecord))}}]`.
+- **Memos:** `Memos: [{Memo: {MemoType: hex("rentrelay/audit"), MemoData: hex(sha256(decisionRecord))}}]`. The decision record stores the **USD amounts** and the scale used.
+- **1:1000 scale (see Tech stack):** convert only inside `lib/xrpl` (`usdToRlusd`, `rlusdToUsd`), and round to 6 decimals. Everything outside `lib/xrpl` (agents, dues, UI, audit) works in USD. **The Guardian must convert the transaction's RLUSD amount back to USD before checking caps and late-fee limits.** Otherwise a 1.45 RLUSD payment would look like $1.45 and every cap check would be meaningless.
+- **Reset recycling:** `/api/demo/reset` sends the landlord's RLUSD back to the bank, then tops each tenant wallet up to its seed balance. The bank needs ~10 RLUSD (one faucet claim to `rJh7RhyBMGntpmmEQB6eRmSm7L1YFGADtk`; a teammate's claim is the buffer).
 - **"Stolen key" attack:** submitting with only the agent's signature should fail with a bad-quorum error (e.g. `tefBAD_QUORUM`). Show that exact ledger response.
 - **Spawn (Tier 2):**
   1. The ops account sends XRP to a new address (base reserve + owner reserves for the trust line, signer list and credential, plus fees)
@@ -210,6 +213,7 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 - **Why not XRPL Checks?** Rent changes monthly with utilities. The ledger already enforces two keys and the wallet balance as the hard cap; the Guardian applies the variable rules.
 - **Does the landlord or ConEd take RLUSD?** Not today. Testnet stand-ins; a real version settles through an off-ramp or bill-pay partner.
 - **Is the late fee legal?** It's built around NY RPL §238-a, and the Guardian makes an illegal fee impossible.
+- **Why does the explorer show 1.45 RLUSD for $1,450 rent?** The Testnet faucet gives only 10 RLUSD a day, so on-ledger amounts are scaled 1:1000. It's one setting; production settles 1:1.
 - **Is it really autonomous?** The demo clock only fast-forwards time. No human approves any payment.
 - **KYC?** Tenants are verified at onboarding. Agent identity is on-chain via Credentials.
 - **Cost at scale?** Each agent wallet holds a small XRP reserve, paid by the landlord's ops account. It's cents per tenant.
