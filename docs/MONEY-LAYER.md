@@ -221,16 +221,20 @@ const { tenantId, usd } = await req.json();            // amount from the tenant
 const tenant = await db.tenants.findOne({ id: tenantId }); // 404 if missing
 try {
   const r = await withClient((client) =>
-    topUpRentWallet(client, Wallet.fromSeed(process.env.XRPL_BANK_SEED!), tenant.walletAddress, Number(usd)));
+    topUpRentWallet(client, Wallet.fromSeed(process.env.XRPL_BANK_SEED!), tenant.walletAddress, Number(usd), tenant.capUsd));
   return Response.json(r);                             // { txHash, explorer, usd, walletBalanceUsd, bankBalanceUsd }
 } catch (e) {
-  if (e instanceof TopUpError)                          // bad-amount → 400, not-a-rent-wallet → 400, bank-empty → 409
-    return Response.json({ code: e.code, message: e.message }, { status: e.code === "bank-empty" ? 409 : 400 });
+  if (e instanceof TopUpError)   // bad-amount / not-a-rent-wallet → 400; wallet-full / bank-empty → 409
+    return Response.json({ code: e.code, message: e.message },
+      { status: e.code === "wallet-full" || e.code === "bank-empty" ? 409 : 400 });
   throw e;
 }
 ```
 
-- Limits: $0.01 to **$2,000** (`MAX_TOPUP_USD`) per top-up, in whole cents. Only real rent wallets (RLUSD trust
+- Limits: $0.01 to **$2,000** (`MAX_TOPUP_USD`) per top-up, in whole cents, and the wallet may hold at most
+  **one month's max payment** afterwards (`MAX_WALLET_USD` = $1,600, or the tenant's `capUsd` passed as the 5th
+  argument). `wallet-full`'s message says how much more fits ("You can top up $97 more"). This stops a public
+  visitor parking the shared float in rent wallets, where reset can't recycle it. Only real rent wallets (RLUSD trust
   line + master key disabled), so the landlord or bank can't be "topped up".
 - **Take the wallet address from the DB, never from the request body.**
 - No Guardian involved: a top-up only adds money to the tenant's own wallet.

@@ -10,8 +10,12 @@ import { getRlusdBalance } from "./rlusd";
 // One top-up covers a full month (rent share + utilities + max late fee = $1,600) with room to spare, while
 // keeping the shared demo float (10 RLUSD ≈ $10,000) from being drained by one click.
 export const MAX_TOPUP_USD = 2000;
+// Most a rent wallet may hold after a top-up: one month's maximum payment (rent share $1,450 + utilities max $100
+// + max late fee $50). Money in a rent wallet can only leave as rent, so without this a few clicks on the public
+// demo could park the whole shared float where a demo reset can't recycle it. Pass the tenant's capUsd if different.
+export const MAX_WALLET_USD = 1600;
 
-export type TopUpErrorCode = "bad-amount" | "not-a-rent-wallet" | "bank-empty";
+export type TopUpErrorCode = "bad-amount" | "not-a-rent-wallet" | "wallet-full" | "bank-empty";
 export class TopUpError extends Error {
   constructor(public code: TopUpErrorCode, message: string) {
     super(message);
@@ -20,7 +24,13 @@ export class TopUpError extends Error {
 
 export type TopUpResult = { txHash: string; explorer: string; usd: number; walletBalanceUsd: number; bankBalanceUsd: number };
 
-export async function topUpRentWallet(client: Client, bank: Wallet, walletAddress: string, usd: number): Promise<TopUpResult> {
+export async function topUpRentWallet(
+  client: Client,
+  bank: Wallet,
+  walletAddress: string,
+  usd: number,
+  maxWalletUsd = MAX_WALLET_USD,
+): Promise<TopUpResult> {
   const wholeCents = Math.abs(Math.round(usd * 100) - usd * 100) < 1e-6; // tolerate float noise (10.1 * 100)
   if (!Number.isFinite(usd) || usd <= 0 || usd > MAX_TOPUP_USD || !wholeCents) {
     throw new TopUpError("bad-amount", `Top up between $0.01 and $${MAX_TOPUP_USD}, in whole cents.`);
@@ -30,6 +40,14 @@ export async function topUpRentWallet(client: Client, bank: Wallet, walletAddres
     .then(([rlusd, status]) => rlusd !== null && status.masterDisabled)
     .catch(() => false); // e.g. the account doesn't exist
   if (!isRentWallet) throw new TopUpError("not-a-rent-wallet", `${walletAddress} isn't a tenant rent wallet.`);
+  const walletBefore = await getBalances(client, walletAddress);
+  if (walletBefore.usd + usd > maxWalletUsd + 0.001) {
+    const room = Math.max(0, Math.floor((maxWalletUsd - walletBefore.usd) * 100) / 100);
+    throw new TopUpError(
+      "wallet-full",
+      `This wallet already has $${walletBefore.usd} and can hold at most $${maxWalletUsd} (one month's rent). You can top up $${room} more.`,
+    );
+  }
   const bankBefore = await getBalances(client, bank.address);
   if (bankBefore.usd < usd) {
     throw new TopUpError("bank-empty", `The demo bank only has $${bankBefore.usd}. Run a demo reset to recycle RLUSD.`);

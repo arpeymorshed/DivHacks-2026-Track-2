@@ -34,6 +34,7 @@ await withClient(async (client) => {
   await refused("$10.001 (fraction of a cent)", jordan, 10.001, "bad-amount");
   await refused("to the landlord (not a rent wallet)", landlord.address, 100, "not-a-rent-wallet");
   await refused("to an address that doesn't exist", Wallet.generate().address, 100, "not-a-rent-wallet");
+  await refused("$1,700 into an empty wallet (over the $1,600 wallet limit)", jordan, 1700, "wallet-full");
 
   // Done-when: Jordan is short, tops up, and his day-8 rent + $15 late fee goes through.
   const lb = await getBalances(client, landlord.address);
@@ -46,6 +47,7 @@ await withClient(async (client) => {
     const t = await topUpRentWallet(client, bank, jordan, need);
     console.log(`\n✅ Jordan topped up $${t.usd}: wallet now $${t.walletBalanceUsd}, bank $${t.bankBalanceUsd}\n   ${t.explorer}`);
   }
+  await refused("another $200 on top of $1,503 (wallet would hold $1,703)", jordan, 200, "wallet-full");
   const context = { today: "2026-10-08", month: "2026-10", run: Math.floor(Date.now() / 1000) };
   const blob = agentSign(await buildPayment(client, { from: jordan, to: landlord.address, usd: intent.totalUsd,
     memoHash: hashAuditRecord({ intent, context }), period: periodKey(context.month, context.run) }), Wallet.fromSeed(env("XRPL_AGENT_JORDAN_SEED")));
