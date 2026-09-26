@@ -177,10 +177,44 @@ const result = await spawnRentWallet(client, {
 - No Guardian registration is needed: it recognises the new wallet from its on-ledger credential.
 - If a spawn fails midway, retry. About 2.6 test XRP is lost per failed attempt. The ops account has ~97 XRP.
 
-### T33 (P1) and T37 (P1)
+### T37: `POST /api/attacks/:name` ("What could go wrong?")
 
-P1 provides the helpers for `/api/topup` (a thin wrapper on `topUp`) and the attack scenarios for
-`/api/attacks/:name`. They're coming next; this guide will be updated.
+```ts
+import { ATTACKS, type AttackName, runAttack } from "@/lib/xrpl/attacks";
+
+const name = params.name as AttackName;               // 404 if !(name in ATTACKS)
+const result = await withClient((client) => runAttack(client, name, {
+  tenantId: "maya", walletAddress: maya.walletAddress, agentSeed: MAYA_AGENT_SEED,
+  landlordAddress: process.env.XRPL_LANDLORD_ADDRESS!, rentShareUsd: 1450, utilitiesUsd: 38,
+  clock: { today, month, run },                        // current demo clock + run
+}));
+await db.audit.insertOne(result.audit);                // status "blocked"
+return Response.json(result);                          // { title, blocked, blockedBy, rule, reason, ledgerCode? }
+```
+
+| `name` | Demo | Blocked by | `rule` |
+|---|---|---|---|
+| `scam-address` | **live** | Guardian | `landlord-only` |
+| `illegal-late-fee` | **live** | Guardian | `legal-late-fee` |
+| `stolen-key` | **live** | **the ledger itself** (`tefBAD_QUORUM`) | `ledger-quorum` |
+| `fee-in-grace` | Q&A | Guardian | `legal-late-fee` |
+| `inflated-coned` | Q&A | Guardian | `cap` |
+| `double-charge` | Q&A: **run after rent day** (before that: `not-ready`, nothing sent) | Guardian | `once-per-month` |
+| `lying-agent` | Q&A | Guardian | `intent-mismatch` |
+
+- Safe to click any time: attacks **never submit** a Guardian-approved tx and cost no RLUSD. `double-charge`
+  before rent is paid returns `rule: "not-ready"` without contacting the Guardian, so it can't delay the real rent.
+  Don't log `not-ready` results as attacks (or show them as "run after rent day").
+- **Build `target` on the server** (tenant wallet + agent seed from the DB). Never accept a seed, address or target
+  from the request body: the route signs with the real agent key. Validate `:name` against `ATTACKS` (404 otherwise).
+- Any demo date works: if the clock is outside the payment window, attacks use the 1st of the month so each one
+  still reports its own rule.
+- `ATTACKS[name].title` and `.live` feed P3's panel (T38). `reason` is the "Blocked by:" line.
+- Check it all: `npm run test:attacks` (pays one rent for a fresh run, then fires all 7).
+
+### T33 (P1)
+
+`POST /api/topup` is a thin wrapper on `topUp(client, bank, walletAddress, usd)`. Coming next.
 
 ---
 
@@ -198,6 +232,7 @@ P1 provides the helpers for `/api/topup` (a thin wrapper on `topUp`) and the att
 | `window` | outside the payment window | "Blocked: wrong date" |
 | `intent-mismatch` | the agent's description doesn't match the real tx | "Blocked: agent lied" |
 | `tx-shape` | not a plain RLUSD payment from a known rent wallet with the right tag/signer | "Blocked: invalid payment" |
+| `ledger-quorum` | (attacks only) agent-only signature rejected by the XRP Ledger | "Blocked by the ledger: stolen key" |
 | `guardian-unreachable` | Guardian asleep or down; nothing was paid | "Guardian waking up, retry" |
 
 `decision.reason` is a plain-English sentence, safe to show as-is.

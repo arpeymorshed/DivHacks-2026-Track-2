@@ -2,6 +2,34 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-26: T37 review fixes, `money-layer` @ c2994f8: ✅ approved
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass.
+- **#1 double-charge stall: fixed** (option a). `runAttack` checks `paidOnLedger` first and returns `rule: "not-ready"` without calling the Guardian, so no pending record can block the real rent (`lib/xrpl/attacks.ts:79-84`). A rent payment that's still settling also returns `not-ready`, which is correct.
+- **`paidOnLedger` was moved to `lib/xrpl/history.ts`.** It's the same logic, with `landlord` now a parameter, and the Guardian passes `policy.landlord` (`guardian/server.ts:73`). No behaviour change.
+- **Window note: handled in P1.** If the demo clock is outside the payment window, attacks use the 1st, so each reports its own rule (`lib/xrpl/attacks.ts:55-61, 66`). The day-20 and day-2 fee scenarios still override the date.
+- `docs/MONEY-LAYER.md` now tells P2 to build the target on the server, return 404 for unknown names, and not log `not-ready` as an attack.
+- Minor: `attacks.ts` now imports `guardian/rules` at runtime (for the window constants). That module is pure (no server start, no keys), so it's fine to bundle in the Next.js app.
+
+T37 stays **In progress** until P2's `POST /api/attacks/:name` lands.
+
+## 2026-09-26: T37 (P1 half), `money-layer` @ 65b630c (attack scenarios): ✅ P1 half approved; T37 waits for P2
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass.
+**Not run:** `test:attacks`, because it pays a real rent to set up the double charge.
+- `runAttack` (`lib/xrpl/attacks.ts`) builds a real agent-signed tx for each of the 7 scenarios. I traced each one against the current rule order in `guardian/rules.ts`, and each hits its expected rule: scam → `landlord-only`, lying agent → `intent-mismatch` (checked before landlord), $200 fee on day 20 → `legal-late-fee` (before amounts), day-2 fee → `legal-late-fee`, $500 ConEd → `cap`, double charge → `once-per-month`.
+- **Safety is right.** Stolen-key submits a single-signature blob, so the ledger rejects it with a `tef` (no fee, no sequence used). No other scenario ever submits, and if the Guardian unexpectedly approves one, its signature is dropped before the audit entry is built (`lib/xrpl/attacks.ts:113-119`). Attacks cost no RLUSD because the Guardian doesn't check balances.
+- `ledger-quorum` was added to the rule → UI table in `docs/MONEY-LAYER.md`. Good for P3.
+
+Should fix (demo stall):
+1. **Clicking "double charge" before rent day can block the real rent for about 1 minute.** When no payment exists yet, the Guardian approves the attack and records it as pending (`guardian/server.ts`, `cosigned.set` in `/cosign`). The attack never submits, but `priorPayment` returns `"pending"` until the tx's `LastLedgerSequence` passes (~20 ledgers, ~60–80s). Jump to rent day inside that window, and Maya's real payment is refused with "A payment for 2026-10 is still settling." Fix (either one):
+   - (a) In `runAttack`, for `double-charge`, first check the ledger for a paid tx with this period tag. If there's none, return "not ready: run after rent day" without calling the Guardian. Moving `paidOnLedger` into `lib/xrpl` lets both sides share it.
+   - (b) P2/P3 disable the double-charge button until that tenant's due is `paid`.
+
+Notes for P2 (`POST /api/attacks/:name`):
+- **Pass a clock inside the payment window** (from 5 days before the 1st). The `window` rule runs before the amount and once-per-month rules. With an earlier clock, `inflated-coned` and `double-charge` would report `window` instead of their own rule. The other five are unaffected: they're either caught earlier or force their own date.
+- Validate `:name` against `ATTACKS` (the guide already says 404). The route signs with the real agent key, so build the `target` on the server. Never accept a seed or target from the request body.
+
+## 2026-09-26: T35 (P1 half), `money-layer` @ f059b54 (spawn a rent wallet live + on-chain credential): ✅ P1 half approved; T35 waits for P2
+
 ## 2026-09-26: T35 (P1 half), `money-layer` @ f059b54 (spawn a rent wallet live + on-chain credential): ✅ P1 half approved; T35 waits for P2
 **Ran:** `tsc --noEmit` clean · `npm run test:guardian` 17/17 pass.
 **Checked on Testnet:** Sam `rvnPYN…` shows CredentialCreate → TrustSet → CredentialAccept → SignerListSet → AccountSet → rent Payment, all `tesSUCCESS`. The credential's issuer is the landlord, it's accepted, it has type `RentRelayTenantAgent`, and its URI carries his limits. Master disabled, quorum 2, weights 1/1/2.
