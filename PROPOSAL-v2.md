@@ -82,7 +82,7 @@ Deadline **Sun 10:30 AM**. Each tier must fully work before starting the next.
 - **xrpl.js** on **XRPL Testnet** with **RLUSD** (tryrlusd.com faucet). Explorer: testnet.xrpl.org.
 - **Capital One Nessie API** (api.nessieisreal.com; get an API key). Save the seed data to JSON in case the API is flaky during judging.
 - **Gemini API**: vision for receipts, function calling for bills, text for the summary.
-- **Storage:** SQLite or JSON (registry, splits, audit log).
+- **Storage: MongoDB Atlas** free tier (registry, splits, audit log). Vercel functions can't persist a local SQLite/JSON file. Also enters MLH Best Use of MongoDB Atlas.
 
 ## Architecture
 ```
