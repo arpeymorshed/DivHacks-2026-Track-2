@@ -273,7 +273,26 @@ Connection secrets are not returned or logged. Restart the server if the URI cha
 
 All database access goes through `getDb()` in `src/lib/mongodb.ts`, which reuses one
 MongoClient connection promise per server process, including development reloads.
-Rent-day data still comes from the demo arrays; no real collections have been seeded.
+Rent-day data still comes from the demo arrays. Loading it from MongoDB is a later step.
+
+## Seed the demo data in Atlas
+
+With `.env.local` configured and `npm run dev` running:
+
+```bash
+curl -X POST http://localhost:3000/api/seed
+```
+
+Success returns `{ success: true, seeded: { building: 1, tenants: 3, tenantAgents: 3,
+dues: 3 } }`. The helper upserts `buildings`, `tenants`, and `tenantAgents` by `id`,
+and `dues` by `{ tenantId, month }`, with unique indexes on those keys. Rerunning
+refreshes the demo records rather than duplicating them. Other records are not deleted.
+Units 4B and 2A are embedded in the building document: Arpey is the landlord;
+Abhimanyu and Kashish share 4B; Musammat is in 2A. Tenant phone values come from
+the local environment and are stored in Atlas, never as literals in committed files.
+
+The temporary seed route returns HTTP 403 in production before accessing MongoDB.
+It does not switch rent day or chat to MongoDB reads, or persist outbox messages.
 
 ## Photon integration (P2 / P4)
 
