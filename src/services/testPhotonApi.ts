@@ -17,15 +17,19 @@ for (const [tenantId, total, rent, utilities] of [
   const response = await chat({ tenantId, text: "What do I OWE?" });
   equal(response.status, 200);
   deepStrictEqual(await response.json(), {
-    reply: `You owe $${total} for 2026-10: $${rent} rent + $${utilities} utilities.`,
+    reply: `You currently owe $${total}: $${rent} rent + $${utilities} utilities.`,
   });
 }
 
 const greeting = await chat({ tenantId: "musammat", text: "Hello!" });
 equal(greeting.status, 200);
-deepStrictEqual(await greeting.json(), { reply: "Hi Musammat." });
+deepStrictEqual(await greeting.json(), { reply: "Hi Musammat! How can I help with your rent?" });
 
-const unknown = await chat({ tenantId: "unknown", text: "What do I owe?" });
+const dueQuestion = await chat({ tenantId: "musammat", text: "What is DUE?" });
+equal(dueQuestion.status, 200);
+deepStrictEqual(await dueQuestion.json(), { reply: "You currently owe $1952: $1900 rent + $52 utilities." });
+
+const unknown = await chat({ tenantId: "fake-person", text: "What do I owe?" });
 equal(unknown.status, 404);
 deepStrictEqual(await unknown.json(), { error: "Unknown tenant" });
 

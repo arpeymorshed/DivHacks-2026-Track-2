@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { tenants, dues } from "@/data/demoBuilding";
+import { getTenantById, getDueForTenant } from "@/services/rentRepository";
 import type { ChatRequest, ChatResponse } from "@/types/rent";
 
 function isChatRequest(value: unknown): value is ChatRequest {
@@ -25,20 +25,25 @@ export async function POST(request: Request) {
 
   try {
     const { tenantId, text } = body;
-    const tenant = tenants.find((tenant) => tenant.id === tenantId);
+    const tenant = await getTenantById(tenantId);
 
     if (!tenant) {
       return NextResponse.json({ error: "Unknown tenant" }, { status: 404 });
     }
 
-    const due = dues.find((due) => due.tenantId === tenantId);
-    let reply = `Hi ${tenant.name}.`;
+    const due = await getDueForTenant(tenantId);
+    const message = text.toLowerCase();
+    let reply = `Hi ${tenant.name}! How can I help with your rent?`;
 
-    if (text.toLowerCase().includes("owe") && due) {
-      const total = due.rentUsd + due.utilitiesUsd + due.lateFeeUsd;
-      reply = `You owe $${total} for ${due.month}: `
-        + `$${due.rentUsd} rent + $${due.utilitiesUsd} utilities`
-        + (due.lateFeeUsd > 0 ? ` + $${due.lateFeeUsd} late fee.` : ".");
+    if (message.includes("owe") || message.includes("due")) {
+      if (!due) {
+        reply = `I couldn't find a current balance for ${tenant.name}.`;
+      } else {
+        const total = due.rentUsd + due.utilitiesUsd + due.lateFeeUsd;
+        reply = `You currently owe $${total}: `
+          + `$${due.rentUsd} rent + $${due.utilitiesUsd} utilities`
+          + (due.lateFeeUsd > 0 ? ` + $${due.lateFeeUsd} late fee.` : ".");
+      }
     }
 
     return NextResponse.json({ reply } satisfies ChatResponse);

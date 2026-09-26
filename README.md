@@ -277,7 +277,7 @@ Connection secrets are not returned or logged. Restart the server if the URI cha
 
 All database access goes through `getDb()` in `src/lib/mongodb.ts`, which reuses one
 MongoClient connection promise per server process, including development reloads.
-Rent day now reads from MongoDB. Chat and phone lookup still use the demo arrays.
+Rent day and chat now read from MongoDB. The phone lookup helper still uses demo arrays.
 
 ## Seed the demo data in Atlas
 
@@ -296,8 +296,7 @@ Abhimanyu and Kashish share 4B; Musammat is in 2A. Tenant phone values come from
 the local environment and are stored in Atlas, never as literals in committed files.
 
 The temporary seed route returns HTTP 403 in production before accessing MongoDB.
-Seeding refreshes the data read by rent day. Chat still uses demo arrays, and outbox
-messages remain in memory.
+Seeding refreshes the data read by rent day and chat. Outbox messages remain in memory.
 
 ## Photon integration (P2 / P4)
 
@@ -310,9 +309,12 @@ curl -X POST http://localhost:3000/api/chat \
   -d '{"tenantId":"musammat","text":"What do I owe?"}'
 ```
 
-Returns `{ "reply": "You owe $1952 for 2026-10: $1900 rent + $52 utilities." }`.
-Replies are deterministic for now: an "owe" question returns the current demo due;
-other text returns a greeting. Missing, blank, or non-string fields and malformed
+Returns `{ "reply": "You currently owe $1952: $1900 rent + $52 utilities." }`.
+Chat loads the tenant and October 2026 due from Atlas through `getTenantById()` and
+`getDueForTenant()`. Replies are deterministic: questions containing "owe" or "due"
+(case-insensitive) return the stored balance and any late fee. If the tenant has no
+due for the month, the reply says no current balance was found; other text returns
+a rent-help greeting. Missing, blank, or non-string fields and malformed
 JSON return HTTP 400; an unknown tenant returns 404. Gemini is a later step.
 
 `POST /api/rent-day` queues a total reminder for each processed tenant after its mock
@@ -328,11 +330,10 @@ process. The temporary array is shared across routes within one server process,
 survives development reloads, and resets when that process restarts. It is not shared
 between separate server instances. MongoDB outbox persistence is a later step.
 
-**Acknowledgement contract pending with P4:** After Photon successfully sends a
-message, how should it acknowledge that message ID so P2 stops returning it?
-Until this is agreed, polling returns the same messages and IDs and does not remove
-them. Repeated rent-day runs append new messages. No sent/acknowledgement endpoint
-has been introduced.
+MongoDB outbox persistence and `POST /api/outbox/:id/ack` are the next integration
+step. For now, polling returns the same messages and IDs and does not remove them.
+Repeated rent-day runs append new messages. No acknowledgement endpoint has been
+introduced yet.
 
 Run `npm run test:photon` with the local server running to verify chat responses,
 validation, and rent-day-to-outbox delivery. This test runs mock rent day once and

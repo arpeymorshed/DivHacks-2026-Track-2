@@ -26,3 +26,16 @@ export async function getDues(month: string): Promise<Due[]> {
   const db = await getDb();
   return db.collection<Due>("dues").find({ month }).toArray();
 }
+
+export async function getTenantById(tenantId: string): Promise<Tenant | null> {
+  const db = await getDb();
+  return db.collection<Tenant>("tenants").findOne({ id: tenantId });
+}
+
+export async function getDueForTenant(
+  tenantId: string,
+  month = "2026-10"
+): Promise<Due | null> {
+  const db = await getDb();
+  return db.collection<Due>("dues").findOne({ tenantId, month });
+}
