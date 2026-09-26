@@ -55,7 +55,7 @@ smoke_bot_mock() {
   expect "mock GET /api/outbox"      200 http://127.0.0.1:4302/api/outbox
   expect "mock POST /api/chat"       200 -X POST -H 'content-type: application/json' -d '{"tenantId":"kashish","text":"how much do I owe?"}' http://127.0.0.1:4302/api/chat
   expect "mock chat unknown tenant"  404 -X POST -H 'content-type: application/json' -d '{"tenantId":"nobody","text":"hi"}' http://127.0.0.1:4302/api/chat
-  expect "mock POST /api/outbox"     200 -X POST -H 'content-type: application/json' -d '{"tenantId":"kashish","text":"ci ping"}' http://127.0.0.1:4302/api/outbox
+  expect "mock POST /api/outbox"     201 -X POST -H 'content-type: application/json' -d '{"tenantId":"kashish","text":"ci ping"}' http://127.0.0.1:4302/api/outbox
   # The bot itself (bun start) needs live Photon credentials, so CI only typechecks it.
 }
 
