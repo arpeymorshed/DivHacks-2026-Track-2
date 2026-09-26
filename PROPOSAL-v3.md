@@ -1,7 +1,6 @@
 # Proposal v3: RentRelay (working name)
 
-> **⚠️ PROPOSAL ONLY: nothing is confirmed.** Latest candidate. Previous: [Proposal v2, SplitSafe](PROPOSAL-v2.md). Background in [README.md](README.md).
-_2026-09-26 · **PROPOSAL ONLY, not confirmed.** New direction from the user: one main agent for the landlord, plus one agent per tenant. Reuses v2's guardrail ideas._
+> ✅ **Adopted.** The polished build plan is in [README.md](README.md). This is the original v3 draft.
 
 **Tracks:** Live Better (general) · Ripple (XRPL) · Photon (iMessage) · MLH Gemini · MLH .Tech. Bonus: MLH MongoDB Atlas.
 
