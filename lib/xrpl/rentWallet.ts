@@ -41,7 +41,12 @@ function signersMatch(status: RentWalletStatus, expected: SignerEntry[]): boolea
 
 // Turns a funded account into a two-key rent wallet. Idempotent; returns the hashes of any txs sent.
 // `master` must still be able to sign, so run this before anything else disables the master key.
-export async function makeRentWallet(client: Client, master: Wallet, signers: RentWalletSigners): Promise<string[]> {
+export async function makeRentWallet(
+  client: Client,
+  master: Wallet,
+  signers: RentWalletSigners,
+  onTx?: (step: "signer-list" | "master-disabled", hash: string) => void,
+): Promise<string[]> {
   const expected = expectedSigners(signers);
   const status = await getRentWalletStatus(client, master.address);
   const hashes: string[] = [];
@@ -57,11 +62,13 @@ export async function makeRentWallet(client: Client, master: Wallet, signers: Re
       SignerEntries: expected.map((e) => ({ SignerEntry: { Account: e.account, SignerWeight: e.weight } })),
     };
     hashes.push(await submitOrThrow(client, tx, master));
+    onTx?.("signer-list", hashes[hashes.length - 1]);
   }
 
   if (!status.masterDisabled) {
     const tx: AccountSet = { TransactionType: "AccountSet", Account: master.address, SetFlag: AccountSetAsfFlags.asfDisableMaster };
     hashes.push(await submitOrThrow(client, tx, master));
+    onTx?.("master-disabled", hashes[hashes.length - 1]);
   }
   return hashes;
 }

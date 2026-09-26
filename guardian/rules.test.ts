@@ -106,3 +106,10 @@ test("refuses a payment without the month/run tag, or tagged for another run", (
   assert.equal(r.rule, "tx-shape");
   assert.match(r.reason, /2026-10#run1/);
 });
+
+test("credential URI round-trips wallet limits (T35 spawn)", async () => {
+  const { encodeLimits, decodeLimits } = await import("../lib/xrpl/credentials");
+  const limits = { tenantId: "sam", capUsd: 1600, unitRentUsd: 1450, rentShareUsd: 1450, maxUtilitiesUsd: 100 };
+  assert.deepEqual(decodeLimits(encodeLimits(limits)), limits);
+  assert.equal(decodeLimits("68656C6C6F"), null); // "hello": not our format
+});

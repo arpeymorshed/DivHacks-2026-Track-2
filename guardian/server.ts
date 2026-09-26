@@ -9,9 +9,11 @@ import dotenv from "dotenv";
 import express from "express";
 import { type AccountTxRequest, Client, decode, hashes, multisign, type Transaction, Wallet } from "xrpl";
 import { XRPL_WS } from "../lib/xrpl/config";
+import { getAgentCredential } from "../lib/xrpl/credentials";
 import { periodKey, periodTags } from "../lib/xrpl/memos";
+import { getRentWalletStatus, SIGNER_QUORUM } from "../lib/xrpl/rentWallet";
 import type { GuardianDecision, PaymentIntent } from "../lib/types";
-import { checkRules, type CosignContext, type GuardianPolicy, type PriorPayment, validatePolicy } from "./rules";
+import { checkRules, type CosignContext, type GuardianPolicy, type PriorPayment, validatePolicy, type WalletPolicy } from "./rules";
 
 dotenv.config({ path: ".secrets/guardian.env", quiet: true });
 
@@ -26,6 +28,9 @@ const client = new Client(XRPL_WS);
 // Only used for "pending": "already paid" comes from the ledger, so a restart or sleep can't cause a double charge.
 const cosigned = new Map<string, { hash: string; lastLedger: number }>();
 const LEDGER_HISTORY_PAGES = 5; // account_tx pages (up to 200 txs each) searched per check
+
+// Spawned rent wallets (T35) recognised from the ledger, cached after the first successful check.
+const spawned = new Map<string, WalletPolicy>();
 
 function required(name: string): string {
   const v = process.env[name];
@@ -62,6 +67,31 @@ async function paidOnLedger(c: Client, wallet: string, period: string): Promise<
   return false;
 }
 
+// A wallet not in the static policy counts as a rent wallet only if the ledger shows all of:
+// an accepted RentRelayTenantAgent credential from the landlord carrying valid limits, master key disabled,
+// and exactly the two-key signer list: one agent (1), this Guardian (1), one tenant backup (2), quorum 2.
+async function resolveWallet(c: Client, address: string): Promise<WalletPolicy | null> {
+  const known = policy.rentWallets[address] ?? spawned.get(address);
+  if (known) return known;
+  const cred = await getAgentCredential(c, address, policy.landlord);
+  if (!cred?.accepted || !cred.limits) return null;
+  const status = await getRentWalletStatus(c, address);
+  const agents = status.signers.filter((e) => e.weight === 1 && e.account !== guardian.address);
+  const hasGuardian = status.signers.some((e) => e.weight === 1 && e.account === guardian.address);
+  const backups = status.signers.filter((e) => e.weight === 2);
+  if (!status.masterDisabled || status.quorum !== SIGNER_QUORUM || status.signers.length !== 3) return null;
+  if (!hasGuardian || agents.length !== 1 || backups.length !== 1) return null;
+  const entry: WalletPolicy = { ...cred.limits, agent: agents[0].account };
+  try {
+    validatePolicy({ landlord: policy.landlord, rentWallets: { [address]: entry } });
+  } catch {
+    return null;
+  }
+  spawned.set(address, entry);
+  console.log(`[guardian] recognised spawned rent wallet ${address} (${entry.tenantId}) from its on-ledger credential`);
+  return entry;
+}
+
 async function priorPayment(wallet: string, period: string): Promise<PriorPayment> {
   const c = await ledger();
   if (await paidOnLedger(c, wallet, period)) return "settled";
@@ -83,7 +113,13 @@ const app = express();
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, guardian: guardian.address, landlord: policy.landlord, rentWallets: Object.keys(policy.rentWallets).length });
+  res.json({
+    ok: true,
+    guardian: guardian.address,
+    landlord: policy.landlord,
+    rentWallets: Object.keys(policy.rentWallets).length,
+    spawnedRecognised: spawned.size,
+  });
 });
 
 app.post("/cosign", async (req, res) => {
@@ -93,8 +129,12 @@ app.post("/cosign", async (req, res) => {
     if (!txBlob || !intent || !context) throw new Error("Body must be {txBlob, intent, context}.");
     const tx = decode(txBlob) as Record<string, unknown>;
     const period = periodKey(context.month, context.run);
-    const prior = await priorPayment(tx.Account as string, period);
-    const result = checkRules({ tx, intent, context, policy, prior });
+    const account = tx.Account as string;
+    const c = await ledger();
+    const wallet = await resolveWallet(c, account);
+    const effective: GuardianPolicy = wallet ? { ...policy, rentWallets: { ...policy.rentWallets, [account]: wallet } } : policy;
+    const prior = await priorPayment(account, period);
+    const result = checkRules({ tx, intent, context, policy: effective, prior });
 
     if (!result.approved) {
       decision = result;
