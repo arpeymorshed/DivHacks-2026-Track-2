@@ -34,7 +34,11 @@ for pkg in $projects; do
     run "$dir: npm install" npm install --no-audit --no-fund
   fi
 
-  scripts=$(jq -r '.scripts // {} | keys[]' package.json | grep -E '^(typecheck|lint|build|test|test:.+)$' || true)
+  # test:* scripts only count if they call a test runner (test:payment etc. hit the XRPL network).
+  scripts=$(jq -r '.scripts // {} | to_entries[]
+    | select((.key | test("^(typecheck|lint|build|test)$"))
+          or ((.key | startswith("test:")) and (.value | test("--test|vitest|jest|mocha|bun test"))))
+    | .key' package.json)
 
   if [ -f tsconfig.json ] && ! grep -qx typecheck <<<"$scripts" && [ -x node_modules/.bin/tsc ]; then
     run "$dir: tsc --noEmit" node_modules/.bin/tsc --noEmit -p .

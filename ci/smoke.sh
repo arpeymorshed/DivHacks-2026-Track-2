@@ -33,7 +33,7 @@ smoke_guardian() {
   local log=/tmp/guardian.log
   PORT=4301 XRPL_WS=ws://127.0.0.1:1 GUARDIAN_SEED="$seed" GUARDIAN_ADMIN_TOKEN=ci-token \
   GUARDIAN_POLICY="{\"landlord\":\"$landlord\",\"rentWallets\":{\"$wallet\":{\"agent\":\"$agent\",\"capUsd\":1600,\"unitRentUsd\":2900,\"rentShareUsd\":1450,\"maxUtilitiesUsd\":60}}}" \
-    npx tsx guardian/server.ts >"$log" 2>&1 &
+    node --import tsx guardian/server.ts >"$log" 2>&1 &
   pids+=($!)
   wait_up http://127.0.0.1:4301/health "$log" || { failed+=("guardian start"); return 0; }
   expect "guardian GET /health"            200 http://127.0.0.1:4301/health
