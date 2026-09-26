@@ -2,6 +2,8 @@
 
 > **⚠️ PROPOSAL ONLY: nothing is confirmed.** This is a candidate idea for our team to discuss (idea, stack and scope are all open). Leave comments or suggestions!
 
+> 🆕 **Latest: [Proposal v2, SplitSafe](PROPOSAL-v2.md)**: one roommate-payments app for Live Better + Capital One + Ripple + Gemini + .Tech.
+
 ## Hackathon context (2026-09-26)
 - **DivHacks 2026 @ Columbia**, theme **"Concrete Jungle"**: smarter solutions for NYC communities (food, housing, transportation).
 - **Submission deadline: Sun Sep 27, 10:30 AM EST** on Devpost. Needs a link to the source code and a way to test or view the app (deployed link or prototype).
