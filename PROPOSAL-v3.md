@@ -21,7 +21,7 @@ A **main agent** runs the building's rent account for the landlord. For every te
 ## How it works
 ```
                     ┌───────────────────────────────┐
-                    │  MAIN AGENT (landlord)         │  building account on XRPL (RLUSD)
+                    │  MAIN AGENT (landlord Arpey)   │  building account on XRPL (RLUSD)
                     │  • onboards tenants            │  = stand-in for the landlord's bank
                     │  • computes what each owes     │    (bank off-ramp simulated)
                     │  • splits the building ConEd   │
@@ -32,7 +32,7 @@ A **main agent** runs the building's rent account for the landlord. For every te
                issues it an on-chain credential ("authorized agent, Unit 4B")
           ┌────────────────────────┼────────────────────────┐
           ▼                        ▼                        ▼
-   Tenant agent: Maya       Tenant agent: Jordan      Tenant agent: Priya
+   Agent: Abhimanyu        Agent: Kashish           Agent: Musammat
    (Unit 4B, roommate)      (Unit 4B, roommate)       (Unit 2A)
    • texts reminders (Photon/iMessage) · answers "what do I owe?"
    • pays its tenant's share on the due date, within the tenant's rules
@@ -73,7 +73,7 @@ A **main agent** runs the building's rent account for the landlord. For every te
 | Scenario | Stopped by |
 |---|---|
 | 📱 Scam text: *"Landlord here, new bank account, send rent to rXYZ"* | Guardian: not the landlord's verified address |
-| 🧾 Inflated or misread ConEd bill: Maya's share reads $380 instead of $38 | Over Maya's cap → not paid, and the agent asks Maya instead |
+| 🧾 Inflated or misread ConEd bill: Abhimanyu's share reads $380 instead of $38 | Over Abhimanyu's cap → not paid, and the agent asks Abhimanyu instead |
 | 🔁 Main agent (buggy or hacked) asks for September rent twice | Guardian: already paid for this month |
 | 💸 Main agent adds a $200 late fee, or charges one on day 2 | Guardian: over the NY legal cap / still in the grace period |
 | 🔑 Someone steals a tenant agent's key | **The ledger itself** rejects it: 2 keys required |
@@ -91,7 +91,7 @@ A **main agent** runs the building's rent account for the landlord. For every te
 | 6 onward | The late fee **accrues $5/day**, up to the cap: min($50, 5% of rent). On $1,450 rent that's $50, reached on day 15. |
 | When paid | The tenant agent pays **rent + the accrued fee** in one payment. The memo records both amounts and the days late, and the fee stops. |
 
-**Fair to roommates:** the fee lands **only on the roommate who's late**, never on the whole unit. If Jordan is late, Maya pays nothing extra. That solves the "my roommate's lateness costs me" problem. If several roommates are late in the same month, the unit's single legal cap is split between them by share.
+**Fair to roommates:** the fee lands **only on the roommate who's late**, never on the whole unit. If Kashish is late, Abhimanyu pays nothing extra. That solves the "my roommate's lateness costs me" problem. If several roommates are late in the same month, the unit's single legal cap is split between them by share.
 
 **Enforced where the agent can't cheat (the Ripple angle):** the main agent calculates the fee, but the **Guardian re-checks it before co-signing**. The fee must be under the legal cap, the rent must really be more than 5 days late, and a fee can't be charged twice for the same month. A greedy or buggy landlord agent can't overcharge a tenant.
 
@@ -103,7 +103,7 @@ Deadline **Sun 10:30 AM**.
 **Tier 1: the spine (about 8h)**
 1. XRPL setup: landlord account, 3 tenant rent wallets (2-key + tenant backup key, master disabled), RLUSD trust lines, faucet funding.
 2. Guardian service: verified landlord address, tenant cap, payment window, not already paid → co-sign or refuse.
-3. Seed building in MongoDB: 1 landlord, 2 units (Unit 4B with roommates Maya + Jordan, Unit 2A with Priya), leases, rent splits, tenant rules.
+3. Seed building in MongoDB: landlord Arpey, 2 units (Unit 4B with roommates Abhimanyu + Kashish, Unit 2A with Musammat), leases, rent splits, tenant rules.
 4. **Autonomous rent day:** a timer fires → each tenant agent pays its share → the main agent reconciles.
 5. **Landlord console:** building grid (units → tenants → agent status: paid / due / late), explorer links, audit log.
 
@@ -153,10 +153,14 @@ Deadline **Sun 10:30 AM**.
 **Shared data formats (agreed in hour 1):** `Building`, `Unit`, `Tenant {unitId, share, capUsd, walletAddress, agentId}`, `TenantAgent {id, tenantId, credentialId?, status}`, `Due {tenantId, month, rentUsd, utilitiesUsd, dueDate, daysLate, lateFeeUsd, reason}`, `PaymentIntent`, `GuardianDecision`, `AuditEntry`.
 
 ## Demo script (~3 min)
+
+Demo roles: Unit 4B roommates **Abhimanyu + Kashish**; Unit 2A tenant **Musammat**;
+landlord **Arpey**.
+
 1. **(20s) Hook:** "Rent's due Friday. Your roommate still owes you last month's ConEd, and you just got a text saying your landlord changed bank accounts. Sound familiar?"
-2. **(25s) Spawn:** the landlord adds a new tenant → a new agent appears in the building grid, with its own wallet on-ledger.
-3. **(30s) Remind:** hold up the phone: the tenant agent's iMessage: *"Rent $1,450 + ConEd $38 due Friday."* Ask "why is ConEd $38?" → it explains the split.
-4. **(40s) Rent day:** the timer fires → every tenant agent pays its share on its own → the grid turns green, **except Jordan**, whose rent wallet is short. Skip ahead 8 days: his reminders escalated, and his agent pays rent + a **$15 late fee** (3 days past grace at $5/day, capped by NY law). Maya paid nothing extra. Open the transaction on the explorer.
+2. **(25s) Spawn:** Arpey adds a new tenant → a new agent appears in the building grid, with its own wallet on-ledger.
+3. **(30s) Remind:** hold up Abhimanyu's phone: the tenant agent's iMessage: *"Rent $1,450 + ConEd $38 due Friday."* Ask "why is ConEd $38?" → it explains the split.
+4. **(40s) Rent day:** the timer fires → every tenant agent pays its share on its own → the grid turns green, **except Kashish**, whose rent wallet is short. Skip ahead 8 days: Kashish's reminders escalated, and the agent pays rent + a **$15 late fee** (3 days past grace at $5/day, capped by NY law). Abhimanyu paid nothing extra. Open the transaction on the explorer.
 5. **(45s) What could go wrong:** scam bank-change text, inflated ConEd bill, double charge, illegal $200 late fee, stolen key. All five are blocked, with the reason shown.
 6. **(20s) Close:** "Every tenant gets a personal rent agent. It reminds you, explains, and pays on time, but it can only ever do what you allowed. The AI decides. The ledger enforces."
 

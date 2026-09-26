@@ -67,14 +67,14 @@ Framing: *"Your agent's job is to make sure you never pay a late fee. And if you
    - not already paid this month
    - legal late fee (cap, grace, once per month)
 4. **Demo clock** (a simulated "today" stored in the DB) + `/api/tick`: every agent acts on the simulated date.
-5. Seed building: Unit 4B (Maya 50%, Jordan 50%, $2,900 rent), Unit 2A (Priya, $1,450). Rules, caps, rent wallets funded.
+5. Seed building: landlord Arpey; Unit 4B (Abhimanyu 50%, Kashish 50%, $2,900 rent), Unit 2A (Musammat, $1,450). Rules, caps, rent wallets funded.
 6. **Autonomous rent day:** tick on the 1st → each tenant agent pays its share with the Guardian's co-signature and an audit memo → the main agent reconciles.
 7. Landlord console: building grid (units → tenants → paid / due / grace / late + fee), explorer links, audit log.
 8. **Demo controls + reset:** "+1 day", "jump to rent day", "reset building."
 
 **Tier 2: what makes it win**
 9. **Late fees:** days-late tracking, $5/day accrual to the cap, rent + fee paid together (fee itemized in the memo).
-10. **Tenant view** (phone-style): Maya's dues card, rent wallet, and a **web chat with her agent**. This is the Photon fallback and what judges can test.
+10. **Tenant view** (phone-style): Abhimanyu's dues card, rent wallet, and a **web chat with their agent**. This is the Photon fallback and what judges can test.
 11. Gemini agent brain: reminders by stage (upcoming / due / grace / late), Q&A ("why is ConEd $38?"), and the **"pay on the 5th" negotiation** within the grace policy.
 12. Gemini reads the building ConEd bill (image) → per-unit split → added to each tenant's amount due.
 13. **Spawn live:** the landlord adds a tenant → the ops account funds a new wallet → trust line, signer list, master disabled → **credential issued and accepted** (KYA). The steps show live in the console.
@@ -196,10 +196,14 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 | 9:30 AM | **Submit on Devpost** |
 
 ## Demo script (~3 min, tenant first)
-1. **(20s) Maya's phone:** her agent texts *"Rent this month: $1,488 ($1,450 + $38 ConEd). You're covered, and I'll pay on the 1st."* She asks "why is ConEd $38?", and it explains the building bill split.
+
+Demo roles: Unit 4B roommates **Abhimanyu + Kashish**; Unit 2A tenant **Musammat**;
+landlord **Arpey**.
+
+1. **(20s) Abhimanyu's phone:** the agent texts *"Rent this month: $1,488 ($1,450 + $38 ConEd). You're covered, and I'll pay on the 1st."* Abhimanyu asks "why is ConEd $38?", and it explains the building bill split.
 2. **(20s) Why an agent:** changing amounts, roommates pay separately, scam-proof, it talks to you.
-3. **(30s) Behind the scenes:** in the landlord console, a new tenant is added → **a new agent spawns live**: wallet funded by the main agent, credential issued.
-4. **(40s) Rent day:** jump the demo clock to the 1st → every agent pays **on its own** → the grid turns green, except Jordan (short). Jordan texted *"I get paid on the 5th"*, and his agent agreed (inside the grace period, no fee). He forgets. Day 8 → his agent pays rent + **$15**, capped by NY law. **Maya paid nothing extra.** Open the transaction on the explorer.
+3. **(30s) Behind the scenes:** Arpey adds a new tenant in the landlord console → **a new agent spawns live**: wallet funded by the main agent, credential issued.
+4. **(40s) Rent day:** jump the demo clock to the 1st → every agent pays **on its own** → the grid turns green, except Kashish (short). Kashish texted *"I get paid on the 5th"*, and the agent agreed (inside the grace period, no fee). Kashish forgets. Day 8 → the agent pays rent + **$15**, capped by NY law. **Abhimanyu paid nothing extra.** Open the transaction on the explorer.
 5. **(45s) What could go wrong:** scam "new bank account" text → blocked. Landlord agent tries a $200 late fee → blocked (illegal). Stolen agent key → **the ledger itself** rejects it.
 6. **(20s) Close:** *"A personal rent agent for every tenant. It reminds, explains and pays on time, and it can't be scammed, can't overcharge you, and can't break the law. The AI decides. The ledger enforces."*
 
@@ -217,13 +221,20 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 ## Local demo phone mapping (P2 / P4)
 
 The current shared contracts live in `types/rent.ts`. Demo tenants read
-`DEMO_MAYA_PHONE`, `DEMO_JORDAN_PHONE`, and `DEMO_PRIYA_PHONE` from the server's
+`DEMO_ABHIMANYU_PHONE`, `DEMO_KASHISH_PHONE`, and `DEMO_MUSAMMAT_PHONE` from the server's
 environment. If `.env.local` does not exist, copy `.env.example` to it. Fill in
 each assigned number locally in E.164 format (a leading `+`, country code, and
 digits, with no spaces or punctuation). Use a different number for each tenant.
-Keep `DEMO_SPARE_PHONE` reserved; it has no tenant mapping yet. Empty values leave
+`DEMO_ARPEY_PHONE` belongs to landlord Arpey and is excluded from tenant lookup. Empty values leave
 the tenant unconfigured for messaging. `.env.local` is ignored by Git; real phone
 numbers must never be added to tracked files or frontend environment variables.
+
+The Photon dashboard's **Own Number** column provides the personal sender numbers
+for `DEMO_*_PHONE`. Its **Texts On** column provides the bot destination numbers for
+`DEMO_*_PHOTON_NUMBER`: these are the numbers each person texts to reach Photon.
+Keep both sets only in `.env.local`. Tenant lookup matches personal sender numbers,
+not Photon destination numbers. The destination variables are reserved for P4's
+integration; this change does not send messages or create a Photon endpoint.
 
 `getTenantByPhone()` in `src/services/tenantLookup.ts` returns the matching tenant,
 including its `agentId`, or `undefined` for unknown, empty, or malformed numbers.

@@ -15,7 +15,7 @@ _Plan: [PLAN.md](PLAN.md) (RentRelay, adopted 2026-09-26). Tasks are in build or
 - [ ] T11 [P1] Rent wallets: signer list agent(1) + Guardian(1) + tenant backup(2), quorum 2, master key disabled. Done when the explorer shows the signer list and the master is disabled.
 - [ ] T12 [P1] `lib/xrpl`: `buildPayment`, `agentSign`, `multisignSubmit` (fee autofilled with `signersCount`), `getBalances`, `topUp`, with a memo. Done when a script pays RLUSD tenant → landlord with 2 signatures.
 - [ ] T13 [P1] Guardian service `POST /cosign`: decode the real tx, apply the 5 rules (landlord address, cap, window, not already paid, legal late fee), return a `GuardianDecision`, deploy separately. Done when an approve case and a refuse case both pass.
-- [ ] T14 [P2] `lib/db` + `scripts/seed-db.ts`: Unit 4B (Maya 50%, Jordan 50%, $2,900), Unit 2A (Priya, $1,450), caps, wallets from T10. Done when the seed runs cleanly and can re-run.
+- [ ] T14 [P2] `lib/db` + `scripts/seed-db.ts`: landlord Arpey; Unit 4B (Abhimanyu 50%, Kashish 50%, $2,900), Unit 2A (Musammat, $1,450), caps, wallets from T10. Done when the seed runs cleanly and can re-run.
 - [ ] T15 [P2] Demo clock (`lib/clock`, stored in the DB) + `POST /api/clock` + `POST /api/demo/reset`. Done when advancing the clock changes "today" everywhere.
 - [ ] T16 [P2] Dues engine: monthly dues per tenant (rent × share + utilities), stages upcoming/due/grace/late. Done when unit tests pass for day −3, 0, 3 and 8.
 - [ ] T17 [P2] `POST /api/tick`: each tenant agent pays on the due date if its wallet has enough (PaymentIntent → `lib/xrpl` → Guardian → submit → AuditEntry with memo hash), and the main agent marks it paid. XRPL mocked until T12/T13 land. Done when rent day produces correct intents.
@@ -27,8 +27,8 @@ _Plan: [PLAN.md](PLAN.md) (RentRelay, adopted 2026-09-26). Tasks are in build or
 ### Tier 2: what makes it win
 - [ ] T30 [P2] Late fees: $5/day from day 6, capped at min($50, 5% of the unit's rent), only for the late roommate (cap split by share if several), rent + fee in one payment, fee itemized in the memo. Done when unit tests pass and day 8 = $15.
 - [ ] T31 [P2] `POST /api/chat` + Gemini agent brain: stage-based reminders, Q&A with real due data, "pay on the 5th" negotiation (sets `payLaterUntil` only inside the grace period). Done when the scripted demo questions answer correctly.
-- [ ] T32 [P3] Tenant phone-style view: dues card, rent wallet balance, top-up button, web chat with the agent. Done when Maya's full demo conversation works in the browser.
-- [ ] T33 [P1] `POST /api/topup` (simulated bank → rent wallet). Done when Jordan can top up and the next tick pays rent + fee.
+- [ ] T32 [P3] Tenant phone-style view: dues card, rent wallet balance, top-up button, web chat with the agent. Done when Abhimanyu's full demo conversation works in the browser.
+- [ ] T33 [P1] `POST /api/topup` (simulated bank → rent wallet). Done when Kashish can top up and the next tick pays rent + fee.
 - [ ] T34 [P2] `POST /api/bills/utility`: Gemini reads the ConEd bill image → per-unit split → dues. Fallback: a hard-coded split. Done when the fixture bill gives the $38 share.
 - [ ] T35 [P1+P2] Spawn live, `POST /api/tenants`: ops account funds a new wallet → trust line → signer list → master disabled → CredentialCreate/Accept. Stream the steps. Done when a new tenant goes live in under ~30s.
 - [ ] T36 [P3] Spawn animation in the console (steps light up as they complete).

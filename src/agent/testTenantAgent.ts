@@ -9,27 +9,27 @@ import {
   createPaymentIntent,
 } from "./tenantAgent.ts";
 
-const maya = tenants.find(
-  (tenant) => tenant.id === "maya"
+const abhimanyu = tenants.find(
+  (tenant) => tenant.id === "abhimanyu"
 );
 
-const mayaDue = dues.find(
-  (due) => due.tenantId === "maya"
+const abhimanyuDue = dues.find(
+  (due) => due.tenantId === "abhimanyu"
 );
 
-if (!maya || !mayaDue) {
-  throw new Error("Missing Maya demo data");
+if (!abhimanyu || !abhimanyuDue) {
+  throw new Error("Missing Abhimanyu demo data");
 }
 
 const intent = createPaymentIntent(
-  maya,
-  mayaDue,
+  abhimanyu,
+  abhimanyuDue,
   building.landlordWallet
 );
 
 deepStrictEqual(intent, {
-  tenantId: "maya",
-  agentId: "agent-maya",
+  tenantId: "abhimanyu",
+  agentId: "agent-abhimanyu",
   destination: "rLANDLORD_DEMO",
   amountUsd: 1488,
   currency: "RLUSD",

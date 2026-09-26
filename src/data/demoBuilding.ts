@@ -8,75 +8,76 @@ import type {
 export const building: Building = {
   id: "building-1",
   name: "RentRelay Demo Building",
+  landlordName: "Arpey",
   landlordWallet: "rLANDLORD_DEMO",
   units: [
     {
       id: "unit-4b",
       name: "4B",
-      tenantIds: ["maya", "jordan"],
+      tenantIds: ["abhimanyu", "kashish"],
     },
     {
       id: "unit-2a",
       name: "2A",
-      tenantIds: ["priya"],
+      tenantIds: ["musammat"],
     },
   ],
 };
 
 export const tenants: Tenant[] = [
   {
-    id: "maya",
-    name: "Maya",
+    id: "abhimanyu",
+    name: "Abhimanyu",
     unitId: "unit-4b",
     share: 0.5,
     capUsd: 1600,
-    walletAddress: "rMAYA_DEMO",
-    agentId: "agent-maya",
-    phoneNumber: process.env.DEMO_MAYA_PHONE ?? "",
+    walletAddress: "rABHIMANYU_DEMO",
+    agentId: "agent-abhimanyu",
+    phoneNumber: process.env.DEMO_ABHIMANYU_PHONE ?? "",
   },
   {
-    id: "jordan",
-    name: "Jordan",
+    id: "kashish",
+    name: "Kashish",
     unitId: "unit-4b",
     share: 0.5,
     capUsd: 1600,
-    walletAddress: "rJORDAN_DEMO",
-    agentId: "agent-jordan",
-    phoneNumber: process.env.DEMO_JORDAN_PHONE ?? "",
+    walletAddress: "rKASHISH_DEMO",
+    agentId: "agent-kashish",
+    phoneNumber: process.env.DEMO_KASHISH_PHONE ?? "",
   },
   {
-    id: "priya",
-    name: "Priya",
+    id: "musammat",
+    name: "Musammat",
     unitId: "unit-2a",
     share: 1.0,
     capUsd: 2200,
-    walletAddress: "rPRIYA_DEMO",
-    agentId: "agent-priya",
-    phoneNumber: process.env.DEMO_PRIYA_PHONE ?? "",
+    walletAddress: "rMUSAMMAT_DEMO",
+    agentId: "agent-musammat",
+    phoneNumber: process.env.DEMO_MUSAMMAT_PHONE ?? "",
   },
 ];
 
 export const tenantAgents: TenantAgent[] = [
   {
-    id: "agent-maya",
-    tenantId: "maya",
+    id: "agent-abhimanyu",
+    tenantId: "abhimanyu",
     status: "active",
   },
   {
-    id: "agent-jordan",
-    tenantId: "jordan",
+    id: "agent-kashish",
+    tenantId: "kashish",
     status: "active",
   },
   {
-    id: "agent-priya",
-    tenantId: "priya",
+    id: "agent-musammat",
+    tenantId: "musammat",
     status: "active",
   },
 ];
 
 export const dues: Due[] = [
   {
-    tenantId: "maya",
+    tenantId: "abhimanyu",
     month: "2026-10",
     rentUsd: 1450,
     utilitiesUsd: 38,
@@ -86,7 +87,7 @@ export const dues: Due[] = [
     reason: "October rent + ConEd share",
   },
   {
-    tenantId: "jordan",
+    tenantId: "kashish",
     month: "2026-10",
     rentUsd: 1450,
     utilitiesUsd: 38,
@@ -96,7 +97,7 @@ export const dues: Due[] = [
     reason: "October rent + ConEd share",
   },
   {
-    tenantId: "priya",
+    tenantId: "musammat",
     month: "2026-10",
     rentUsd: 1900,
     utilitiesUsd: 52,

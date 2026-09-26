@@ -23,6 +23,7 @@ export type Unit = {
 export type Building = {
   id: string;
   name: string;
+  landlordName: string;
   landlordWallet: string;
   units: Unit[];
 };
