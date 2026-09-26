@@ -2,6 +2,27 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-26: T33 review fix, `money-topup` @ 408d1cd (wallet balance cap): ✅ approved
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass.
+- **Must-fix #1: fixed.** `topUpRentWallet` refuses with `wallet-full` (HTTP 409 in the recipe) if the wallet would hold more than `MAX_WALLET_USD` ($1,600), or the tenant's `capUsd` passed from the DB (`lib/xrpl/topup.ts:43-50`). The message says how much still fits. `test:topup` gained two `wallet-full` cases (empty wallet + $1,700; $1,503 + $200).
+- Now at most ~$1,600 per tenant can be parked, so the $10,000 float survives any number of single clicks.
+
+Note (non-blocking, for P2/P3):
+- **Simultaneous clicks can each pass the balance check.** Two top-ups sent at the same moment both read the old balance before either lands (~4s), and both are sent (`lib/xrpl/topup.ts:43` reads, `:57` sends). A double-click could put ~$3,200 in one wallet. It's bounded, but a script firing many requests at once could still park more. Cheap guards: P3 disables the Top up button while a request is in flight, and P2's route handles one top-up per tenant at a time (a per-tenant in-memory lock is enough on one server). Not needed for the demo itself.
+
+T33 stays **In progress**: the P1 library is done, and the `POST /api/topup` route waits for the Next.js app (T01).
+
+## 2026-09-26: T33 (P1 half), `money-topup` @ 650b51c (validated top-up): ❌ changes needed (small)
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass. Testnet balances right now: bank 10 RLUSD ($10,000); landlord, Maya, Jordan and Priya 0.
+**Not run:** `test:topup`, because it moves real RLUSD.
+- Amount checks (finite, > 0, ≤ $2,000, whole cents, with float-noise tolerance) are correct. The rent-wallet check (RLUSD line + master disabled) keeps the landlord, the bank and unknown addresses out, and fails closed on lookup errors (`lib/xrpl/topup.ts:24-32`). Typed `TopUpError` codes map cleanly to HTTP statuses.
+- The recipe takes the wallet from the DB, not the request body. Good.
+
+Must fix:
+1. **Anyone can lock up the whole demo float in five clicks.** The limit is per click ($2,000) with no limit on the wallet's balance, and the route is public (judges must be able to test the deployed app). Money in a rent wallet can only leave as a Guardian-approved rent payment (~$1,500 a month) or with the tenant's offline backup key. Demo reset only recycles landlord → bank (`docs/MONEY-LAYER.md:134`), so it can't pull it back. 5 × $2,000 = the whole $10,000 float, and then every top-up and reset refill fails with `bank-empty` until the float is refilled by hand. Fix (about 3 lines in `topUpRentWallet`): refuse with `bad-amount` (or a new `wallet-full` code) if `walletBalanceUsd + usd` is over one month's maximum payment, e.g. `MAX_WALLET_USD = 1600` (share + utilities max + max late fee). Then at most ~$1,600 per tenant is ever parked, and the top-up button still covers any real shortfall. Add one refused case to `test:topup`.
+
+Note: the `POST /api/topup` route itself waits for the Next.js app (T01), as the board says.
+
 ## 2026-09-26: T37 review fixes, `money-layer` @ c2994f8: ✅ approved
 **Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass.
 - **#1 double-charge stall: fixed** (option a). `runAttack` checks `paidOnLedger` first and returns `rule: "not-ready"` without calling the Guardian, so no pending record can block the real rent (`lib/xrpl/attacks.ts:79-84`). A rent payment that's still settling also returns `not-ready`, which is correct.

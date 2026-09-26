@@ -9,7 +9,8 @@
     "test:guardian": "tsx --test guardian/*.test.ts",
     "start:guardian": "tsx guardian/server.ts",
     "spawn:tenant": "tsx scripts/spawn-tenant.ts",
-    "test:attacks": "tsx scripts/test-attacks.ts"
+    "test:attacks": "tsx scripts/test-attacks.ts",
+    "test:topup": "tsx scripts/test-topup.ts"
   },
   "dependencies": {
     "dotenv": "^18.0.4",
