@@ -5,9 +5,13 @@
 // Safety: an attack NEVER submits a transaction the Guardian approved. If a scenario is unexpectedly
 // approved, the result says so (blocked: false) and nothing is sent. Only the stolen-key scenario submits,
 // and it carries a single signature, so the ledger rejects it before it can move money (tef: no fee).
+// "double-charge" first checks the ledger for this month's rent and does nothing until it's paid, so clicking
+// it early can't leave a "still settling" record in the Guardian that would block the real rent.
 import { type Client, Wallet } from "xrpl";
+import { EARLY_PAY_DAYS, LATE_PAY_DAYS } from "../../guardian/rules";
 import type { AuditEntry, GuardianDecision, PaymentIntent } from "../types";
 import { requestCosign } from "./guardianClient";
+import { paidOnLedger } from "./history";
 import { periodKey } from "./memos";
 import { agentSign, buildPayment, hashAuditRecord, multisignSubmit } from "./payments";
 
@@ -36,7 +40,7 @@ export type AttackTarget = {
 export type AttackResult = {
   name: AttackName;
   title: string;
-  blocked: boolean;
+  blocked: boolean; // false with rule "not-ready": the scenario can't run yet (nothing was sent anywhere)
   blockedBy: "guardian" | "ledger" | null;
   rule: string;
   reason: string;
@@ -46,11 +50,20 @@ export type AttackResult = {
 
 const scamAddress = () => Wallet.generate().address; // a fresh address nobody controls
 const dayOf = (month: string, day: number) => `${month}-${String(day).padStart(2, "0")}`;
+const DAY_MS = 86_400_000;
+
+// The Guardian's payment window runs before the amount and once-per-month rules, so a scenario that keeps the
+// demo date needs a date inside it; otherwise it would report "window" instead of its own rule.
+function inWindow(today: string, month: string): boolean {
+  const due = Date.parse(`${month}-01T00:00:00Z`);
+  const t = Date.parse(`${today}T00:00:00Z`);
+  return t >= due - EARLY_PAY_DAYS * DAY_MS && t <= due + LATE_PAY_DAYS * DAY_MS;
+}
 
 export async function runAttack(client: Client, name: AttackName, t: AttackTarget): Promise<AttackResult> {
   const title = ATTACKS[name].title;
   const period = periodKey(t.clock.month, t.clock.run);
-  let context = { ...t.clock };
+  let context = inWindow(t.clock.today, t.clock.month) ? { ...t.clock } : { ...t.clock, today: dayOf(t.clock.month, 1) };
   let intent: PaymentIntent = {
     tenantId: t.tenantId,
     dueId: `${t.tenantId}-${t.clock.month}`,
@@ -62,6 +75,13 @@ export async function runAttack(client: Client, name: AttackName, t: AttackTarge
     reason: title,
   };
   let txDestination = t.landlordAddress;
+
+  if (name === "double-charge" && !(await paidOnLedger(client, t.walletAddress, t.landlordAddress, period))) {
+    const reason = `Not ready: ${t.tenantId}'s rent for ${t.clock.month} isn't paid yet. Run this after rent day.`;
+    const decision: GuardianDecision = { approved: false, rule: "not-ready", reason };
+    const audit: AuditEntry = { id: crypto.randomUUID(), time: new Date().toISOString(), intent, decision, memoHash: "", status: "failed" };
+    return { name, title, blocked: false, blockedBy: null, rule: "not-ready", reason, audit };
+  }
 
   switch (name) {
     case "scam-address":

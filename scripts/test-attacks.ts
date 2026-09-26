@@ -32,6 +32,12 @@ const EXPECTED: Record<AttackName, string> = {
 };
 
 await withClient(async (client) => {
+  // Before rent day: double-charge must do nothing (no Guardian call, so nothing can block the real rent).
+  const early = await runAttack(client, "double-charge", { tenantId: "maya", walletAddress: maya, agentSeed,
+    landlordAddress: landlord.address, rentShareUsd: 1450, utilitiesUsd: 38, clock });
+  const earlyOk = !early.blocked && early.rule === "not-ready";
+  console.log(`${earlyOk ? "✅" : "❌"} double-charge before rent day → ${early.rule}: ${early.reason}\n`);
+
   // Rent day for this run, so "double-charge" has a real payment to collide with.
   const intent: PaymentIntent = { tenantId: "maya", dueId: "maya-2026-10", destination: landlord.address,
     rentUsd: 1450, utilitiesUsd: 38, lateFeeUsd: 0, totalUsd: 1488, reason: "October rent + ConEd share" };
@@ -44,7 +50,7 @@ await withClient(async (client) => {
   const paid = d.approved && d.signature ? await multisignSubmit(client, [blob, d.signature]) : null;
   console.log(`Rent day (${period}): ${paid?.code ?? d.reason}${paid ? `  ${explorerTx(paid.hash)}` : ""}\n`);
 
-  let failures = 0;
+  let failures = earlyOk ? 0 : 1;
   for (const name of Object.keys(ATTACKS) as AttackName[]) {
     const r = await runAttack(client, name, { tenantId: "maya", walletAddress: maya, agentSeed,
       landlordAddress: landlord.address, rentShareUsd: 1450, utilitiesUsd: 38, clock });

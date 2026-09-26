@@ -7,10 +7,11 @@
 import fs from "node:fs";
 import dotenv from "dotenv";
 import express from "express";
-import { type AccountTxRequest, Client, decode, hashes, multisign, type Transaction, Wallet } from "xrpl";
+import { Client, decode, hashes, multisign, type Transaction, Wallet } from "xrpl";
 import { XRPL_WS } from "../lib/xrpl/config";
 import { getAgentCredential } from "../lib/xrpl/credentials";
-import { periodKey, periodTags } from "../lib/xrpl/memos";
+import { paidOnLedger } from "../lib/xrpl/history";
+import { periodKey } from "../lib/xrpl/memos";
 import { getRentWalletStatus, SIGNER_QUORUM } from "../lib/xrpl/rentWallet";
 import type { GuardianDecision, PaymentIntent } from "../lib/types";
 import { checkRules, type CosignContext, type GuardianPolicy, type PriorPayment, validatePolicy, type WalletPolicy } from "./rules";
@@ -27,7 +28,6 @@ const client = new Client(XRPL_WS);
 // Cache of payments this Guardian co-signed that may still be settling, per rent wallet + period.
 // Only used for "pending": "already paid" comes from the ledger, so a restart or sleep can't cause a double charge.
 const cosigned = new Map<string, { hash: string; lastLedger: number }>();
-const LEDGER_HISTORY_PAGES = 5; // account_tx pages (up to 200 txs each) searched per check
 
 // Spawned rent wallets (T35) recognised from the ledger, cached after the first successful check.
 const spawned = new Map<string, WalletPolicy>();
@@ -41,30 +41,6 @@ function required(name: string): string {
 async function ledger(): Promise<Client> {
   if (!client.isConnected()) await client.connect();
   return client;
-}
-
-// True if the ledger has a validated, successful payment from `wallet` to the landlord tagged `period`.
-async function paidOnLedger(c: Client, wallet: string, period: string): Promise<boolean> {
-  let marker: unknown;
-  for (let page = 0; page < LEDGER_HISTORY_PAGES; page++) {
-    const req = { command: "account_tx", account: wallet, limit: 200, ...(marker ? { marker } : {}) } as AccountTxRequest;
-    const res = await c.request(req);
-    const result = res.result as unknown as { transactions: Record<string, any>[]; marker?: unknown };
-    for (const t of result.transactions) {
-      const tx = t.tx_json ?? t.tx; // API v2 / v1
-      if (
-        t.validated &&
-        t.meta?.TransactionResult === "tesSUCCESS" &&
-        tx?.TransactionType === "Payment" &&
-        tx.Account === wallet &&
-        tx.Destination === policy.landlord &&
-        periodTags(tx).includes(period)
-      ) return true;
-    }
-    if (!result.marker) return false;
-    marker = result.marker;
-  }
-  return false;
 }
 
 // A wallet not in the static policy counts as a rent wallet only if the ledger shows all of:
@@ -94,7 +70,7 @@ async function resolveWallet(c: Client, address: string): Promise<WalletPolicy |
 
 async function priorPayment(wallet: string, period: string): Promise<PriorPayment> {
   const c = await ledger();
-  if (await paidOnLedger(c, wallet, period)) return "settled";
+  if (await paidOnLedger(c, wallet, policy.landlord, period)) return "settled";
 
   const rec = cosigned.get(`${wallet}|${period}`);
   if (!rec) return "none";

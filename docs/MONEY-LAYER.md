@@ -199,11 +199,16 @@ return Response.json(result);                          // { title, blocked, bloc
 | `stolen-key` | **live** | **the ledger itself** (`tefBAD_QUORUM`) | `ledger-quorum` |
 | `fee-in-grace` | Q&A | Guardian | `legal-late-fee` |
 | `inflated-coned` | Q&A | Guardian | `cap` |
-| `double-charge` | Q&A: **run after rent day** | Guardian | `once-per-month` |
+| `double-charge` | Q&A: **run after rent day** (before that: `not-ready`, nothing sent) | Guardian | `once-per-month` |
 | `lying-agent` | Q&A | Guardian | `intent-mismatch` |
 
-- Safe to click any time: attacks **never submit** a Guardian-approved tx and cost no RLUSD. If a scenario isn't
-  blocked (e.g. `double-charge` before rent was paid), you get `blocked: false` and nothing is sent.
+- Safe to click any time: attacks **never submit** a Guardian-approved tx and cost no RLUSD. `double-charge`
+  before rent is paid returns `rule: "not-ready"` without contacting the Guardian, so it can't delay the real rent.
+  Don't log `not-ready` results as attacks (or show them as "run after rent day").
+- **Build `target` on the server** (tenant wallet + agent seed from the DB). Never accept a seed, address or target
+  from the request body: the route signs with the real agent key. Validate `:name` against `ATTACKS` (404 otherwise).
+- Any demo date works: if the clock is outside the payment window, attacks use the 1st of the month so each one
+  still reports its own rule.
 - `ATTACKS[name].title` and `.live` feed P3's panel (T38). `reason` is the "Blocked by:" line.
 - Check it all: `npm run test:attacks` (pays one rent for a fresh run, then fires all 7).
 
