@@ -22,6 +22,10 @@ export type OutboxMessage = {
   id: string;
   tenantId: string;
   text: string;
+  status: "pending" | "sent";
+  dedupeKey: string;
+  createdAt: Date;
+  sentAt?: Date;
 };
 
 export type Unit = {

@@ -62,21 +62,35 @@ equal(afterResponse.status, 200);
 match(afterResponse.headers.get("cache-control") ?? "", /no-store/);
 const after = await afterResponse.json();
 ok(Array.isArray(after));
-equal(after.length, before.length + 3);
-deepStrictEqual(after.slice(0, before.length), before);
-deepStrictEqual(after.slice(before.length).map(({ tenantId, text }) => ({ tenantId, text })), [
-  { tenantId: "abhimanyu", text: "Abhimanyu, your 2026-10 total is $1488." },
-  { tenantId: "kashish", text: "Kashish, your 2026-10 total is $1488." },
-  { tenantId: "musammat", text: "Musammat, your 2026-10 total is $1952." },
-]);
+// Existing sent reminders stay sent; only pending reminders are returned.
+for (const message of before) {
+  ok(after.some((current) => current.id === message.id));
+}
+for (const [tenantId, name, total] of [
+  ["abhimanyu", "Abhimanyu", 1488],
+  ["kashish", "Kashish", 1488],
+  ["musammat", "Musammat", 1952],
+]) {
+  const reminders = after.filter((message) =>
+    message.tenantId === tenantId && message.text === `${name}, your 2026-10 total is $${total}.`
+  );
+  ok(reminders.length <= 1, "Rent reminders must not be duplicated");
+}
 for (const message of after) {
   deepStrictEqual(Object.keys(message).sort(), ["id", "tenantId", "text"]);
   match(message.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 }
 equal(new Set(after.map((message) => message.id)).size, after.length);
 
-// Polling must not silently acknowledge or remove messages before P4 agrees a contract.
+// Neither polling nor concurrent rent-day reruns should duplicate reminders.
+for (const response of await Promise.all([
+  fetch(`${baseUrl}/api/rent-day`, { method: "POST" }),
+  fetch(`${baseUrl}/api/rent-day`, { method: "POST" }),
+])) equal(response.status, 200);
 const repeated = await fetch(`${baseUrl}/api/outbox`);
 equal(repeated.status, 200);
 deepStrictEqual(await repeated.json(), after);
-console.log("Photon HTTP checks passed: tenant replies, invalid requests, rent-day messages, and stable outbox polling.");
+const missingAck = await fetch(`${baseUrl}/api/outbox/${crypto.randomUUID()}/ack`, { method: "POST" });
+equal(missingAck.status, 404);
+deepStrictEqual(await missingAck.json(), { error: "Message not found" });
+console.log("Photon HTTP checks passed: tenant replies, invalid requests, deduplicated rent-day messages, stable polling, and unknown acknowledgement.");

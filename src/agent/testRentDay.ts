@@ -1,7 +1,14 @@
 import { deepStrictEqual, equal, match, ok } from "node:assert/strict";
 import { mock } from "node:test";
 import { building, dues, tenants, tenantAgents } from "../data/demoBuilding.ts";
-import { outbox } from "../data/outbox.ts";
+const outbox: { tenantId: string; text: string; dedupeKey: string }[] = [];
+mock.module("../services/outboxService.ts", {
+  namedExports: {
+    queueOutboxMessage: async (tenantId: string, text: string, dedupeKey: string) => {
+      outbox.push({ tenantId, text, dedupeKey });
+    },
+  },
+});
 
 // Keep unit tests offline; production uses the MongoDB repository.
 mock.module("../services/rentRepository.ts", {
@@ -23,7 +30,11 @@ deepStrictEqual(outbox.map(({ tenantId, text }) => ({ tenantId, text })), [
   { tenantId: "kashish", text: "Kashish, your 2026-10 total is $1488." },
   { tenantId: "musammat", text: "Musammat, your 2026-10 total is $1952." },
 ]);
-equal(new Set(outbox.map((message) => message.id)).size, 3);
+deepStrictEqual(outbox.map((message) => message.dedupeKey), [
+  "rent-due:2026-10:abhimanyu",
+  "rent-due:2026-10:kashish",
+  "rent-due:2026-10:musammat",
+]);
 
 deepStrictEqual(intents, [
   {

@@ -11,7 +11,7 @@ import {
 
 import { checkPaymentIntent } from "../services/mockGuardian.ts";
 import { submitMockPayment } from "../services/mockXrpl.ts";
-import { queueMessage } from "../data/outbox.ts";
+import { queueOutboxMessage } from "../services/outboxService.ts";
 
 import type {
   RentDayResult,
@@ -63,7 +63,7 @@ export async function runRentDay(month = "2026-10"): Promise<RentDayResult[]> {
         guardianDecision,
         payment: null,
       });
-      queueMessage(tenant.id, `${tenant.name}, your ${due.month} total is $${intent.amountUsd}.`);
+      await queueOutboxMessage(tenant.id, `${tenant.name}, your ${due.month} total is $${intent.amountUsd}.`, `rent-due:${due.month}:${tenant.id}`);
       continue;
     }
 
@@ -75,7 +75,7 @@ export async function runRentDay(month = "2026-10"): Promise<RentDayResult[]> {
       guardianDecision,
       payment,
     });
-    queueMessage(tenant.id, `${tenant.name}, your ${due.month} total is $${intent.amountUsd}.`);
+    await queueOutboxMessage(tenant.id, `${tenant.name}, your ${due.month} total is $${intent.amountUsd}.`, `rent-due:${due.month}:${tenant.id}`);
   }
 
   return results;

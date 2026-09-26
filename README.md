@@ -296,7 +296,7 @@ Abhimanyu and Kashish share 4B; Musammat is in 2A. Tenant phone values come from
 the local environment and are stored in Atlas, never as literals in committed files.
 
 The temporary seed route returns HTTP 403 in production before accessing MongoDB.
-Seeding refreshes the data read by rent day and chat. Outbox messages remain in memory.
+Seeding refreshes the data read by rent day and chat. It does not reset the MongoDB outbox.
 
 ## Photon integration (P2 / P4)
 
@@ -325,19 +325,32 @@ money was paid. Retrieve queued messages with:
 curl http://localhost:3000/api/outbox
 ```
 
-The response is an array of `{ id, tenantId, text }`, initially `[]` in a fresh
-process. The temporary array is shared across routes within one server process,
-survives development reloads, and resets when that process restarts. It is not shared
-between separate server instances. MongoDB outbox persistence is a later step.
+The response is an array of `{ id, tenantId, text }` containing only pending messages,
+oldest first. MongoDB's `outbox` collection retains messages across server restarts.
+Stored records also contain `status`, `dedupeKey`, `createdAt`, and optional `sentAt`;
+those internal fields are excluded from P4's response.
 
-MongoDB outbox persistence and `POST /api/outbox/:id/ack` are the next integration
-step. For now, polling returns the same messages and IDs and does not remove them.
-Repeated rent-day runs append new messages. No acknowledgement endpoint has been
-introduced yet.
+After Photon successfully sends a message, acknowledge its ID:
+
+```bash
+curl -X POST http://localhost:3000/api/outbox/YOUR_MESSAGE_ID/ack
+```
+
+Success returns `{ "success": true, "id": "YOUR_MESSAGE_ID" }`. MongoDB marks the
+record `sent` with `sentAt`, and subsequent polls exclude it. Repeating the same
+acknowledgement succeeds without changing `sentAt`; unknown IDs return 404.
+Polling alone never marks a message sent. Database failures return a generic 500.
+
+A unique index on `dedupeKey` prevents duplicate reminders even during concurrent
+rent-day runs. The key is `rent-due:<month>:<tenantId>`. Rerunning rent day preserves
+the original reminder and does not requeue sent messages. This deduplicates messages;
+mock payment results are still generated on each rent-day run.
 
 Run `npm run test:photon` with the local server running to verify chat responses,
-validation, and rent-day-to-outbox delivery. This test runs mock rent day once and
-adds three messages to the temporary queue.
+validation, stable polling, and deduplication across concurrent rent-day requests.
+Run `npm run test:outbox` to verify persistence, concurrent enqueue, acknowledgements,
+and stored timestamps against Atlas and the local API. It creates uniquely named
+test reminders and removes only those test documents afterward.
 
 ## Local demo phone mapping (P2 / P4)
 

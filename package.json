@@ -12,6 +12,7 @@
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "test:photon": "node src/services/testPhotonApi.ts",
+    "test:outbox": "node --env-file-if-exists=.env.local src/services/testOutbox.ts",
     "test": "node src/agent/testTenantAgent.ts && node --experimental-test-module-mocks src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts"
   },
   "dependencies": {
