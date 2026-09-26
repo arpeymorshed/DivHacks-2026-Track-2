@@ -3,11 +3,11 @@ import { runRentDay } from "@/agent/mainAgent";
 
 export async function POST() {
   try {
-    const paymentIntents = runRentDay();
+    const results = await runRentDay();
 
     return NextResponse.json({
       success: true,
-      paymentIntents,
+      results,
     });
   } catch (error) {
     console.error("Rent day failed:", error);

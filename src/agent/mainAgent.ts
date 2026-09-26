@@ -8,12 +8,15 @@ import {
   createPaymentIntent,
 } from "./tenantAgent.ts";
 
+import { checkPaymentIntent } from "../services/mockGuardian.ts";
+import { submitMockPayment } from "../services/mockXrpl.ts";
+
 import type {
-  PaymentIntent,
+  RentDayResult,
 } from "../../types/rent";
 
-export function runRentDay(): PaymentIntent[] {
-  const paymentIntents: PaymentIntent[] = [];
+export async function runRentDay(): Promise<RentDayResult[]> {
+  const results: RentDayResult[] = [];
 
   for (const tenant of tenants) {
     const due = dues.find(
@@ -33,8 +36,31 @@ export function runRentDay(): PaymentIntent[] {
       building.landlordWallet
     );
 
-    paymentIntents.push(intent);
+    const guardianDecision = checkPaymentIntent(
+      tenant,
+      intent,
+      building.landlordWallet
+    );
+
+    if (!guardianDecision.approved) {
+      results.push({
+        tenantId: tenant.id,
+        intent,
+        guardianDecision,
+        payment: null,
+      });
+      continue;
+    }
+
+    const payment = await submitMockPayment(intent);
+
+    results.push({
+      tenantId: tenant.id,
+      intent,
+      guardianDecision,
+      payment,
+    });
   }
 
-  return paymentIntents;
+  return results;
 }

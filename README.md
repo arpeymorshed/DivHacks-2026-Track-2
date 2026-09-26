@@ -233,10 +233,19 @@ In another terminal, trigger rent day:
 curl -X POST http://localhost:3000/api/rent-day
 ```
 
-The endpoint returns `{ success: true, paymentIntents: [...] }` with Abhimanyu's
+The endpoint returns `{ success: true, results: [...] }` with Abhimanyu's
 $1,488, Kashish's $1,488, and Musammat's $1,952 intents for `rARPEY_DEMO`.
+Each result contains `tenantId`, `intent`, `guardianDecision`, and `payment`.
+The demo Guardian rejects an incorrect landlord destination or an amount above the
+tenant's cap. Approved results include a payment with `status: "mock-paid"` and a
+`MOCK-` UUID transaction hash. Rejected results have `payment: null`; other tenants
+continue processing. Top-level `success: true` means rent day finished, not that
+every tenant was approved.
 Unexpected failures return HTTP 500 and `{ success: false, error: "Failed to run rent day" }`.
-This currently generates intents only; Guardian checks and XRPL submission are future work.
+No real payments or XRPL network calls occur. Payment-window checks, duplicate-payment
+checks, and real Guardian/XRPL integration remain future work; repeated calls generate
+new mock results. `npm test` covers approval, wrong destinations, cap limits (including
+a temporary $1,000 cap rejection), and missing dues.
 Next.js loads the ignored `.env.local` automatically. No phone numbers are included in
 the response. The route lives at `src/app/api/rent-day/route.ts`; `@/` resolves to `src/`
 and `@/types/` resolves to the existing root `types/` directory.

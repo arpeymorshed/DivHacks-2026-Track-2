@@ -61,6 +61,22 @@ export type GuardianDecision = {
   reason: string;
 };
 
+export type MockPaymentResult = {
+  success: true;
+  status: "mock-paid";
+  tenantId: string;
+  amountUsd: number;
+  destination: string;
+  txHash: string;
+};
+
+export type RentDayResult = {
+  tenantId: string;
+  intent: PaymentIntent;
+  guardianDecision: GuardianDecision;
+  payment: MockPaymentResult | null;
+};
+
 export type AuditEntry = {
   id: string;
   event:
