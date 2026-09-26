@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { RLUSD, usdToRlusd } from "../lib/xrpl/config";
 import type { PaymentIntent } from "../lib/types";
-import { checkRules, type GuardianPolicy, type RuleInput } from "./rules";
+import { checkRules, type GuardianPolicy, type RuleInput, validatePolicy } from "./rules";
 
 const LANDLORD = "rLandlord";
 const WALLET = "rMayaWallet";
@@ -90,4 +90,10 @@ test("refuses outside the payment window", () => {
 test("refuses partial payments and unknown signers", () => {
   assert.equal(checkRules(input({ tx: { Flags: 131072 } })).rule, "tx-shape");
   assert.equal(checkRules(input({ tx: { Signers: [{ Signer: { Account: "rThief" } }] } })).rule, "tx-shape");
+});
+
+test("refuses to start with an old-shape policy (fails closed)", () => {
+  assert.doesNotThrow(() => validatePolicy(policy));
+  const { rentShareUsd: _r, ...old } = policy.rentWallets[WALLET];
+  assert.throws(() => validatePolicy({ ...policy, rentWallets: { [WALLET]: old as never } }), /rentShareUsd/);
 });

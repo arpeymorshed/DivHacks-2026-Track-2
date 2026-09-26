@@ -23,6 +23,21 @@ export type WalletPolicy = {
   maxUtilitiesUsd: number;
 };
 export type GuardianPolicy = { landlord: string; rentWallets: Record<string, WalletPolicy> };
+
+// Fails closed: throws unless every rent wallet has all its limits as numbers. An old-shape policy
+// (e.g. missing rentShareUsd) would otherwise make the amount checks compare against undefined and pass.
+export function validatePolicy(policy: GuardianPolicy): GuardianPolicy {
+  if (typeof policy?.landlord !== "string" || !policy.landlord.startsWith("r")) throw new Error("policy.landlord must be an XRPL address");
+  const wallets = Object.entries(policy.rentWallets ?? {});
+  if (wallets.length === 0) throw new Error("policy.rentWallets is empty");
+  for (const [address, w] of wallets) {
+    for (const k of ["capUsd", "unitRentUsd", "rentShareUsd", "maxUtilitiesUsd"] as const) {
+      if (typeof w[k] !== "number" || !Number.isFinite(w[k])) throw new Error(`policy for ${address}: ${k} must be a number`);
+    }
+    if (typeof w.agent !== "string" || !w.agent.startsWith("r")) throw new Error(`policy for ${address}: agent must be an XRPL address`);
+  }
+  return policy;
+}
 export type CosignContext = { today: string; month: string }; // "2026-10-08", "2026-10" (demo clock)
 export type PriorPayment = "none" | "pending" | "settled"; // this wallet's co-signed payment for the month
 

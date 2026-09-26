@@ -10,14 +10,14 @@ import express from "express";
 import { Client, decode, hashes, multisign, type Transaction, Wallet } from "xrpl";
 import { XRPL_WS } from "../lib/xrpl/config";
 import type { GuardianDecision, PaymentIntent } from "../lib/types";
-import { checkRules, type CosignContext, type GuardianPolicy, type PriorPayment } from "./rules";
+import { checkRules, type CosignContext, type GuardianPolicy, type PriorPayment, validatePolicy } from "./rules";
 
 dotenv.config({ path: ".secrets/guardian.env", quiet: true });
 
 const guardian = Wallet.fromSeed(required("GUARDIAN_SEED"));
 const adminToken = required("GUARDIAN_ADMIN_TOKEN");
-const policy: GuardianPolicy = JSON.parse(
-  process.env.GUARDIAN_POLICY ?? fs.readFileSync(process.env.GUARDIAN_POLICY_FILE ?? ".secrets/guardian-policy.json", "utf8"),
+const policy: GuardianPolicy = validatePolicy(
+  JSON.parse(process.env.GUARDIAN_POLICY ?? fs.readFileSync(process.env.GUARDIAN_POLICY_FILE ?? ".secrets/guardian-policy.json", "utf8")),
 );
 const client = new Client(XRPL_WS);
 
