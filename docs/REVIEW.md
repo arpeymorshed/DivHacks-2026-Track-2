@@ -2,6 +2,16 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-26: T37 review fixes, `money-layer` @ c2994f8: ✅ approved
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass.
+- **#1 double-charge stall: fixed** (option a). `runAttack` checks `paidOnLedger` first and returns `rule: "not-ready"` without calling the Guardian, so no pending record can block the real rent (`lib/xrpl/attacks.ts:79-84`). A rent payment that's still settling also returns `not-ready`, which is correct.
+- **`paidOnLedger` was moved to `lib/xrpl/history.ts`.** It's the same logic, with `landlord` now a parameter, and the Guardian passes `policy.landlord` (`guardian/server.ts:73`). No behaviour change.
+- **Window note: handled in P1.** If the demo clock is outside the payment window, attacks use the 1st, so each reports its own rule (`lib/xrpl/attacks.ts:55-61, 66`). The day-20 and day-2 fee scenarios still override the date.
+- `docs/MONEY-LAYER.md` now tells P2 to build the target on the server, return 404 for unknown names, and not log `not-ready` as an attack.
+- Minor: `attacks.ts` now imports `guardian/rules` at runtime (for the window constants). That module is pure (no server start, no keys), so it's fine to bundle in the Next.js app.
+
+T37 stays **In progress** until P2's `POST /api/attacks/:name` lands.
+
 ## 2026-09-26: T37 (P1 half), `money-layer` @ 65b630c (attack scenarios): ✅ P1 half approved; T37 waits for P2
 **Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass.
 **Not run:** `test:attacks`, because it pays a real rent to set up the double charge.
