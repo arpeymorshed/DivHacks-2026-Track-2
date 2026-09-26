@@ -88,6 +88,7 @@ async function main() {
   }
   app.GUARDIAN_ADMIN_TOKEN = guardian.GUARDIAN_ADMIN_TOKEN;
   app.GUARDIAN_URL ??= "http://localhost:4001";
+  app.GUARDIAN_ADDRESS = guardianWallet.address; // public address only; the app never gets the Guardian's seed
   saveApp();
   const policy: GuardianPolicy = { landlord: "", rentWallets: {} };
 

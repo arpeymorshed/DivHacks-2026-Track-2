@@ -12,7 +12,7 @@ import { periodKey } from "../lib/xrpl/memos";
 import { agentSign, buildPayment, getBalances, hashAuditRecord, multisignSubmit, sendRlusd, topUp } from "../lib/xrpl/payments";
 import { spawnRentWallet } from "../lib/xrpl/spawn";
 
-dotenv.config({ path: [".secrets/xrpl.env", ".secrets/guardian.env"], quiet: true });
+dotenv.config({ path: ".secrets/xrpl.env", quiet: true }); // app env only: GUARDIAN_ADDRESS, never the Guardian seed
 const env = (k: string) => process.env[k] ?? (() => { throw new Error(`missing ${k}; run npm run setup:xrpl`); })();
 
 const ops = Wallet.fromSeed(env("XRPL_OPS_SEED"));
