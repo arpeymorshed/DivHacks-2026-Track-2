@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "bun src/index.ts",
-    "dev": "bun --watch src/index.ts"
+    "dev": "bun --watch src/index.ts",
+    "mock": "bun mock/server.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "spectrum-ts": "^12.10.1"

@@ -1,6 +1,6 @@
 # bot — agent instructions
 
-This is a [Spectrum](https://photon.codes/docs/spectrum-ts) app, pinned to `spectrum-ts@^12.10.1`. The entry point is `src/index.ts`, which configures the imessage provider(s) and runs the echo loop.
+This is a [Spectrum](https://photon.codes/docs/spectrum-ts) app, pinned to `spectrum-ts@^12.10.1`. The entry point is `src/index.ts`, which configures the imessage provider(s) and runs the RentRelay relay loop (inbound chat + outbox polling). The mock backend is `mock/server.ts` (`bun run mock`).
 
 ## Working in this project
 
