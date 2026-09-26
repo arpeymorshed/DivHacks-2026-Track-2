@@ -123,7 +123,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/cosign", async (req, res) => {
-  const { txBlob, intent, context } = req.body as { txBlob?: string; intent?: PaymentIntent; context?: CosignContext };
+  const { txBlob, intent, context } = (req.body ?? {}) as { txBlob?: string; intent?: PaymentIntent; context?: CosignContext };
   let decision: GuardianDecision;
   try {
     if (!txBlob || !intent || !context) throw new Error("Body must be {txBlob, intent, context}.");

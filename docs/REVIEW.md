@@ -1,0 +1,97 @@
+# Code review log
+
+_Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
+
+## 2026-09-26: T35 (P1 half), `money-layer` @ f059b54 (spawn a rent wallet live + on-chain credential): ✅ P1 half approved; T35 waits for P2
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 17/17 pass.
+**Checked on Testnet:** Sam `rvnPYN…` shows CredentialCreate → TrustSet → CredentialAccept → SignerListSet → AccountSet → rent Payment, all `tesSUCCESS`. The credential's issuer is the landlord, it's accepted, it has type `RentRelayTenantAgent`, and its URI carries his limits. Master disabled, quorum 2, weights 1/1/2.
+**Not run:** `spawn:tenant`, because it spends ops XRP and RLUSD.
+- `spawnRentWallet` (`lib/xrpl/spawn.ts`) funds the reserves from `server_info` and runs the trust line and credential in parallel (different accounts, so that's safe). It accepts the credential before the master is disabled, and emits a step with an explorer link per tx for T36.
+- **The Guardian recognises spawned wallets from the ledger** (`guardian/server.ts:73-93`). It requires all of: an accepted credential from the pinned landlord, limits that pass `validatePolicy`, exactly 3 signers (1 agent, this Guardian, 1 backup of weight 2), quorum 2, and the master disabled. The agent is taken from the signer list, not the URI, since it's spread last. That's better than the `POST /policy` I suggested: it needs no extra secret and survives sleeps.
+- **The landlord can't change a spawned wallet's limits later.** Re-issuing needs a new CredentialAccept signed by the wallet, and the Guardian only co-signs Payments. So only the tenant's backup key could accept new limits. Good for the tenant-first pitch.
+
+Must do in P2's half (`POST /api/tenants`):
+1. **The backup seed must never reach the landlord console.** The spawn is triggered from the landlord console. Streaming `SpawnResult` or `backupSeed` back to it, logging it, or storing it would give the landlord a weight-2 key that can empty the tenant's wallet alone. That breaks "the landlord's agent has no key to any tenant wallet." For the demo: drop `backupSeed` (or show it only in the tenant view), and send only `steps` to the console.
+2. **The app gets the Guardian's address from a plain `GUARDIAN_ADDRESS` env var**, never by loading `.secrets/guardian.env`, which holds the Guardian's seed. `scripts/spawn-tenant.ts:15` loads that file, which is fine for a local script, but don't copy the pattern into the app.
+
+Notes (non-blocking):
+- A spawn that fails midway leaves a funded, half-built wallet whose master seed is discarded, so ~2.6 testnet XRP is lost. For the demo, just retry.
+- The `spawned` cache (`guardian/server.ts:33`) isn't cleared if the landlord later deletes the credential. That's harmless, because such a wallet can still only pay the landlord.
+- Q&A: "who accepted the credential?" In the demo, the spawner signs the acceptance with the new wallet's master key before disabling it. In production the tenant would sign it.
+
+## 2026-09-26: `money-layer` @ 15b2692 (ledger-based "already paid", demo run number, cosign timeout): ✅ approved
+Closes the 8d0fe90 free-plan risk.
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 16/16 pass.
+**Checked on Testnet:** Maya's two latest rent payments carry tags `2026-10#run1790455658` and `…558`, one `tesSUCCESS` each.
+**Not run:** `test:payment`, because it moves real RLUSD.
+- Every rent payment now carries a readable `rentrelay/period` memo (`lib/xrpl/memos.ts`). The Guardian requires exactly one tag, equal to `month#run` (`guardian/rules.ts:86-91`).
+- "Already paid" comes from `account_tx` (validated, `tesSUCCESS`, this wallet → landlord, tag matches) (`guardian/server.ts:42-62`). A restart or free-plan sleep can no longer allow a double charge. A ledger error throws, and the request is refused, so it fails closed.
+- `requestCosign`/`resetGuardian` time out after 10s, with a clear "waking up, open /health" reason (`lib/xrpl/guardianClient.ts:17-29`).
+
+Integration notes (P2 must know):
+- **`run` is now part of the contract.** T15 must store a demo run number with the clock, and `/api/demo/reset` must **bump it**. T17 must pass `{today, month, run}` to `requestCosign` and `period: periodKey(month, run)` to `buildPayment`. **If reset doesn't bump `run`, every tenant is refused as "already paid" on the next rent day and the demo stalls.**
+- The Guardian's `/reset` is no longer needed to replay a month; bumping `run` does that.
+
+Known limit (Q&A, extends #4 of the re-review):
+- **`run` comes from the app**, like `today` and `month`. A fully compromised app could send `run+1` and get a second payment co-signed. The rule stops an agent or a buggy retry from paying twice. It doesn't stop an attacker who controls the app's clock. The T37 double-charge attack must reuse the same run, and it does in `scripts/test-payment.ts` step 5.
+- Optional hardening (not needed for the demo): the Guardian owns the run. `/reset` (admin token) bumps it, it's recovered after a restart from the highest run tag on the landlord's `account_tx`, and `context.run` is ignored.
+
+## 2026-09-26: `money-layer` @ 8d0fe90 (render.yaml → free plan): ⚠️ accepted with risk
+cfbef01 was re-checked: unchanged, still approved. 8d0fe90 moves the Guardian to Render's free plan, which **reopens T13 re-review #2**. Free services sleep after about 15 min idle, and waking up clears the in-memory once-per-month record.
+- **Double charge after a sleep:** once the record is cleared, a second payment for the same month is co-signed and real RLUSD moves. Inside one 3-minute demo this is fine. It breaks if a judge asks "try charging again" more than 15 min after rent day (the T37 double-charge attack).
+- **Cold start:** the first request after a sleep takes about 50s. `requestCosign` (`lib/xrpl/guardianClient.ts:10`) has no timeout, so a live tick may hang or hit the app's function timeout. The failure is safe (no payment is co-signed) but looks bad on stage.
+- **Mitigation for now:** open `/health` before every judging slot, as the commit comment says.
+- **Durable fix (about 15 lines, recommended before judging):** build `priorPayment` from the ledger. The audit memo is only a sha256 hash, so it can't reveal the month. First, have `buildPayment` add a second plaintext memo `rentrelay/month` = `"2026-10"`, and have the Guardian require it to equal `context.month`. Then `priorPayment` = `account_tx` for the rent wallet → any validated `tesSUCCESS` payment to the landlord carrying that month memo. Keep the in-memory map only as the "pending" cache. That makes the plan choice irrelevant. Also add a ~10s `AbortSignal.timeout` to `requestCosign`.
+
+## 2026-09-26: T13 follow-up, `money-layer` @ cfbef01 (fail closed on incomplete policy): ✅ approved
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 15/15 pass.
+- `validatePolicy` (`guardian/rules.ts:29-40`) requires a landlord address, at least one wallet, and a finite number for `capUsd`/`unitRentUsd`/`rentShareUsd`/`maxUtilitiesUsd` plus an agent address on every wallet. `guardian/server.ts:19` calls it before `listen`.
+- **Verified live:** started the real server with an old-shape `GUARDIAN_POLICY` → it exits with code 1 and "policy for rW: rentShareUsd must be a number", and never listens. The local `.secrets/guardian-policy.json` validates.
+- The Render-deploy blocker from the re-review is closed. The T35 note (register spawned wallets with the Guardian) still stands.
+
+## 2026-09-26: T13 Guardian re-review, `money-layer` @ 5fd929d (+ 9cfc8a7 Render blueprint): ✅ approved
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 14/14 pass.
+- #1 disguised fee: **fixed.** `rentUsd` must equal `rentShareUsd`, utilities must be ≤ `maxUtilitiesUsd`, and negative or NaN lines are refused (`guardian/rules.ts:82-120`). New tests cover it.
+- #2 deploy: **fixed.** `render.yaml` uses a `starter` plan, which is always on (no sleep), so the in-memory once-per-month record survives between ticks. Residual: a redeploy or restart still clears it. Don't redeploy mid-demo; the demo reset clears it anyway.
+- #3 rule order: **fixed.** The $200 fee is now refused as `legal-late-fee`.
+
+Should fix before the Render deploy:
+- **The Guardian fails open on an old-shape policy.** If the `GUARDIAN_POLICY` pasted into Render lacks `rentShareUsd`/`maxUtilitiesUsd`, `Math.abs(x - undefined)` is NaN, so both checks silently pass. A reviewer script confirmed a $112 disguised fee gets APPROVED with such a policy. The local `.secrets/guardian-policy.json` is already regenerated and correct. Fix: in `guardian/server.ts`, check at startup that every wallet has numeric `rentShareUsd`, `maxUtilitiesUsd`, `capUsd` and `unitRentUsd`, and throw if not (about 3 lines).
+
+Notes for later tasks:
+- **T35 spawn:** the Guardian's policy is fixed at startup, so a newly spawned wallet is refused as "not a registered rent wallet". The spawn flow needs a way to register it with the Guardian, for example an admin-token `POST /policy` or a restart with the updated env.
+- **T37 "inflated ConEd" attack:** anything ≤ $100 in utilities passes, because the Guardian doesn't know the real bill. Use a clearly inflated amount (e.g. $500) in the demo. Q&A answer: "utilities are capped per tenant; the exact bill split is checked by the landlord agent."
+
+## 2026-09-26: Money layer, `money-layer` @ dc9e123 (T10, T11, T12, T12a, T13)
+No GitHub PR is open; reviewed the pushed commit in `~/DivHacks-2026-Track-2`.
+**Ran:** `tsc --noEmit` clean · `npm run test:guardian` 12/12 pass · git history scanned for seeds/tokens: none (`.secrets/` ignored, files are 0600).
+**Checked on the public Testnet RPC:** tx C2E79EB4… is `tesSUCCESS`, 1.488 RLUSD, 2 signers, with a memo. Maya's wallet `rpLaek…` has the master key disabled, quorum 2, weights 1/1/2.
+**Not run:** `test:payment` and `setup:xrpl`, because they spend the scarce Testnet RLUSD float.
+
+### T10 setup script: ✅ approved
+Idempotent, saves each seed right after funding, and splits keys into app/Guardian/tenant files as PLAN requires.
+- Note: every tenant cap is $1,600 (`scripts/setup-xrpl.ts:37-39`). P2's seed (T14) needs the same caps, or the Guardian and the app will disagree.
+
+### T11 rent wallets: ✅ approved
+Signer list is set before the master is disabled, and a re-run with a wrong list fails loudly instead of locking the wallet (`lib/xrpl/rentWallet.ts:50`). Verified on-ledger.
+
+### T12 payments: ✅ approved
+- `multisignSubmit` returns tef codes without throwing, which is what the "stolen key" demo needs (`lib/xrpl/payments.ts:46`).
+- Minor: `waitForValidation` gives up after 30s and returns `validated:false` with the prelim code. The caller (T17) should log that as "failed/unknown", not "paid".
+
+### T12a 1:1000 scale: ✅ approved
+Conversion lives only in `lib/xrpl/config.ts:18-28`; the Guardian converts back before its checks (`guardian/rules.ts:62`). 6-decimal RLUSD is 0.1¢ precision, which is fine.
+
+### T13 Guardian: ❌ changes needed (small)
+Must fix:
+1. **A late fee can be passed off as rent.** The Guardian's fee rules only look at `intent.lateFeeUsd`, which is the agent's own label. `intent.rentUsd` is never checked against the real rent share. On day 2, an agent (or an attacker) can send `rentUsd: 1562, lateFeeUsd: 0` = $1,600 and it passes every rule (`guardian/rules.ts:69-79`, `95-102`). That breaks the "can't overcharge / can't break the law" pitch if a judge asks. Fix: add `rentShareUsd` (and a max utilities amount) to `WalletPolicy` and refuse if `intent.rentUsd !== rentShareUsd` or utilities are over the max. Add one unit test.
+2. **The deploy target must be a long-running server, not Vercel serverless.** Two reasons: `guardian/server.ts:97` uses `app.listen`, and the once-per-month record is an in-memory `Map` (`guardian/server.ts:26`). On serverless, or after any restart, that record is lost, so the same month could be co-signed twice. Deploy to Render (as a persistent service), or rebuild `priorPayment` from the ledger (`account_tx` → validated payments to the landlord whose memo is for that month).
+
+Should fix (demo quality):
+3. **The "illegal $200 late fee" attack shows `cap`, not `legal-late-fee`.** $1,450 + $38 + $200 is over the $1,600 cap, so rule 2 fires first (the test at `guardian/rules.test.ts:54` confirms this). The demo line is "blocked, illegal", so check rule 5 before rule 2, or have T37 build the attack so it stays under the cap.
+
+Known limits (write a Q&A answer, no fix needed now):
+4. **The Guardian trusts the app's `context.today` and `month`** (`guardian/server.ts:64`). A compromised app could claim "day 30" to justify a $50 fee. This comes with the demo clock living in the app DB. Answer for Q&A: "in production the Guardian uses its own clock."
+5. **The fee cap is per wallet, not per unit.** The Guardian doesn't split the cap when both 4B roommates are late, so it would allow $50 + $50 (PLAN says the cap is split by share). T30 should compute the split fee; it's fine for the Guardian to enforce only the unit maximum.
+
+Good: it decodes the real blob, rejects partial payments, paths and extra signers, checks that the intent matches the tx, the `/reset` endpoint requires a token, and a 403 comes back as a `GuardianDecision`.
