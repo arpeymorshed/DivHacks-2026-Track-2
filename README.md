@@ -1,4 +1,4 @@
-# DivHacks 2026: RentRelay
+# DivHacks 2026: RT (Renter's Treasurer)
 
 > ✅ **Build plan: v3 adopted (2026-09-26).** Tasks: [BOARD.md](BOARD.md). Earlier drafts: [PROPOSAL-v3.md](PROPOSAL-v3.md), [PROPOSAL-v2.md](PROPOSAL-v2.md). `TEAM_PLAN.md` is the earlier v1-based team draft; its roles and schedule are carried into this plan.
 
