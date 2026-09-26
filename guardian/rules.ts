@@ -78,7 +78,9 @@ export function checkRules({ tx, intent, context, policy, prior }: RuleInput): R
   if (tx.SendMax !== undefined || tx.Paths !== undefined || tx.DeliverMin !== undefined || Number(tx.Flags ?? 0) !== 0) {
     return refuse("tx-shape", "Partial payments, paths and SendMax are not allowed.");
   }
-  if (Number(tx.Fee) > MAX_FEE_DROPS) return refuse("tx-shape", `Network fee ${tx.Fee} drops is too high.`);
+  const feeDrops = Number(tx.Fee);
+  if (!Number.isFinite(feeDrops) || feeDrops < 0) return refuse("tx-shape", "Transaction has no valid network fee.");
+  if (feeDrops > MAX_FEE_DROPS) return refuse("tx-shape", `Network fee ${tx.Fee} drops is too high.`);
   const signers = (tx.Signers as { Signer: { Account: string } }[] | undefined) ?? [];
   if (signers.length !== 1 || signers[0].Signer.Account !== wallet.agent) {
     return refuse("tx-shape", "Must carry exactly one signature, from this wallet's own agent.");
