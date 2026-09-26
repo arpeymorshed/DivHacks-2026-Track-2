@@ -7,7 +7,7 @@ import { checkRules, type GuardianPolicy, type RuleInput } from "./rules";
 const LANDLORD = "rLandlord";
 const WALLET = "rMayaWallet";
 const AGENT = "rMayaAgent";
-const policy: GuardianPolicy = { landlord: LANDLORD, rentWallets: { [WALLET]: { tenantId: "maya", agent: AGENT, capUsd: 1600, unitRentUsd: 2900 } } };
+const policy: GuardianPolicy = { landlord: LANDLORD, rentWallets: { [WALLET]: { tenantId: "maya", agent: AGENT, capUsd: 1600, unitRentUsd: 2900, rentShareUsd: 1450, maxUtilitiesUsd: 100 } } };
 
 function input(o: { usd?: number; dest?: string; fee?: number; today?: string; prior?: RuleInput["prior"]; tx?: object; intent?: Partial<PaymentIntent> } = {}): RuleInput {
   const fee = o.fee ?? 0;
@@ -20,7 +20,7 @@ function input(o: { usd?: number; dest?: string; fee?: number; today?: string; p
       Signers: [{ Signer: { Account: AGENT } }],
       ...o.tx,
     },
-    intent: { tenantId: "maya", dueId: "d1", destination: dest, rentUsd: total - 38 - fee, utilitiesUsd: 38, lateFeeUsd: fee, totalUsd: total, reason: "rent", ...o.intent },
+    intent: { tenantId: "maya", dueId: "d1", destination: dest, rentUsd: 1450, utilitiesUsd: total - 1450 - fee, lateFeeUsd: fee, totalUsd: total, reason: "rent", ...o.intent },
     context: { today: o.today ?? "2026-10-01", month: "2026-10" },
     policy,
     prior: o.prior ?? "none",
@@ -45,15 +45,25 @@ test("refuses when the tx pays someone other than the intent says", () => {
   assert.equal(checkRules(input({ intent: { destination: LANDLORD }, tx: { Destination: "rScammer" } })).rule, "intent-mismatch");
 });
 
-test("refuses inflated ConEd over the cap", () => {
-  assert.equal(checkRules(input({ usd: 1450 + 500, intent: { rentUsd: 1450, utilitiesUsd: 500 } })).rule, "cap");
+test("refuses inflated ConEd over the utilities limit", () => {
+  const r = checkRules(input({ usd: 1450 + 500 }));
+  assert.equal(r.rule, "cap");
+  assert.match(r.reason, /Utilities/);
 });
 
-test("refuses illegal $200 late fee", () => {
-  const r = checkRules(input({ fee: 200, usd: 1450 + 38 + 200, today: "2026-10-20" }));
-  assert.equal(r.rule, "cap"); // $1,688 is over the $1,600 cap before the fee rule is even reached
-  const lowRent = checkRules(input({ fee: 200, usd: 1000 + 38 + 200, today: "2026-10-20" }));
-  assert.equal(lowRent.rule, "legal-late-fee");
+test("refuses illegal $200 late fee as legal-late-fee (demo line)", () => {
+  assert.equal(checkRules(input({ fee: 200, today: "2026-10-20" })).rule, "legal-late-fee");
+});
+
+test("refuses a late fee disguised as rent (REVIEW T13 #1)", () => {
+  const r = checkRules(input({ usd: 1600, today: "2026-10-02", intent: { rentUsd: 1562, utilitiesUsd: 38, lateFeeUsd: 0 } }));
+  assert.equal(r.approved, false);
+  assert.match(r.reason, /exactly the tenant's share/);
+});
+
+test("refuses a total over the tenant's cap", () => {
+  const tight: GuardianPolicy = { ...policy, rentWallets: { [WALLET]: { ...policy.rentWallets[WALLET], capUsd: 1480 } } };
+  assert.equal(checkRules({ ...input(), policy: tight }).rule, "cap");
 });
 
 test("refuses a late fee inside the grace period (day 2)", () => {

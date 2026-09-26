@@ -12,7 +12,16 @@ export const EARLY_PAY_DAYS = 5; // payment window opens this many days before t
 export const LATE_PAY_DAYS = 30; // ...and closes this many days after
 export const MAX_FEE_DROPS = 5000;
 
-export type WalletPolicy = { tenantId: string; agent: string; capUsd: number; unitRentUsd: number };
+// rentShareUsd: the tenant's exact rent share; maxUtilitiesUsd: most the utilities line may be in one payment.
+// The Guardian checks each line of the intent against these, so a fee can't be relabelled as rent.
+export type WalletPolicy = {
+  tenantId: string;
+  agent: string;
+  capUsd: number;
+  unitRentUsd: number;
+  rentShareUsd: number;
+  maxUtilitiesUsd: number;
+};
 export type GuardianPolicy = { landlord: string; rentWallets: Record<string, WalletPolicy> };
 export type CosignContext = { today: string; month: string }; // "2026-10-08", "2026-10" (demo clock)
 export type PriorPayment = "none" | "pending" | "settled"; // this wallet's co-signed payment for the month
@@ -70,15 +79,19 @@ export function checkRules({ tx, intent, context, policy, prior }: RuleInput): R
     return refuse("intent-mismatch", "Rent + utilities + late fee don't add up to the total.");
   }
 
+  if ([intent.rentUsd, intent.utilitiesUsd, intent.lateFeeUsd].some((n) => !(n >= 0))) {
+    return refuse("intent-mismatch", "Rent, utilities and late fee must each be zero or more.");
+  }
+
+  // Rules run in this order so each attack is refused by the rule that names it
+  // (e.g. an illegal $200 fee says "legal-late-fee", not "cap").
+
   // --- rule 1: only the verified landlord ---
   if (tx.Destination !== policy.landlord) {
     return refuse("landlord-only", `${tx.Destination} is not the landlord's verified address. Rent only goes to ${policy.landlord}.`);
   }
 
-  // --- rule 2: tenant's cap ---
-  if (txUsd > wallet.capUsd) return refuse("cap", `${usd(txUsd)} is over the tenant's cap of ${usd(wallet.capUsd)}.`);
-
-  // --- rule 3: payment window ---
+  // --- rule 2: payment window ---
   const day = cycleDay(context.today, context.month);
   const due = Date.parse(`${context.month}-01T00:00:00Z`);
   const today = Date.parse(`${context.today}T00:00:00Z`);
@@ -87,11 +100,7 @@ export function checkRules({ tx, intent, context, policy, prior }: RuleInput): R
     return refuse("window", `${context.today} is outside the payment window for ${context.month}.`);
   }
 
-  // --- rule 4: once per month ---
-  if (prior === "settled") return refuse("once-per-month", `Rent for ${context.month} is already paid.`);
-  if (prior === "pending") return refuse("once-per-month", `A payment for ${context.month} is still settling.`);
-
-  // --- rule 5: legal late fee ---
+  // --- rule 3: legal late fee ---
   const fee = intent.lateFeeUsd;
   if (fee > 0 && day <= GRACE_DAYS) {
     return refuse("legal-late-fee", `No late fee is allowed during the grace period (days 1–${GRACE_DAYS}; today is day ${day}).`);
@@ -100,6 +109,19 @@ export function checkRules({ tx, intent, context, policy, prior }: RuleInput): R
   if (fee > legalCap) return refuse("legal-late-fee", `${usd(fee)} is over the legal maximum of ${usd(legalCap)} (min of $50 or 5% of rent).`);
   const accrued = Math.min(legalCap, FEE_PER_DAY_USD * Math.max(0, day - GRACE_DAYS));
   if (fee > accrued + 0.001) return refuse("legal-late-fee", `${usd(fee)} is more than the ${usd(accrued)} accrued by day ${day}.`);
+
+  // --- rule 4: amounts: exact rent share, utilities limit, tenant's cap ---
+  if (Math.abs(intent.rentUsd - wallet.rentShareUsd) > 0.01) {
+    return refuse("cap", `Rent must be exactly the tenant's share of ${usd(wallet.rentShareUsd)}, not ${usd(intent.rentUsd)}.`);
+  }
+  if (intent.utilitiesUsd > wallet.maxUtilitiesUsd) {
+    return refuse("cap", `Utilities of ${usd(intent.utilitiesUsd)} are over the ${usd(wallet.maxUtilitiesUsd)} limit for this tenant.`);
+  }
+  if (txUsd > wallet.capUsd) return refuse("cap", `${usd(txUsd)} is over the tenant's cap of ${usd(wallet.capUsd)}.`);
+
+  // --- rule 5: once per month ---
+  if (prior === "settled") return refuse("once-per-month", `Rent for ${context.month} is already paid.`);
+  if (prior === "pending") return refuse("once-per-month", `A payment for ${context.month} is still settling.`);
 
   return {
     approved: true,

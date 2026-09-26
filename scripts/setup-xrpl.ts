@@ -27,16 +27,17 @@ const GUARDIAN_FILE = ".secrets/guardian.env";
 const BACKUP_FILE = ".secrets/tenant-backups.env";
 const POLICY_FILE = ".secrets/guardian-policy.json";
 
-// Seed tenants (PLAN.md): Unit 4B $2,900 split 50/50, Unit 2A $1,450. Cap covers rent share + utilities + max late fee.
-type TenantSeed = { id: string; capUsd: number; unitRentUsd: number };
+// Seed tenants (PLAN.md): Unit 4B $2,900 split 50/50, Unit 2A $1,450. Every rent share is $1,450; utilities up to $100;
+// cap = share + utilities max + $50 max late fee = $1,600. P2's DB seed (T14) must use the same numbers.
+type TenantSeed = { id: string; capUsd: number; unitRentUsd: number; rentShareUsd: number; maxUtilitiesUsd: number };
 type Role = { key: string; label: string; holdsRlusd: boolean; tenant?: TenantSeed };
 const ROLES: Role[] = [
   { key: "LANDLORD", label: "Landlord", holdsRlusd: true },
   { key: "OPS", label: "Landlord agent ops (pays spawn reserves)", holdsRlusd: false },
   { key: "BANK", label: "Simulated bank (RLUSD top-ups)", holdsRlusd: true },
-  { key: "TENANT_MAYA", label: "Maya rent wallet (4B)", holdsRlusd: true, tenant: { id: "maya", capUsd: 1600, unitRentUsd: 2900 } },
-  { key: "TENANT_JORDAN", label: "Jordan rent wallet (4B)", holdsRlusd: true, tenant: { id: "jordan", capUsd: 1600, unitRentUsd: 2900 } },
-  { key: "TENANT_PRIYA", label: "Priya rent wallet (2A)", holdsRlusd: true, tenant: { id: "priya", capUsd: 1600, unitRentUsd: 1450 } },
+  { key: "TENANT_MAYA", label: "Maya rent wallet (4B)", holdsRlusd: true, tenant: { id: "maya", capUsd: 1600, unitRentUsd: 2900, rentShareUsd: 1450, maxUtilitiesUsd: 100 } },
+  { key: "TENANT_JORDAN", label: "Jordan rent wallet (4B)", holdsRlusd: true, tenant: { id: "jordan", capUsd: 1600, unitRentUsd: 2900, rentShareUsd: 1450, maxUtilitiesUsd: 100 } },
+  { key: "TENANT_PRIYA", label: "Priya rent wallet (2A)", holdsRlusd: true, tenant: { id: "priya", capUsd: 1600, unitRentUsd: 1450, rentShareUsd: 1450, maxUtilitiesUsd: 100 } },
 ];
 
 function loadEnvFile(file: string): Record<string, string> {
@@ -122,7 +123,8 @@ async function main() {
           backup: backup.address,
         });
         for (const h of hashes) console.log(`  rent wallet setup tx for ${role.label}: ${h}`);
-        policy.rentWallets[wallet.address] = { tenantId: role.tenant.id, agent: agent.address, capUsd: role.tenant.capUsd, unitRentUsd: role.tenant.unitRentUsd };
+        const { id: tenantId, ...limits } = role.tenant;
+        policy.rentWallets[wallet.address] = { tenantId, agent: agent.address, ...limits };
       }
     }
 
