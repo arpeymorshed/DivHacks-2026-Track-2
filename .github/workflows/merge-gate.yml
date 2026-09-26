@@ -50,12 +50,12 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - name: Check the API key is set
+      - name: Check the Claude token is set
         env:
-          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
-          if [ -z "$KEY" ]; then
-            echo "::error::Repo secret ANTHROPIC_API_KEY is not set (Settings > Secrets and variables > Actions)."
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Repo secret CLAUDE_CODE_OAUTH_TOKEN is not set. Run 'claude setup-token' and add it under Settings > Secrets and variables > Actions."
             exit 1
           fi
       - uses: actions/checkout@v7
@@ -65,7 +65,8 @@ jobs:
         id: review
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Claude subscription token from `claude setup-token` (no API credit needed).
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Use the workflow token so the Claude GitHub App doesn't need to be installed.
           github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
