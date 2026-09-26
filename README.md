@@ -145,13 +145,37 @@ type AuditEntry = { id: string; time: string; intent: PaymentIntent; decision: G
 ### Repo layout and owners
 `/app` pages [P3] · `/app/api` [P2] · `/lib/agents`, `/lib/ai`, `/lib/db`, `/lib/clock` [P2] · `/lib/xrpl`, `/guardian`, `/scripts/setup-xrpl.ts` [P1] · `/bot` [P4] · `/fixtures`, `/scripts/preflight.ts`, `.env.example` [P4] · `/lib/types.ts` [all, via P2]
 
+## Money layer (P1) implementation notes, for the Builder
+_Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.org docs, since these are starting points, not guarantees._
+- **Connect:** xrpl.js v4, Testnet `wss://s.altnet.rippletest.net:51233`. `client.fundWallet()` gives faucet XRP.
+- **RLUSD:** get the Testnet issuer address and test tokens from tryrlusd.com / docs.ripple.com. "RLUSD" is 5 characters, so the currency must be the 40-character hex code (`524C555344000000000000000000000000000000`; confirm). Every account holding RLUSD needs a `TrustSet` to the issuer first.
+- **Rent wallet setup order** (signed by the wallet's own master key, before it's disabled):
+  1. `TrustSet` (RLUSD)
+  2. `SignerListSet`: quorum 2, entries agent(1) / Guardian(1) / tenant backup(2). Signer addresses don't need to be funded.
+  3. `AccountSet` with `asfDisableMaster`
+- **Multi-signed payment:**
+  1. `client.autofill(tx, signersCount)` (higher fee)
+  2. `agentWallet.sign(tx, true)`, sent to the Guardian
+  3. The Guardian runs `xrpl.decode(blob)`, checks `Account`, `Destination` and `Amount` (currency, issuer, value) against its rules, then `guardianWallet.sign(tx, true)`
+  4. `xrpl.multisign([agentBlob, guardianBlob])` → `client.submitAndWait`
+- **Memos:** `Memos: [{Memo: {MemoType: hex("rentrelay/audit"), MemoData: hex(sha256(decisionRecord))}}]`.
+- **"Stolen key" attack:** submitting with only the agent's signature should fail with a bad-quorum error (e.g. `tefBAD_QUORUM`). Show that exact ledger response.
+- **Spawn (Tier 2):**
+  1. The ops account sends XRP to a new address (base reserve + owner reserves for the trust line, signer list and credential, plus fees)
+  2. The setup steps above
+  3. `CredentialCreate` (issuer = landlord, Subject = agent wallet, `CredentialType` = hex("RentRelayTenantAgent"))
+  4. `CredentialAccept` by the new wallet (before its master is disabled)
+  - **Check early that the Credentials amendment is enabled on Testnet.** Fallback: store the pinned landlord address in the Guardian's config.
+- **Keys:** agent seeds live in the app's env, the Guardian seed only in the Guardian's env, and tenant backup seeds only in the local setup output. Never commit any of them.
+- **Where code lives:** the shared GitHub repo (`DivHacks-2026-Track-2`), so teammates can pull it. Suggested layout: `/lib/xrpl`, `/guardian`, `/scripts/setup-xrpl.ts`.
+
 ## Team roles
 | | Owns | First milestone (about H+4) |
 |---|---|---|
-| **Arpey: Money layer** | XRPL setup, `lib/xrpl` (build, agent-sign, multisign, submit, spawn, top-up), Guardian, credentials | 2-key RLUSD payment from a tenant wallet to the landlord, co-signed by the Guardian, with an explorer link |
-| **Musammat: Agents + backend** (merges `main`) | Agent runtime, demo clock + tick, dues and late-fee engine, Gemini, MongoDB, all API routes | Tick on "rent day" produces correct PaymentIntents (XRPL mocked) |
-| **Kashish: Frontend** | Tenant phone view + web chat, landlord console grid, spawn animation, attack panel, demo controls | Both views render from mock `/api/state` JSON |
-| **Abhimanyu Dudeja: Photon + ship** | Spectrum bot, `.tech` domain, Vercel/env, fixtures (ConEd bill, scam text), preflight, deck, Devpost, backup video, testing | App deployed at the domain, and a Photon bot replying in iMessage |
+| **P1: Money layer** (Arpey) | XRPL setup, `lib/xrpl` (build, agent-sign, multisign, submit, spawn, top-up), Guardian, credentials | 2-key RLUSD payment from a tenant wallet to the landlord, co-signed by the Guardian, with an explorer link |
+| **P2: Agents + backend** (merges `main`) | Agent runtime, demo clock + tick, dues and late-fee engine, Gemini, MongoDB, all API routes | Tick on "rent day" produces correct PaymentIntents (XRPL mocked) |
+| **P3: Frontend** | Tenant phone view + web chat, landlord console grid, spawn animation, attack panel, demo controls | Both views render from mock `/api/state` JSON |
+| **P4: Photon + ship** | Spectrum bot, `.tech` domain, Vercel/env, fixtures (ConEd bill, scam text), preflight, deck, Devpost, backup video, testing | App deployed at the domain, and a Photon bot replying in iMessage |
 
 **Team rules:**
 - One branch per person, and each person edits only their own folders.

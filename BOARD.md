@@ -1,6 +1,6 @@
 # Task board
 
-_Plan: [PLAN.md](PLAN.md) (RentRelay, adopted 2026-09-26). Tasks are in build order. Owner tags: P1 money, P2 agents/backend, P3 frontend, P4 Photon/ship. Move a task to "In progress" when you start it. Tier 1 must be done before Tier 2._
+_Plan: [PLAN.md](PLAN.md) (RentRelay, adopted 2026-09-26). Tasks are in build order. Owner tags: P1 money (Arpey), P2 agents/backend, P3 frontend, P4 Photon/ship. Move a task to "In progress" when you start it. Tier 1 must be done before Tier 2._
 
 ## Todo
 
