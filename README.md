@@ -252,6 +252,29 @@ and `@/types/` resolves to the existing root `types/` directory.
 
 Checks: `npm test`, `npm run typecheck`, and `npm run build`.
 
+## MongoDB Atlas connection test
+
+Add `MONGODB_URI` with your Atlas driver connection string and `MONGODB_DB="rentrelay"`
+to ignored `.env.local`. Never commit the actual URI. The committed `.env.example`
+contains empty MongoDB values. Atlas must allow connections from your current IP,
+and the database user must have read/write access to `rentrelay`.
+
+Restart `npm run dev` after configuring the connection, then run:
+
+```bash
+curl http://localhost:3000/api/db-test
+```
+
+This temporary endpoint inserts one document into `rentrelay.connectionTests`, then
+reads that exact document back. Success returns `{ success: true, insertedId: "...",
+readBack: true }`. Each call adds a test document, which is left in Atlas for inspection.
+Failures return HTTP 500 with `{ success: false, error: "MongoDB connection failed" }`.
+Connection secrets are not returned or logged. Restart the server if the URI changes.
+
+All database access goes through `getDb()` in `src/lib/mongodb.ts`, which reuses one
+MongoClient connection promise per server process, including development reloads.
+Rent-day data still comes from the demo arrays; no real collections have been seeded.
+
 ## Local demo phone mapping (P2 / P4)
 
 The current shared contracts live in `types/rent.ts`. Demo tenants read
