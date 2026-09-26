@@ -6,6 +6,12 @@ export type Tenant = {
   capUsd: number;       // max amount tenant allows
   walletAddress: string;
   agentId: string;
+  phoneNumber: string; // E.164; empty when not configured
+};
+
+export type PhotonMessage = {
+  from: string; // E.164 sender phone number
+  message: string;
 };
 
 export type Unit = {

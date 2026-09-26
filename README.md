@@ -213,3 +213,44 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 - **Is it really autonomous?** The demo clock only fast-forwards time. No human approves any payment.
 - **KYC?** Tenants are verified at onboarding. Agent identity is on-chain via Credentials.
 - **Cost at scale?** Each agent wallet holds a small XRP reserve, paid by the landlord's ops account. It's cents per tenant.
+
+## Local demo phone mapping (P2 / P4)
+
+The current shared contracts live in `types/rent.ts`. Demo tenants read
+`DEMO_MAYA_PHONE`, `DEMO_JORDAN_PHONE`, and `DEMO_PRIYA_PHONE` from the server's
+environment. If `.env.local` does not exist, copy `.env.example` to it. Fill in
+each assigned number locally in E.164 format (a leading `+`, country code, and
+digits, with no spaces or punctuation). Use a different number for each tenant.
+Keep `DEMO_SPARE_PHONE` reserved; it has no tenant mapping yet. Empty values leave
+the tenant unconfigured for messaging. `.env.local` is ignored by Git; real phone
+numbers must never be added to tracked files or frontend environment variables.
+
+`getTenantByPhone()` in `src/services/tenantLookup.ts` returns the matching tenant,
+including its `agentId`, or `undefined` for unknown, empty, or malformed numbers.
+This lookup is for incoming messages; payment-intent generation still uses the
+tenant and its due directly.
+
+With the current Node 24 setup, load `.env.local` explicitly when running a script:
+
+```bash
+node --env-file=.env.local src/agent/testTenantAgent.ts
+node src/services/testTenantLookup.ts
+```
+
+The lookup test uses synthetic numbers and does not require team phone numbers.
+Environment values are read when the demo data module loads, so restart the process
+after editing `.env.local`.
+
+Proposed Photon → P2 request contract for P4, exported as `PhotonMessage`:
+
+```typescript
+type PhotonMessage = {
+  from: string; // Sender's E.164 phone number
+  message: string;
+};
+```
+
+The future `POST /api/message` endpoint will use `from` to select the tenant agent
+and return `{ tenantId: string, reply: string }` on success. An unknown number will
+return HTTP 404 with `{ error: "Unknown tenant phone number" }`. This endpoint is
+not implemented yet; the rent-day pipeline is unchanged.

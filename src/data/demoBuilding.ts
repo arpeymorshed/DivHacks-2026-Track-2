@@ -32,6 +32,7 @@ export const tenants: Tenant[] = [
     capUsd: 1600,
     walletAddress: "rMAYA_DEMO",
     agentId: "agent-maya",
+    phoneNumber: process.env.DEMO_MAYA_PHONE ?? "",
   },
   {
     id: "jordan",
@@ -41,6 +42,7 @@ export const tenants: Tenant[] = [
     capUsd: 1600,
     walletAddress: "rJORDAN_DEMO",
     agentId: "agent-jordan",
+    phoneNumber: process.env.DEMO_JORDAN_PHONE ?? "",
   },
   {
     id: "priya",
@@ -50,6 +52,7 @@ export const tenants: Tenant[] = [
     capUsd: 2200,
     walletAddress: "rPRIYA_DEMO",
     agentId: "agent-priya",
+    phoneNumber: process.env.DEMO_PRIYA_PHONE ?? "",
   },
 ];
 
