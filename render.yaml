@@ -3,7 +3,7 @@ services:
   - type: web
     name: rentrelay-guardian
     runtime: node
-    plan: starter # free tier sleeps after ~15 min idle; wake it via /health before a demo if you use free
+    plan: free # sleeps after ~15 min idle (~50s wake-up, clears the once-per-month memory): open /health before a demo
     buildCommand: npm install
     startCommand: npm run start:guardian
     healthCheckPath: /health
