@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { RLUSD, usdToRlusd } from "../lib/xrpl/config";
+import { buildMemos, periodKey } from "../lib/xrpl/memos";
 import type { PaymentIntent } from "../lib/types";
 import { checkRules, type GuardianPolicy, type RuleInput, validatePolicy } from "./rules";
 
@@ -18,10 +19,11 @@ function input(o: { usd?: number; dest?: string; fee?: number; today?: string; p
       TransactionType: "Payment", Account: WALLET, Destination: dest, Fee: "36",
       Amount: { currency: RLUSD.currency, issuer: RLUSD.issuer, value: usdToRlusd(total) },
       Signers: [{ Signer: { Account: AGENT } }],
+      Memos: buildMemos("00".repeat(32), periodKey("2026-10", 1)),
       ...o.tx,
     },
     intent: { tenantId: "maya", dueId: "d1", destination: dest, rentUsd: 1450, utilitiesUsd: total - 1450 - fee, lateFeeUsd: fee, totalUsd: total, reason: "rent", ...o.intent },
-    context: { today: o.today ?? "2026-10-01", month: "2026-10" },
+    context: { today: o.today ?? "2026-10-01", month: "2026-10", run: 1 },
     policy,
     prior: o.prior ?? "none",
   };
@@ -96,4 +98,11 @@ test("refuses to start with an old-shape policy (fails closed)", () => {
   assert.doesNotThrow(() => validatePolicy(policy));
   const { rentShareUsd: _r, ...old } = policy.rentWallets[WALLET];
   assert.throws(() => validatePolicy({ ...policy, rentWallets: { [WALLET]: old as never } }), /rentShareUsd/);
+});
+
+test("refuses a payment without the month/run tag, or tagged for another run", () => {
+  assert.equal(checkRules(input({ tx: { Memos: buildMemos("00".repeat(32), periodKey("2026-10", 1)).slice(0, 1) } })).rule, "tx-shape");
+  const r = checkRules(input({ tx: { Memos: buildMemos("00".repeat(32), periodKey("2026-10", 2)) } }));
+  assert.equal(r.rule, "tx-shape");
+  assert.match(r.reason, /2026-10#run1/);
 });

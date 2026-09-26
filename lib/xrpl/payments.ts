@@ -1,29 +1,29 @@
 // T12: build, agent-sign and multisign-submit RLUSD payments from two-key rent wallets.
 // Flow: buildPayment → agentSign → (Guardian decodes + co-signs, T13) → multisignSubmit.
 import { createHash } from "node:crypto";
-import { type Client, convertStringToHex, multisign, type Payment, type Wallet } from "xrpl";
+import { type Client, multisign, type Payment, type Wallet } from "xrpl";
 import { submitOrThrow } from "./client";
-import { RLUSD, RLUSD_PER_USD, rlusdToUsd, usdToRlusd } from "./config";
+import { RLUSD, rlusdToUsd, usdToRlusd } from "./config";
+import { buildMemos } from "./memos";
 import { SIGNER_QUORUM } from "./rentWallet";
 import { getRlusdBalance } from "./rlusd";
-
-export const AUDIT_MEMO_TYPE = "rentrelay/audit";
 
 // sha256 of the audit record the payment is based on (USD amounts + scale). Goes in the memo and the AuditEntry.
 export function hashAuditRecord(record: object): string {
   return createHash("sha256").update(JSON.stringify(record)).digest("hex").toUpperCase();
 }
 
-export type BuildPaymentArgs = { from: string; to: string; usd: number; memoHash: string };
+// period: periodKey(month, run), e.g. "2026-10#run7". The Guardian requires it to match the request.
+export type BuildPaymentArgs = { from: string; to: string; usd: number; memoHash: string; period: string };
 
 // Unsigned RLUSD payment, autofilled for SIGNER_QUORUM signatures (multisig fee).
-export async function buildPayment(client: Client, { from, to, usd, memoHash }: BuildPaymentArgs): Promise<Payment> {
+export async function buildPayment(client: Client, { from, to, usd, memoHash, period }: BuildPaymentArgs): Promise<Payment> {
   const tx: Payment = {
     TransactionType: "Payment",
     Account: from,
     Destination: to,
     Amount: { currency: RLUSD.currency, issuer: RLUSD.issuer, value: usdToRlusd(usd) },
-    Memos: [{ Memo: { MemoType: convertStringToHex(AUDIT_MEMO_TYPE), MemoData: memoHash } }],
+    Memos: buildMemos(memoHash, period),
   };
   return client.autofill(tx, SIGNER_QUORUM);
 }

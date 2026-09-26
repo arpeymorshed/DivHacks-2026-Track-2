@@ -1,6 +1,7 @@
 // The Guardian's rules. Pure: everything is checked against the DECODED transaction the agent
 // signed, never just the agent's description of it (the intent).
 import { RLUSD, rlusdToUsd } from "../lib/xrpl/config";
+import { periodKey, periodTags } from "../lib/xrpl/memos";
 import type { PaymentIntent } from "../lib/types";
 
 // NY Real Property Law §238-a (verify before judging; not legal advice) + the landlord's policy.
@@ -38,8 +39,9 @@ export function validatePolicy(policy: GuardianPolicy): GuardianPolicy {
   }
   return policy;
 }
-export type CosignContext = { today: string; month: string }; // "2026-10-08", "2026-10" (demo clock)
-export type PriorPayment = "none" | "pending" | "settled"; // this wallet's co-signed payment for the month
+// Demo clock: today "2026-10-08", month "2026-10", run = demo run number (demo reset increments it).
+export type CosignContext = { today: string; month: string; run: number };
+export type PriorPayment = "none" | "pending" | "settled"; // this wallet's payment for the month + run
 
 export type RuleInput = {
   tx: Record<string, unknown>;
@@ -80,6 +82,12 @@ export function checkRules({ tx, intent, context, policy, prior }: RuleInput): R
   const signers = (tx.Signers as { Signer: { Account: string } }[] | undefined) ?? [];
   if (signers.length !== 1 || signers[0].Signer.Account !== wallet.agent) {
     return refuse("tx-shape", "Must carry exactly one signature, from this wallet's own agent.");
+  }
+  if (!Number.isInteger(context.run) || context.run < 0) return refuse("tx-shape", "The request needs a demo run number.");
+  const expectedPeriod = periodKey(context.month, context.run);
+  const tags = periodTags(tx);
+  if (tags.length !== 1 || tags[0] !== expectedPeriod) {
+    return refuse("tx-shape", `Payment must be tagged ${expectedPeriod} (found ${tags.join(", ") || "no tag"}).`);
   }
 
   // --- the agent's description must match what it actually signed ---
@@ -135,7 +143,7 @@ export function checkRules({ tx, intent, context, policy, prior }: RuleInput): R
   if (txUsd > wallet.capUsd) return refuse("cap", `${usd(txUsd)} is over the tenant's cap of ${usd(wallet.capUsd)}.`);
 
   // --- rule 5: once per month ---
-  if (prior === "settled") return refuse("once-per-month", `Rent for ${context.month} is already paid.`);
+  if (prior === "settled") return refuse("once-per-month", `Rent for ${context.month} is already paid (see the ledger, tag ${expectedPeriod}).`);
   if (prior === "pending") return refuse("once-per-month", `A payment for ${context.month} is still settling.`);
 
   return {

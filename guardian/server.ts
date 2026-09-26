@@ -7,8 +7,9 @@
 import fs from "node:fs";
 import dotenv from "dotenv";
 import express from "express";
-import { Client, decode, hashes, multisign, type Transaction, Wallet } from "xrpl";
+import { type AccountTxRequest, Client, decode, hashes, multisign, type Transaction, Wallet } from "xrpl";
 import { XRPL_WS } from "../lib/xrpl/config";
+import { periodKey, periodTags } from "../lib/xrpl/memos";
 import type { GuardianDecision, PaymentIntent } from "../lib/types";
 import { checkRules, type CosignContext, type GuardianPolicy, type PriorPayment, validatePolicy } from "./rules";
 
@@ -21,9 +22,10 @@ const policy: GuardianPolicy = validatePolicy(
 );
 const client = new Client(XRPL_WS);
 
-// Payments this Guardian co-signed, per rent wallet per month. Checked against the ledger, so a
-// co-signed payment that failed or expired doesn't block a retry.
+// Cache of payments this Guardian co-signed that may still be settling, per rent wallet + period.
+// Only used for "pending": "already paid" comes from the ledger, so a restart or sleep can't cause a double charge.
 const cosigned = new Map<string, { hash: string; lastLedger: number }>();
+const LEDGER_HISTORY_PAGES = 5; // account_tx pages (up to 200 txs each) searched per check
 
 function required(name: string): string {
   const v = process.env[name];
@@ -36,17 +38,41 @@ async function ledger(): Promise<Client> {
   return client;
 }
 
-async function priorPayment(wallet: string, month: string): Promise<PriorPayment> {
-  const rec = cosigned.get(`${wallet}|${month}`);
-  if (!rec) return "none";
+// True if the ledger has a validated, successful payment from `wallet` to the landlord tagged `period`.
+async function paidOnLedger(c: Client, wallet: string, period: string): Promise<boolean> {
+  let marker: unknown;
+  for (let page = 0; page < LEDGER_HISTORY_PAGES; page++) {
+    const req = { command: "account_tx", account: wallet, limit: 200, ...(marker ? { marker } : {}) } as AccountTxRequest;
+    const res = await c.request(req);
+    const result = res.result as unknown as { transactions: Record<string, any>[]; marker?: unknown };
+    for (const t of result.transactions) {
+      const tx = t.tx_json ?? t.tx; // API v2 / v1
+      if (
+        t.validated &&
+        t.meta?.TransactionResult === "tesSUCCESS" &&
+        tx?.TransactionType === "Payment" &&
+        tx.Account === wallet &&
+        tx.Destination === policy.landlord &&
+        periodTags(tx).includes(period)
+      ) return true;
+    }
+    if (!result.marker) return false;
+    marker = result.marker;
+  }
+  return false;
+}
+
+async function priorPayment(wallet: string, period: string): Promise<PriorPayment> {
   const c = await ledger();
+  if (await paidOnLedger(c, wallet, period)) return "settled";
+
+  const rec = cosigned.get(`${wallet}|${period}`);
+  if (!rec) return "none";
   try {
     const res = await c.request({ command: "tx", transaction: rec.hash });
-    if (res.result.validated) {
-      const code = (res.result.meta as { TransactionResult: string }).TransactionResult;
-      return code === "tesSUCCESS" ? "settled" : "none";
-    }
-    return "pending";
+    if (!res.result.validated) return "pending";
+    const code = (res.result.meta as { TransactionResult: string }).TransactionResult;
+    return code === "tesSUCCESS" ? "settled" : "none"; // failed: a retry is fine
   } catch {
     // Not found: expired if the ledger has passed its LastLedgerSequence, otherwise not submitted yet.
     return (await c.getLedgerIndex()) > rec.lastLedger ? "none" : "pending";
@@ -66,7 +92,8 @@ app.post("/cosign", async (req, res) => {
   try {
     if (!txBlob || !intent || !context) throw new Error("Body must be {txBlob, intent, context}.");
     const tx = decode(txBlob) as Record<string, unknown>;
-    const prior = await priorPayment(tx.Account as string, context.month);
+    const period = periodKey(context.month, context.run);
+    const prior = await priorPayment(tx.Account as string, period);
     const result = checkRules({ tx, intent, context, policy, prior });
 
     if (!result.approved) {
@@ -76,7 +103,7 @@ app.post("/cosign", async (req, res) => {
       const { Signers: _agentSig, ...unsigned } = tx;
       const signature = guardian.sign(unsigned as unknown as Transaction, true).tx_blob;
       const finalHash = hashes.hashSignedTx(multisign([txBlob, signature]));
-      cosigned.set(`${tx.Account}|${context.month}`, { hash: finalHash, lastLedger: Number(tx.LastLedgerSequence) });
+      cosigned.set(`${tx.Account}|${period}`, { hash: finalHash, lastLedger: Number(tx.LastLedgerSequence) });
       decision = { ...result, signature };
     }
   } catch (e) {
@@ -86,7 +113,7 @@ app.post("/cosign", async (req, res) => {
   res.status(decision.approved ? 200 : 403).json(decision);
 });
 
-// Demo reset only: forget which months were paid. Needs the admin token.
+// Clears the "still settling" cache. Paid months live on the ledger; to replay a month, bump the run. Needs the admin token.
 app.post("/reset", (req, res) => {
   if (req.headers.authorization !== `Bearer ${adminToken}`) return void res.status(401).json({ error: "unauthorized" });
   cosigned.clear();
