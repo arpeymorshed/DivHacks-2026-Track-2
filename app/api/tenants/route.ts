@@ -6,6 +6,7 @@ import { saveAgentSeed } from "@/services/agentKeys";
 import { clockOf, getDemoState } from "@/services/demoState";
 import { getTenants } from "@/services/rentRepository";
 import { envSeed } from "@/services/xrplConfig";
+import { recordActivitySafe } from "@/services/activityLog";
 import type { Building, Due, Tenant, TenantAgent } from "@/types/rent";
 
 export const runtime = "nodejs";
@@ -72,6 +73,12 @@ export async function POST(req: Request) {
           { id: "building-1", "units.id": { $ne: unitId } },
           { $push: { units: { id: unitId, name: "3C", tenantIds: [id] } } },
         );
+        const credentialStep = spawned.steps.find((s) => s.step === "credential-issued");
+        await recordActivitySafe({
+          run: clock.run, month: clock.month, kind: "spawn", tenantId: id, title: `New tenant agent: ${name}`, status: "done",
+          reason: `Rent wallet ${address} funded, credentialed and locked to two keys`,
+          txHash: credentialStep?.txHash, explorerUrl: credentialStep?.explorer,
+        });
         send({ type: "done", tenant: { id, name, walletAddress: address, agentAddress } });
       } catch (error) {
         console.error("Spawn failed:", error instanceof Error ? error.name : "UnknownError");

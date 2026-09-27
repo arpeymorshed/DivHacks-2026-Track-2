@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runRentDay } from "@/agent/mainAgent";
 import { clockOf, getDemoState } from "@/services/demoState";
+import { recordActivitySafe, rentActivity } from "@/services/activityLog";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // each ledger payment takes ~4–8s; tenants pay in parallel
@@ -11,6 +12,7 @@ export async function POST() {
   try {
     const clock = clockOf(await getDemoState());
     const results = await runRentDay(clock.month, clock);
+    await recordActivitySafe(...results.map((r) => rentActivity(r, clock)));
 
     return NextResponse.json({
       success: true,

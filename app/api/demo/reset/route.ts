@@ -3,6 +3,7 @@ import { resetDemoOutbox } from "@/services/outboxService";
 import { resetDemoState } from "@/services/demoState";
 import { getTenants } from "@/services/rentRepository";
 import { realPaymentsEnabled } from "@/services/xrplConfig";
+import { recordActivitySafe } from "@/services/activityLog";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // recycling RLUSD is a few ledger transactions
@@ -18,6 +19,11 @@ export async function POST() {
       const { recycleDemoFunds } = await import("@/services/demoFunds");
       funds = await recycleDemoFunds(await getTenants());
     }
+
+    await recordActivitySafe({
+      run: state.run, month: state.today.slice(0, 7), kind: "reset", title: `Demo reset → run ${state.run}`, status: "done",
+      reason: funds ? `Recycled ${funds.steps.length} transfer(s); bank $${funds.bankUsd.toLocaleString("en-US")}` : "Clock back to rent day",
+    });
 
     return NextResponse.json({
       success: true,

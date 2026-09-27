@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ATTACKS, type AttackName, runAttack } from "@/lib/xrpl/attacks";
 import { withClient } from "@/lib/xrpl/client";
 import { getAgentSeed } from "@/services/agentKeys";
+import { recordActivitySafe } from "@/services/activityLog";
 import { clockOf, getDemoState } from "@/services/demoState";
 import { getBuilding, getDueForTenant, getTenantById } from "@/services/rentRepository";
 
@@ -35,6 +36,13 @@ export async function POST(req: Request, { params }: { params: { name: string } 
       }),
     );
     // "not-ready" (double charge before rent day) isn't an attack result; the UI shows "run after rent day".
+    if (result.rule !== "not-ready") {
+      await recordActivitySafe({
+        run: clock.run, month: clock.month, kind: "attack", tenantId: tenant.id, title: result.title,
+        status: result.blocked ? "blocked" : "failed", rule: result.rule, reason: result.reason,
+        blockedBy: result.blockedBy ?? undefined, amountUsd: result.audit.intent.totalUsd,
+      });
+    }
     return NextResponse.json({ success: true, live: ATTACKS[params.name as AttackName].live, ...result });
   } catch (error) {
     console.error("Attack scenario failed:", error instanceof Error ? error.name : "UnknownError");
