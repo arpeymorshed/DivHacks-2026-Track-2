@@ -16,6 +16,7 @@
     "test": "node src/agent/testTenantAgent.ts && node --experimental-test-module-mocks src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.24.0",
     "mongodb": "^7.6.0",
     "next": "16.3.6",
     "react": "19.3.0",
