@@ -28,7 +28,9 @@ async function walletBalanceUsd(address: string): Promise<number | null> {
   try {
     const { withClient } = await import("@/lib/xrpl/client");
     const { getBalances } = await import("@/lib/xrpl/payments");
-    return await withClient(async (client) => (await getBalances(client, address)).usd);
+    // Don't let a slow Testnet stall the chat on stage: answer without the balance after 4s.
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000));
+    return await Promise.race([withClient(async (client) => (await getBalances(client, address)).usd), timeout]);
   } catch (error) {
     console.error("Wallet balance lookup failed:", error instanceof Error ? error.name : "UnknownError");
     return null;

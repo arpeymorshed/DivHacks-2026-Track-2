@@ -8,8 +8,12 @@ export function asksAboutWallet(text: string): boolean {
 // Only these can be a "pay on the Nth" request, so only these need Gemini's intent parser
 // (saves one Gemini call per ordinary question; the free tier allows ~20 calls a day).
 export function mightBePayLater(text: string): boolean {
-  return /\b(later|extension|extend|delay|postpone|push|reschedule|until|by the|on the|next week|friday|payday)\b/i.test(text)
+  return /\b(later|extension|extend|delay|postpone|push|reschedule|until|by the|on the|next week|payday|few days|couple (of )?days)\b/i.test(text)
+    || /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b/i.test(text)
+    || /\bnext \w+/i.test(text)
+    || /\bin \d+ days?\b/i.test(text)
     || /\b\d{1,2}(st|nd|rd|th)\b/i.test(text)
+    || /\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\b/i.test(text)
     || /\bpay\b.*\b(on|by|after)\b/i.test(text);
 }
 

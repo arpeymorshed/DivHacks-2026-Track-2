@@ -4,7 +4,8 @@ import { asksAboutWallet, mightBePayLater, walletSentence } from "./walletReply.
 for (const t of ["what's my wallet balance", "do I have enough?", "how much should I top up", "am I short", "Balance?"]) equal(asksAboutWallet(t), true, t);
 for (const t of ["why is ConEd $38?", "when is rent due"]) equal(asksAboutWallet(t), false, t);
 
-for (const t of ["can I pay on the 5th?", "I get paid on the 5th", "can I pay later", "I need an extension", "pay by friday"]) equal(mightBePayLater(t), true, t);
+for (const t of ["can I pay on the 5th?", "I get paid on the 5th", "can I pay later", "I need an extension", "pay by friday",
+  "could I pay next Monday", "can I pay the rent the fifth", "can I pay in a few days", "I get paid in 3 days"]) equal(mightBePayLater(t), true, t);
 for (const t of ["what's my wallet balance", "why is ConEd $38?", "what do I owe?"]) equal(mightBePayLater(t), false, t);
 
 equal(walletSentence(1000, 1488), "Your rent wallet has $1,000. You owe $1,488, so you're $488 short. Top up to pay on time.");
