@@ -8,6 +8,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc -p tsconfig.server.json",
+    "test": "node src/agent/testTenantAgent.ts && node --experimental-test-module-mocks src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts",
+    "test:photon": "node src/services/testPhotonApi.ts",
+    "test:outbox": "node --env-file-if-exists=.env.local src/services/testOutbox.ts",
     "setup:xrpl": "tsx scripts/setup-xrpl.ts",
     "test:payment": "tsx scripts/test-payment.ts",
     "guardian": "tsx guardian/server.ts",
@@ -18,9 +21,11 @@
     "test:topup": "tsx scripts/test-topup.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.24.0",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "lucide-react": "^0.383.0",
+    "mongodb": "^7.6.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
