@@ -57,6 +57,7 @@ export type Due = {
   dueDate: string;
   daysLate: number;
   lateFeeUsd: number;
+  payLaterUntil?: string;
   reason: string;
 };
 
