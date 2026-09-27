@@ -3,6 +3,7 @@
 _Owned by the Debugger chat. Anyone may add a bug. Format: `- [ ] YYYY-MM-DD: symptom, steps to reproduce, (fixed: cause + fix)`._
 
 ## Open
+- [ ] 2026-09-27 (**Owner: Builder**): Chat can't answer "what's my wallet balance"; every chat reply is the same canned text. Repro on `aartee.tech`: `POST /api/chat {"tenantId":"kashish","text":"what's my wallet balance"}` returns "Hi Kashish. You currently owe $1488: $1450 rent + $38 utilities." (the Gemini-failure fallback in `app/api/chat/route.ts`). Two causes: (1) **Gemini quota**: the key is on the free tier, 20 requests/day for `gemini-3.8-flash` (429 `GenerateRequestsPerDayPerProjectPerModel-FreeTier`), and each chat uses 2 calls (`parseTenantRequest` + `generateTenantReply`). Arpey to enable billing on the Gemini key. (2) **No balance in the chat facts**: `/api/chat` only passes rent/utilities/late fee/due date, so even a working Gemini can't answer balance questions. Requested (Arpey, via Debugger): when the message mentions wallet/balance/top up/short, look up the tenant's wallet balance on the ledger (lazy `await import()` of `lib/xrpl/client` + `getBalances`, like `stateService`, so xrpl never loads at module load). Add it to the Gemini facts and to the fallback reply (e.g. "Your rent wallet has $1,000. You owe $1,488, so you're $488 short."). Optional: skip the Gemini intent call when the text clearly isn't a pay-later request, to halve quota use.
 
 ## Fixed
 
