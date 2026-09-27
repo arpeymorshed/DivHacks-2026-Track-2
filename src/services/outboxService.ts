@@ -60,25 +60,40 @@ export async function acknowledgeOutboxMessage(id: string): Promise<boolean> {
 
 export async function resetDemoOutbox() {
   const db = await getDb();
+  const outbox = db.collection<OutboxMessage>("outbox");
 
-  const result = await db.collection<OutboxMessage>("outbox").updateMany(
-    {
+  const messages = await outbox
+    .find({
       tenantId: {
         $in: ["abhimanyu", "kashish", "musammat"],
       },
-    },
-    {
-      $set: {
-        status: "pending",
+      dedupeKey: {
+        $regex: "^rent-due:",
       },
-      $unset: {
-        sentAt: "",
-      },
-    }
-  );
+    })
+    .toArray();
+
+  let modified = 0;
+
+  for (const message of messages) {
+    const result = await outbox.updateOne(
+      { _id: message._id },
+      {
+        $set: {
+          id: randomUUID(),
+          status: "pending",
+        },
+        $unset: {
+          sentAt: "",
+        },
+      }
+    );
+
+    modified += result.modifiedCount;
+  }
 
   return {
-    matched: result.matchedCount,
-    modified: result.modifiedCount,
+    matched: messages.length,
+    modified,
   };
 }
