@@ -6,6 +6,8 @@ _Demo names (decision 2026-09-26, Arpey): Abhimanyu = old "Maya", Kashish = old 
 
 ## Todo
 
+> **Decision 2026-09-27 (Arpey):** the product name is **Aartee** everywhere (web app, bot, domain aartee.tech). The on-chain credential type `RentRelayTenantAgent` stays as is.
+
 > **Decisions 2026-09-26 (Arpey, via Planner):** (a) demo key header on state-changing routes = yes (T18a). (b) "jump to rent day" goes to the 1st of the month. (c) live-spawned tenants get no backup key for the hackathon (seed tenants keep theirs). Q&A: "In production the tenant generates their backup key on their own phone and shares only its address, so neither we nor the landlord ever see it."
 
 ### Hour 1: everyone
@@ -17,8 +19,6 @@ _Demo names (decision 2026-09-26, Arpey): Abhimanyu = old "Maya", Kashish = old 
 ### Tier 1: the spine
 - [ ] T16 [P2] Dues engine: monthly dues per tenant (rent × share + utilities), stages upcoming/due/grace/late. Done when unit tests pass for day −3, 0, 3 and 8.
 - [ ] T17 [P2] `POST /api/tick`: each tenant agent pays on the due date if its wallet has enough (PaymentIntent → `lib/xrpl` → Guardian → submit → AuditEntry with memo hash), and the main agent marks it paid. XRPL mocked until T12/T13 land. Done when rent day produces correct intents. _Review note 2026-09-26: pass `{today, month, run}` to `requestCosign` and `period: periodKey(month, run)` to `buildPayment` (REVIEW.md @ 15b2692)._ **2026-09-26:** `POST /api/rent-day` merged (#15) on mocks; now real XRPL payments through the Guardian on `p1-real-payments` (see T21a).
-- [ ] T19 [P3] Landlord console from mock JSON: building grid (units → tenants → status chip, fee, explorer link), audit log. Done when it renders `mocks/state.json`. _(UI exists as mocks on `frontend`; wire it up after T01a.)_ **2026-09-26: Kashish wires this to the real API** (`/api/state` + action routes; see docs/MONEY-LAYER.md).
-- [ ] T20 [P3] Demo controls: "+1 day", "jump to rent day", "reset". Done when they're wired to `/api/clock` and `/api/demo/reset`. _(UI exists as mocks on `frontend`; wire it up after T01a.)_ **2026-09-26: Kashish wires this to the real API** (`/api/state` + action routes; see docs/MONEY-LAYER.md). Decision (b): "jump to rent day" = the 1st of the month.
 - [ ] T21 [P2+P1] **Integration: Tier 1 end to end.** Real RLUSD rent day through the Guardian; the console turns green; explorer links work. Done when P4 has tested it on the deployed URL. **2026-09-26:** backend half done (#16, #18: real rent day through the Guardian, verified end to end through the routes). UI half pending: Kashish wires the UI to `/api/state` + the action routes.
 - [ ] T18a [Builder] **Demo key header** (decision (a), 2026-09-26): routes that change things (reset, clock, rent-day, tenants/spawn, topup, attacks) require a shared `DEMO_KEY` via an `x-demo-key` header; `/api/state` and `/api/chat` stay open. The UI demo controls send it; document in `.env.example`. Next after T18. **2026-09-27: in progress on `cursor/demo-key-5063`.** `requireDemoKey` on those routes; `.env.example` has `DEMO_KEY` + `NEXT_PUBLIC_DEMO_KEY`. UI still needs to send the header when Kashish wires the console.
 
