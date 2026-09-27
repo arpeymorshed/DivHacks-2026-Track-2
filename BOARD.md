@@ -11,12 +11,12 @@ _Plan: [PLAN.md](PLAN.md) (RentRelay, adopted 2026-09-26). Tasks are in build or
 - [ ] T03 [P4] Register the `.tech` domain via MLH and point it at Vercel. Ask the booths: Ripple (Credentials + multi-sign + RLUSD on Testnet?) and Photon (Mac or iMessage number needed?). Done when the domain loads and the answers are posted in team chat.
 
 ### Tier 1: the spine
-- [ ] T10 [P1] `scripts/setup-xrpl.ts`: faucet-fund landlord, ops, simulated bank and 3 tenant wallets. Add RLUSD trust lines and fund the bank with RLUSD. Done when it prints all addresses + explorer links.
 - [ ] T11 [P1] Rent wallets: signer list agent(1) + Guardian(1) + tenant backup(2), quorum 2, master key disabled. Done when the explorer shows the signer list and the master is disabled.
 - [ ] T12 [P1] `lib/xrpl`: `buildPayment`, `agentSign`, `multisignSubmit` (fee autofilled with `signersCount`), `getBalances`, `topUp`, with a memo. Done when a script pays RLUSD tenant → landlord with 2 signatures.
-- [ ] T13 [P1] Guardian service `POST /cosign`: decode the real tx, apply the 5 rules (landlord address, cap, window, not already paid, legal late fee), return a `GuardianDecision`, deploy separately. Done when an approve case and a refuse case both pass.
-- [ ] T14 [P2] `lib/db` + `scripts/seed-db.ts`: landlord Arpey; Unit 4B (Abhimanyu 50%, Kashish 50%, $2,900), Unit 2A (Musammat, $1,450), caps, wallets from T10. Done when the seed runs cleanly and can re-run.
-- [ ] T15 [P2] Demo clock (`lib/clock`, stored in the DB) + `POST /api/clock` + `POST /api/demo/reset`. Done when advancing the clock changes "today" everywhere.
+- [ ] T12a [P1] RLUSD 1:1000 scale (decision 2026-09-26, see PLAN.md Tech stack): `RLUSD_PER_USD = 0.001` + `usdToRlusd`/`rlusdToUsd` in `lib/xrpl` only (6-decimal rounding); bank → tenant seed top-ups use the scaled amounts. Prerequisite: 10 RLUSD claimed at tryrlusd.com to the bank `rJh7RhyBMGntpmmEQB6eRmSm7L1YFGADtk` (Arpey, via GitHub sign-in). Done when a $1,450 rent payment moves 1.45 RLUSD and the app shows $1,450.
+- [ ] T13 [P1] Guardian service `POST /cosign`: decode the real tx, apply the 5 rules (landlord address, cap, window, not already paid, legal late fee), return a `GuardianDecision`, deploy separately. **Converts the tx's RLUSD amount back to USD (÷ 0.001) before checking caps and fees.** Done when an approve case and a refuse case both pass.
+- [ ] T14 [P2] `lib/db` + `scripts/seed-db.ts`: Unit 4B (Abhimanyu 50%, Kashish 50%, $2,900), Unit 2A (Musammat, $1,450), caps, wallets from T10. Done when the seed runs cleanly and can re-run.
+- [ ] T15 [P2] Demo clock (`lib/clock`, stored in the DB) + `POST /api/clock` + `POST /api/demo/reset`. Reset also **recycles RLUSD**: landlord → bank → each tenant back to its seed balance (via P1's `lib/xrpl`). Done when advancing the clock changes "today" everywhere.
 - [ ] T16 [P2] Dues engine: monthly dues per tenant (rent × share + utilities), stages upcoming/due/grace/late. Done when unit tests pass for day −3, 0, 3 and 8.
 - [ ] T17 [P2] `POST /api/tick`: each tenant agent pays on the due date if its wallet has enough (PaymentIntent → `lib/xrpl` → Guardian → submit → AuditEntry with memo hash), and the main agent marks it paid. XRPL mocked until T12/T13 land. Done when rent day produces correct intents.
 - [ ] T18 [P2] `GET /api/state` returns the building, tenants, dues, balances, audit and clock. Done when it matches P3's mock shape.
@@ -54,5 +54,6 @@ _Plan: [PLAN.md](PLAN.md) (RentRelay, adopted 2026-09-26). Tasks are in build or
 ## In progress
 
 ## In review
+- [ ] T10 [P1] `scripts/setup-xrpl.ts`: faucet-fund landlord, ops, simulated bank and 3 tenant wallets. Add RLUSD trust lines and fund the bank with RLUSD. Done when it prints all addresses + explorer links. _(2026-09-26, branch `money-layer`, uncommitted)_ **Changed:** added `scripts/setup-xrpl.ts` + `lib/xrpl/{config,client,rlusd}.ts`; it faucet-funds the 6 accounts, sets 5 RLUSD trust lines (issuer rQhWct2…iLKV) and saves seeds to git-ignored `.secrets/xrpl.env`. Re-runs are idempotent. **Try:** `npm install && npm run setup:xrpl` in DivHacks-2026-Track-2. **Open:** bank has 0 RLUSD until someone funds rJh7RhyBMGntpmmEQB6eRmSm7L1YFGADtk at tryrlusd.com (no faucet API).
 
 ## Done

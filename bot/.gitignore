@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.local
+dist
+*.log
+.DS_Store
+
+# RentRelay: outbox ids already delivered (local state)
+.outbox-sent.json
+.outbox-sent.json.tmp

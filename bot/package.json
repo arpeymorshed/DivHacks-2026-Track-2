@@ -1,0 +1,20 @@
+{
+  "name": "bot",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "mock": "bun mock/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@spectrum-ts/imessage": "^12.10.1",
+    "spectrum-ts": "^12.10.1"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/bun": "latest"
+  }
+}

@@ -1,0 +1,13 @@
+# Bugs
+
+_Owned by the Debugger chat. Anyone may add a bug. Format: `- [ ] YYYY-MM-DD: symptom, steps to reproduce, (fixed: cause + fix)`._
+
+## Open
+
+## Fixed
+
+- [x] 2026-09-26: Guardian fee check let a transaction with no `Fee` (or a non-numeric one) through: `Number(undefined) > 5000` is `false`. Repro: `checkRules` with `tx.Fee` undefined passed the fee rule. Found by /merge-check review on `money-layer`. (fixed: `guardian/rules.ts` now refuses a missing, non-numeric or negative fee under `tx-shape`, and there's a regression test in `guardian/rules.test.ts`.)
+- [x] 2026-09-26: `bot/src/index.ts` imports `@spectrum-ts/imessage`, but it wasn't in `bot/package.json`. It only resolved because `spectrum-ts` pulls it in, so it could break on a dependency update. Found by /merge-check review on `photon-bot`. (fixed: added `@spectrum-ts/imessage ^12.10.1` to `bot/package.json` and `bot/bun.lock`, the same version that was already locked.)
+
+- [x] 2026-09-26: Bot mock backend numbers didn't match `fixtures/demo-script.md` (Abhimanyu $42 utilities / $1,492, Musammat $40 / $1,490, "split three ways" utility reply), so a demo on the mock showed the wrong numbers. Repro: `POST /api/chat {"tenantId":"abhimanyu","text":"why is the utility bill $38?"}`. Found by /merge-check on `photon-bot`. (fixed: mock tenant data was out of date. Set $38 utilities and $1,488 totals for all three, reminders and utility replies now use the script's wording and the $114 building bill split, in `bot/mock/server.ts`.)
+- [x] 2026-09-26: Guardian `POST /cosign` with no body (or no JSON content-type) returned a 500 HTML page with a stack trace and local file paths. Repro: `curl -X POST localhost:4001/cosign`. Found by /merge-check on `money-layer`. (fixed: Express 5 leaves `req.body` undefined, so destructuring threw. Default it to `{}` in `guardian/server.ts`, so it's refused with the usual 403 `tx-shape` JSON.)

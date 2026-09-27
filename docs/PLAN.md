@@ -1,6 +1,6 @@
-# DivHacks 2026: RT (Renter's Treasurer)
+# Plan: RentRelay
 
-> ✅ **Build plan: v3 adopted (2026-09-26).** Tasks: [BOARD.md](BOARD.md). Earlier drafts: [PROPOSAL-v3.md](PROPOSAL-v3.md), [PROPOSAL-v2.md](PROPOSAL-v2.md).
+_Owned by the Planner chat. **Status 2026-09-26: v3 ADOPTED as the build plan**, with all judge-review fixes. Earlier ideas: [PROPOSAL-v2.md](PROPOSAL-v2.md) (SplitSafe), [PROPOSAL-v3.md](PROPOSAL-v3.md) (v3 draft). Tasks are in [BOARD.md](BOARD.md)._
 
 ## Hackathon context
 - **DivHacks 2026 @ Columbia**, theme **"Concrete Jungle"** (NYC: food, housing, transportation).
@@ -68,7 +68,8 @@ Framing: *"Your agent's job is to make sure you never pay a late fee. And if you
    - not already paid this month
    - legal late fee (cap, grace, once per month)
 4. **Demo clock** (a simulated "today" stored in the DB) + `/api/tick`: every agent acts on the simulated date.
-5. Seed building: landlord Arpey; Unit 4B (Abhimanyu 50%, Kashish 50%, $2,900 rent), Unit 2A (Musammat, $1,450). Rules, caps, rent wallets funded.
+5. Seed building: landlord **Arpey**. Unit 4B (**Abhimanyu** 50%, pays on time; **Kashish** 50%, the late one, pays a $15 fee on day 8; $2,900 rent), Unit 2A (**Musammat** 100%, $1,450). Rules, caps, rent wallets funded.
+   - _Decision 2026-09-26 (Arpey): the demo uses the team's names in place of Maya/Jordan/Priya. Display only: the Guardian keys rent wallets by address, so no wallets, keys or on-chain data change._
 6. **Autonomous rent day:** tick on the 1st → each tenant agent pays its share with the Guardian's co-signature and an audit memo → the main agent reconciles.
 7. Landlord console: building grid (units → tenants → paid / due / grace / late + fee), explorer links, audit log.
 8. **Demo controls + reset:** "+1 day", "jump to rent day", "reset building."
@@ -180,6 +181,8 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 | **P3: Frontend** | Tenant phone view + web chat, landlord console grid, spawn animation, attack panel, demo controls | Both views render from mock `/api/state` JSON |
 | **P4: Photon + ship** | Spectrum bot, `.tech` domain, Vercel/env, fixtures (ConEd bill, scam text), preflight, deck, Devpost, backup video, testing | App deployed at the domain, and a Photon bot replying in iMessage |
 
+_Frontend status 2026-09-26: Kashish's `origin/frontend` (tenant app, group chat, landlord view, dark mode) is a standalone Next.js app using **all mock data**. The Builder is moving it onto `frontend-integration` from `main` (board T01a), which also delivers T01's Next.js scaffold. Wiring it to `/api/state`, `/api/clock`, `/api/attacks/:name` and `/api/topup` is still needed (T19/T20/T32/T38)._
+
 **Team rules:**
 - One branch per person, and each person edits only their own folders.
 - Mocks sit behind the real function signatures, so nobody blocks anyone.
@@ -199,14 +202,10 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 | 9:30 AM | **Submit on Devpost** |
 
 ## Demo script (~3 min, tenant first)
-
-Demo roles: Unit 4B roommates **Abhimanyu + Kashish**; Unit 2A tenant **Musammat**;
-landlord **Arpey**.
-
-1. **(20s) Abhimanyu's phone:** the agent texts *"Rent this month: $1,488 ($1,450 + $38 ConEd). You're covered, and I'll pay on the 1st."* Abhimanyu asks "why is ConEd $38?", and it explains the building bill split.
+1. **(20s) Abhimanyu's phone:** their agent texts *"Rent this month: $1,488 ($1,450 + $38 ConEd). You're covered, and I'll pay on the 1st."* Abhimanyu asks "why is ConEd $38?", and the agent explains the building bill split.
 2. **(20s) Why an agent:** changing amounts, roommates pay separately, scam-proof, it talks to you.
-3. **(30s) Behind the scenes:** Arpey adds a new tenant in the landlord console → **a new agent spawns live**: wallet funded by the main agent, credential issued.
-4. **(40s) Rent day:** jump the demo clock to the 1st → every agent pays **on its own** → the grid turns green, except Kashish (short). Kashish texted *"I get paid on the 5th"*, and the agent agreed (inside the grace period, no fee). Kashish forgets. Day 8 → the agent pays rent + **$15**, capped by NY law. **Abhimanyu paid nothing extra.** Open the transaction on the explorer.
+3. **(30s) Behind the scenes:** in the landlord console, a new tenant is added → **a new agent spawns live**: wallet funded by the main agent, credential issued.
+4. **(40s) Rent day:** jump the demo clock to the 1st → every agent pays **on its own** → the grid turns green, except Kashish (short). Kashish texted *"I get paid on the 5th"*, and their agent agreed (inside the grace period, no fee). Kashish forgets. Day 8 → their agent pays rent + **$15**, capped by NY law. **Abhimanyu paid nothing extra.** Open the transaction on the explorer.
 5. **(45s) What could go wrong:** scam "new bank account" text → blocked. Landlord agent tries a $200 late fee → blocked (illegal). Stolen agent key → **the ledger itself** rejects it.
 6. **(20s) Close:** *"A personal rent agent for every tenant. It reminds, explains and pays on time, and it can't be scammed, can't overcharge you, and can't break the law. The AI decides. The ledger enforces."*
 
@@ -221,175 +220,3 @@ landlord **Arpey**.
 - **Is it really autonomous?** The demo clock only fast-forwards time. No human approves any payment.
 - **KYC?** Tenants are verified at onboarding. Agent identity is on-chain via Credentials.
 - **Cost at scale?** Each agent wallet holds a small XRP reserve, paid by the landlord's ops account. It's cents per tenant.
-
-## Run the rent-day API locally
-
-Use Node.js 24 or newer. Install dependencies and start the Next.js development server:
-
-```bash
-npm ci
-npm run dev
-```
-
-In another terminal, trigger rent day:
-
-```bash
-curl -X POST http://localhost:3000/api/rent-day
-```
-
-The endpoint returns `{ success: true, results: [...] }` with Abhimanyu's
-$1,488, Kashish's $1,488, and Musammat's $1,952 intents for `rARPEY_DEMO`.
-Rent day reads the building, tenants, agents, and dues from Atlas through
-`src/services/rentRepository.ts`. `runRentDay(month)` defaults to `2026-10`, filters
-dues by month, and skips tenants missing a due or agent. Seed the database first.
-Changes to stored amounts are reflected in the next request without editing seed files.
-Each result contains `tenantId`, `intent`, `guardianDecision`, and `payment`.
-The demo Guardian rejects an incorrect landlord destination or an amount above the
-tenant's cap. Approved results include a payment with `status: "mock-paid"` and a
-`MOCK-` UUID transaction hash. Rejected results have `payment: null`; other tenants
-continue processing. Top-level `success: true` means rent day finished, not that
-every tenant was approved.
-Unexpected failures return HTTP 500 and `{ success: false, error: "Failed to run rent day" }`.
-No real payments or XRPL network calls occur. Payment-window checks, duplicate-payment
-checks, and real Guardian/XRPL integration remain future work; repeated calls generate
-new mock results. `npm test` covers approval, wrong destinations, cap limits (including
-a temporary $1,000 cap rejection), and missing dues.
-Next.js loads the ignored `.env.local` automatically. No phone numbers are included in
-the response. The route lives at `src/app/api/rent-day/route.ts`; `@/` resolves to `src/`
-and `@/types/` resolves to the existing root `types/` directory.
-
-Checks: `npm test`, `npm run typecheck`, and `npm run build`.
-
-## MongoDB Atlas connection test
-
-Add `MONGODB_URI` with your Atlas driver connection string and `MONGODB_DB="rentrelay"`
-to ignored `.env.local`. Never commit the actual URI. The committed `.env.example`
-contains empty MongoDB values. Atlas must allow connections from your current IP,
-and the database user must have read/write access to `rentrelay`.
-
-Restart `npm run dev` after configuring the connection, then run:
-
-```bash
-curl http://localhost:3000/api/db-test
-```
-
-This temporary endpoint inserts one document into `rentrelay.connectionTests`, then
-reads that exact document back. Success returns `{ success: true, insertedId: "...",
-readBack: true }`. Each call adds a test document, which is left in Atlas for inspection.
-Failures return HTTP 500 with `{ success: false, error: "MongoDB connection failed" }`.
-Connection secrets are not returned or logged. Restart the server if the URI changes.
-
-All database access goes through `getDb()` in `src/lib/mongodb.ts`, which reuses one
-MongoClient connection promise per server process, including development reloads.
-Rent day and chat now read from MongoDB. The phone lookup helper still uses demo arrays.
-
-## Seed the demo data in Atlas
-
-With `.env.local` configured and `npm run dev` running:
-
-```bash
-curl -X POST http://localhost:3000/api/seed
-```
-
-Success returns `{ success: true, seeded: { building: 1, tenants: 3, tenantAgents: 3,
-dues: 3 } }`. The helper upserts `buildings`, `tenants`, and `tenantAgents` by `id`,
-and `dues` by `{ tenantId, month }`, with unique indexes on those keys. Rerunning
-refreshes the demo records rather than duplicating them. Other records are not deleted.
-Units 4B and 2A are embedded in the building document: Arpey is the landlord;
-Abhimanyu and Kashish share 4B; Musammat is in 2A. Tenant phone values come from
-the local environment and are stored in Atlas, never as literals in committed files.
-
-The temporary seed route returns HTTP 403 in production before accessing MongoDB.
-Seeding refreshes the data read by rent day and chat. It does not reset the MongoDB outbox.
-
-## Photon integration (P2 / P4)
-
-P4 maps the sender's phone number to `tenantId` before calling P2. The shared
-`ChatRequest`, `ChatResponse`, and `OutboxMessage` contracts live in `types/rent.ts`.
-
-```bash
-curl -X POST http://localhost:3000/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"tenantId":"musammat","text":"What do I owe?"}'
-```
-
-Returns `{ "reply": "You currently owe $1952: $1900 rent + $52 utilities." }`.
-Chat loads the tenant and October 2026 due from Atlas through `getTenantById()` and
-`getDueForTenant()`. Replies are deterministic: questions containing "owe" or "due"
-(case-insensitive) return the stored balance and any late fee. If the tenant has no
-due for the month, the reply says no current balance was found; other text returns
-a rent-help greeting. Missing, blank, or non-string fields and malformed
-JSON return HTTP 400; an unknown tenant returns 404. Gemini is a later step.
-
-`POST /api/rent-day` queues a total reminder for each processed tenant after its mock
-Guardian/payment result. The reminder states the amount owed, not a claim that real
-money was paid. Retrieve queued messages with:
-
-```bash
-curl http://localhost:3000/api/outbox
-```
-
-The response is an array of `{ id, tenantId, text }` containing only pending messages,
-oldest first. MongoDB's `outbox` collection retains messages across server restarts.
-Stored records also contain `status`, `dedupeKey`, `createdAt`, and optional `sentAt`;
-those internal fields are excluded from P4's response.
-
-After Photon successfully sends a message, acknowledge its ID:
-
-```bash
-curl -X POST http://localhost:3000/api/outbox/YOUR_MESSAGE_ID/ack
-```
-
-Success returns `{ "success": true, "id": "YOUR_MESSAGE_ID" }`. MongoDB marks the
-record `sent` with `sentAt`, and subsequent polls exclude it. Repeating the same
-acknowledgement succeeds without changing `sentAt`; unknown IDs return 404.
-Polling alone never marks a message sent. Database failures return a generic 500.
-
-A unique index on `dedupeKey` prevents duplicate reminders even during concurrent
-rent-day runs. The key is `rent-due:<month>:<tenantId>`. Rerunning rent day preserves
-the original reminder and does not requeue sent messages. This deduplicates messages;
-mock payment results are still generated on each rent-day run.
-
-Run `npm run test:photon` with the local server running to verify chat responses,
-validation, stable polling, and deduplication across concurrent rent-day requests.
-Run `npm run test:outbox` to verify persistence, concurrent enqueue, acknowledgements,
-and stored timestamps against Atlas and the local API. It creates uniquely named
-test reminders and removes only those test documents afterward.
-
-## Local demo phone mapping (P2 / P4)
-
-The current shared contracts live in `types/rent.ts`. Demo tenants read
-`DEMO_ABHIMANYU_PHONE`, `DEMO_KASHISH_PHONE`, and `DEMO_MUSAMMAT_PHONE` from the server's
-environment. If `.env.local` does not exist, copy `.env.example` to it. Fill in
-each assigned number locally in E.164 format (a leading `+`, country code, and
-digits, with no spaces or punctuation). Use a different number for each tenant.
-`DEMO_ARPEY_PHONE` belongs to landlord Arpey and is excluded from tenant lookup. Empty values leave
-the tenant unconfigured for messaging. `.env.local` is ignored by Git; real phone
-numbers must never be added to tracked files or frontend environment variables.
-
-The Photon dashboard's **Own Number** column provides the personal sender numbers
-for `DEMO_*_PHONE`. Its **Texts On** column provides the bot destination numbers for
-`DEMO_*_PHOTON_NUMBER`: these are the numbers each person texts to reach Photon.
-Keep both sets only in `.env.local`. Tenant lookup matches personal sender numbers,
-not Photon destination numbers. The destination variables are reserved for P4's
-integration. P2 exposes chat/outbox APIs; P4 is responsible for sending iMessages.
-
-`getTenantByPhone()` in `src/services/tenantLookup.ts` returns the matching tenant,
-including its `agentId`, or `undefined` for unknown, empty, or malformed numbers.
-The helper is available for phone-based lookups, but `/api/chat` uses P4's `tenantId`
-directly. Payment-intent generation still uses the tenant and its due directly.
-
-With the current Node 24 setup, load `.env.local` explicitly when running a script:
-
-```bash
-node --env-file=.env.local src/agent/testTenantAgent.ts
-node src/services/testTenantLookup.ts
-```
-
-The lookup test uses synthetic numbers and does not require team phone numbers.
-Environment values are read when the demo data module loads, so restart the process
-after editing `.env.local`.
-
-The current `{ tenantId, text }` → `{ reply }` chat contract replaces the earlier
-proposed `{ from, message }` contract. No `/api/message` endpoint is needed for P4's
-current integration.
