@@ -4,6 +4,7 @@ import {
   ChevronDown, CheckCircle2, RotateCcw, Send, RefreshCw, Bell, X, MessageCircle,
   Moon, Sun,
 } from "lucide-react";
+import { buildPoloReply, type TenantChatState } from "@/lib/poloChat";
 
 const LA = "rLndQ7v...4kDf";
 const initT = () => ({
@@ -129,30 +130,6 @@ type TopUpResult =
   | { ok: true; bal: number; added: number }
   | { ok: false; error: string; room: number };
 
-function parseTopUpAmount(text: string): number | null {
-  const q = text.toLowerCase().replace(/,/g, "").trim();
-  const patterns = [
-    /\b(?:top\s*up|add|deposit|fund|put)\b(?:\s+\w+){0,4}\s*\$?\s*(\d+(?:\.\d{1,2})?)/i,
-    /^\$?\s*(\d+(?:\.\d{1,2})?)\s*(?:please)?$/,
-    /\$\s*(\d+(?:\.\d{1,2})?)\s*(?:to\s+(?:my\s+)?wallet|into\s+(?:my\s+)?wallet)/i,
-  ];
-  for (const re of patterns) {
-    const m = q.match(re);
-    if (m) {
-      const n = parseFloat(m[1]);
-      if (Number.isFinite(n) && n > 0) return Math.round(n * 100) / 100;
-    }
-  }
-  return null;
-}
-
-function wantsTopUp(text: string): boolean {
-  const q = text.toLowerCase();
-  return /\b(top\s*up|topup|deposit|fund|add\s+(?:money|funds|\$)|put\s+\$)/.test(q)
-    || q.includes("add to my wallet")
-    || q.includes("add to wallet");
-}
-
 function Chat1({
   tid, tn, open, close, onTopUp,
 }: {
@@ -175,9 +152,9 @@ function Chat1({
 
   const widgets = (() => {
     const items: { tag: string; label: string; prompt: string }[] = [
+      { tag: "Wallet", label: "Wallet balance", prompt: "What's my wallet balance?" },
       { tag: "Balance", label: "What do I owe?", prompt: "What do I owe?" },
       { tag: "Schedule", label: "When is rent due?", prompt: "When is rent due?" },
-      { tag: "Wallet", label: "Wallet balance", prompt: "What's my wallet balance?" },
       { tag: "Limits", label: "What's my cap?", prompt: "What's my cap?" },
     ];
     if (shortAmt > 0 && shortAmt <= room) {
@@ -202,88 +179,16 @@ function Chat1({
   useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [ms, typ]);
   useEffect(() => { if (open) setTimeout(() => ir.current?.focus(), 180); }, [open]);
 
-  function answer(text: string): { t: string; r: "a" | "err" } {
-    const exact = d.an[text as keyof typeof d.an];
-    if (exact) return { t: exact, r: "a" };
-
-    const q = text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
-
-    if (wantsTopUp(text) || (parseTopUpAmount(text) !== null && /\b(top\s*up|add|deposit|fund|wallet)\b/.test(q))) {
-      const amt = parseTopUpAmount(text);
-      if (amt === null) {
-        return {
-          t: room <= 0
-            ? `Your wallet is at the $${f$(tn.cap)} cap (balance $${f$(tn.bal)}). You can't add more right now.`
-            : `How much should I add? You can top up up to $${f$(room)} before hitting your $${f$(tn.cap)} cap. Try “Top up $100”.`,
-          r: "a",
-        };
-      }
-      const result = onTopUp(amt);
-      if (result.ok === false) return { t: result.error, r: "err" };
-      return {
-        t: `Done — added $${f$(result.added)} to your rent wallet. New balance: $${f$(result.bal)} (cap $${f$(tn.cap)}).`,
-        r: "a",
-      };
-    }
-
-    if (/\bcap\b/.test(q) || q.includes("limit")) {
-      return {
-        t: `Your wallet cap is $${f$(tn.cap)}. Balance $${f$(tn.bal)}, so you can still add up to $${f$(room)}.`,
-        r: "a",
-      };
-    }
-
-    const asksWhen =
-      /\bwhen\b/.test(q) ||
-      q.includes("due date") ||
-      q.includes("deadline") ||
-      q.includes("by when") ||
-      q.includes("what day");
-    const asksMoney =
-      /\b(total|owe|owed|owing|due|balance|wallet|short|amount|bill|fee|cost|charge|payment|rent|pay|paying|utilit)\b/.test(q) ||
-      q.includes("how much") ||
-      q.includes("what do i") ||
-      q.includes("whats my") ||
-      q.includes("what is my") ||
-      q.includes("left to pay") ||
-      q.includes("still need");
-
-    if (asksMoney || asksWhen) {
-      const parts = [`$${f$(tn.rS)} rent`, `$${f$(tn.ut)} ConEd`];
-      if (tn.lf > 0) parts.push(`$${f$(tn.lf)} late fee`);
-      const breakdown = `${parts.join(" + ")} = $${f$(totDue)}`;
-      const wallet = `Wallet has $${f$(tn.bal)}.`;
-      const tip = shortAmt > 0 ? ` You're short $${f$(shortAmt)} — say “Top up $${f$(shortAmt)}” to cover it.` : "";
-
-      if (asksWhen) {
-        if (tn.st === "late") {
-          return { t: `You're ${tn.dl} days overdue. You owe ${breakdown}. ${wallet}${tip}`, r: "a" };
-        }
-        if (tn.st === "paid") {
-          return { t: `September is settled. Next payment of $${f$(totDue)} is due Oct 1 (${breakdown}). ${wallet}`, r: "a" };
-        }
-        return { t: `Your next payment of $${f$(totDue)} is due Oct 1. Breakdown: ${breakdown}. ${wallet}${tip}`, r: "a" };
-      }
-      if (q.includes("wallet") || q.includes("balance")) {
-        return { t: `${wallet} Cap $${f$(tn.cap)} — room for $${f$(room)} more.${tip}`, r: "a" };
-      }
-      return { t: `You currently owe ${breakdown}. ${wallet}${tip}`, r: "a" };
-    }
-
-    const fuzzy = Object.keys(d.an).find((k) => {
-      const key = k.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
-      return q.includes(key) || key.includes(q);
-    });
-    if (fuzzy) return { t: d.an[fuzzy as keyof typeof d.an], r: "a" };
+  function toState(): TenantChatState {
     return {
-      t: "I can check what you owe, your wallet balance, when rent is due, or top up your wallet (e.g. “Top up $100”).",
-      r: "a",
+      name: tn.name, unit: tn.unit, bal: tn.bal, cap: tn.cap,
+      rS: tn.rS, ut: tn.ut, lf: tn.lf, st: tn.st, dl: tn.dl,
     };
   }
 
   function send(t: string) {
     sM((m) => [...m, { id: Date.now(), r: "u", t }]); sI(""); sT(true);
-    const a = answer(t);
+    const a = buildPoloReply(t, toState(), onTopUp, d.an as Record<string, string>);
     setTimeout(() => {
       sT(false);
       sM((m) => [...m, { id: Date.now() + 1, r: a.r, t: a.t }]);
@@ -344,7 +249,7 @@ function Chat1({
           value={inp}
           onChange={(e) => sI(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }}
-          placeholder='Try “Top up $100” or ask what you owe'
+          placeholder={"Try \u201cWhat\u2019s my wallet balance?\u201d or \u201cTop up $100\u201d"}
           className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30"
         />
         <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
@@ -374,21 +279,16 @@ function GroupChat() {
     sInp(""); sTyp(true);
     const q = text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
     const key = Object.keys(answers).sort((a, b) => b.length - a.length).find((k) => q.includes(k));
-    const asksWhen =
-      /\bwhen\b/.test(q) || q.includes("due date") || q.includes("deadline") || q.includes("by when");
-    const asksMoney =
-      /\b(total|owe|owed|owing|due|balance|wallet|short|amount|bill|fee|rent|pay|paying|payment)\b/.test(q) ||
-      q.includes("how much") ||
-      q.includes("what do i");
+    const abhiState: TenantChatState = {
+      name: "Abhimanyu Dudeja", unit: "4B", bal: 1520, cap: 1600,
+      rS: 1450, ut: 38, lf: 0, st: "paid", dl: 0,
+    };
     let reply: string;
-    if (key) {
+    if (key && !q.includes("wallet") && key !== "total" && !q.includes("balance")) {
       reply = answers[key];
-    } else if (asksMoney || asksWhen) {
-      reply = asksWhen
-        ? "Your next payment of $1,488 is due Oct 1 ($1,450 rent + $38 ConEd). Your wallet covers it."
-        : "You currently owe $1,488: $1,450 rent + $38 ConEd. Your wallet covers it.";
     } else {
-      reply = "I can help with what you owe, your wallet balance, or when rent is due.";
+      const a = buildPoloReply(text, abhiState, () => ({ ok: false as const, error: "Top-ups happen in your personal Polo chat.", room: 80 }), answers);
+      reply = a.t;
     }
     setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "Polo", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
   }

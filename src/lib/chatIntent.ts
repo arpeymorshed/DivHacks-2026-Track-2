@@ -3,12 +3,27 @@
  * Money questions always resolve to a dollar amount when due data exists.
  */
 
-export function normalizeChatText(text: string): string {
-  return text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
-}
+import {
+  isCapIntent,
+  isOweIntent,
+  isWalletBalanceIntent,
+  isWhenDueIntent,
+  normalizeChatText,
+} from "./poloChat.ts";
 
-/** User is asking about amounts they owe / their rent wallet. */
+export {
+  isCapIntent,
+  isOweIntent,
+  isWalletBalanceIntent,
+  isWhenDueIntent,
+  normalizeChatText,
+};
+
+/** @deprecated Prefer isOweIntent / isWalletBalanceIntent. Kept for callers that mean "any money topic". */
 export function isMoneyIntent(message: string): boolean {
+  if (isWalletBalanceIntent(message) || isOweIntent(message) || isCapIntent(message)) {
+    return true;
+  }
   const q = normalizeChatText(message);
   if (
     q.includes("how much") ||
@@ -37,15 +52,7 @@ export function isMoneyIntent(message: string): boolean {
 
 /** User is asking when payment is due (still should include $). */
 export function asksWhenDue(message: string): boolean {
-  const q = normalizeChatText(message);
-  return (
-    /\bwhen\b/.test(q) ||
-    q.includes("due date") ||
-    q.includes("deadline") ||
-    q.includes("by when") ||
-    q.includes("what day") ||
-    q.includes("which day")
-  );
+  return isWhenDueIntent(message);
 }
 
 export function formatMoneyReply(opts: {
@@ -68,4 +75,39 @@ export function formatMoneyReply(opts: {
     return `You currently owe $${total} (${breakdown}).`;
   }
   return `You currently owe $${total}: ${breakdown}.`;
+}
+
+export function formatWalletBalanceReply(opts: {
+  name: string;
+  balanceUsd: number | null;
+  capUsd: number;
+  dueTotalUsd?: number;
+}): string {
+  if (opts.balanceUsd == null) {
+    return (
+      `I can't read ${opts.name}'s on-chain wallet balance right now. `
+      + `Your wallet cap is $${opts.capUsd}. Open Polo in the app for the live demo balance.`
+    );
+  }
+  const room = Math.max(0, Math.round((opts.capUsd - opts.balanceUsd) * 100) / 100);
+  const bal = opts.balanceUsd.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const cap = opts.capUsd.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const roomStr = room.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  let tip = "";
+  if (opts.dueTotalUsd != null) {
+    const short = Math.max(0, Math.round((opts.dueTotalUsd - opts.balanceUsd) * 100) / 100);
+    if (short > 0) {
+      tip = ` You're short $${short.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} toward this month's dues.`;
+    }
+  }
+  return `Your rent wallet balance is $${bal}. Cap $${cap} — you can still add up to $${roomStr}.${tip}`;
 }

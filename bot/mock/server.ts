@@ -53,14 +53,33 @@ const outbox: OutboxMessage[] = [
 let nextId = outbox.length + 1;
 const acked = new Set<string>();
 
+function isWalletBalanceAsk(q: string): boolean {
+  return (
+    (/\bwallet\b/.test(q) && /\b(balance|bal|have|got|hold|left|current)\b/.test(q)) ||
+    /\b(my|current)\s+balance\b/.test(q) ||
+    /\bwallet\s+balance\b/.test(q) ||
+    /\bhow\s+much\s+(?:is\s+)?(?:in\s+)?(?:my\s+)?wallet\b/.test(q) ||
+    /\bwhat(?:'s|s| is)\s+(?:my\s+)?(?:wallet\s+)?balance\b/.test(q) ||
+    /\bshow\s+(?:me\s+)?(?:my\s+)?(?:wallet\s+)?balance\b/.test(q) ||
+    q.trim() === "balance" ||
+    q.trim() === "wallet" ||
+    q.trim() === "my wallet"
+  );
+}
+
 function replyFor(tenantId: string, text: string): string {
   const t = tenants[tenantId];
   if (!t) return "I don't have a record for you yet.";
   const total = t.rent + t.utilities;
   const diff = t.walletBalance - total;
-  const q = text.toLowerCase();
+  const q = text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
 
-  if (/\b(hi|hello|hey)\b/.test(q)) {
+  // Wallet balance before greetings / when / owe so it always shows a $ amount.
+  if (isWalletBalanceAsk(q) || ((q.includes("wallet") || q.includes("balance") || q.includes("short")) && !/\bwhen\b/.test(q))) {
+    if (diff < 0) return `Your rent wallet has ${usd(t.walletBalance)}. You're ${usd(-diff)} short of the ${usd(total)} due ${t.dueDate}.`;
+    return `Your rent wallet has ${usd(t.walletBalance)}, enough to cover the ${usd(total)} due ${t.dueDate}.`;
+  }
+  if (/^(hi|hello|hey)$/.test(q) || /^(hi|hello|hey)\b/.test(q) && q.split(" ").length <= 3) {
     return `Hi ${t.name}! I'm your Aartee agent. Ask me about rent, utilities, your wallet, or when rent is due.`;
   }
   if (/\bwhen\b/.test(q) || q.includes("due date") || q.includes("deadline") || q.includes("by when")) {
@@ -68,10 +87,6 @@ function replyFor(tenantId: string, text: string): string {
   }
   if (q.includes("util")) {
     return `${t.utilityNote}, so your share is ${usd(t.utilities)}.`;
-  }
-  if (q.includes("wallet") || q.includes("balance") || q.includes("short")) {
-    if (diff < 0) return `Your rent wallet has ${usd(t.walletBalance)}. You're ${usd(-diff)} short of the ${usd(total)} due ${t.dueDate}.`;
-    return `Your rent wallet has ${usd(t.walletBalance)}, enough to cover the ${usd(total)} due ${t.dueDate}.`;
   }
   if (
     q.includes("total") ||

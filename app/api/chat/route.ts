@@ -4,9 +4,21 @@ import type { ChatRequest, ChatResponse } from "@/types/rent";
 import {
   asksWhenDue,
   formatMoneyReply,
+  formatWalletBalanceReply,
+  isCapIntent,
   isMoneyIntent,
+  isOweIntent,
+  isWalletBalanceIntent,
   normalizeChatText,
 } from "@/lib/chatIntent";
+import { buildState } from "@/services/stateService";
+
+/** Demo UI balances used when the ledger isn't reachable (mock mode). */
+const DEMO_BALANCES: Record<string, number> = {
+  abhimanyu: 1520,
+  kashish: 980,
+  musammat: 1550,
+};
 
 function isChatRequest(value: unknown): value is ChatRequest {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -48,13 +60,45 @@ export async function POST(request: Request) {
       message.includes("add to my wallet") ||
       message.includes("add money");
 
-    if (!greetingOnly && topUpAsk) {
+    if (!greetingOnly && isWalletBalanceIntent(text)) {
+      let balanceUsd: number | null = DEMO_BALANCES[tenantId] ?? null;
+      try {
+        const state = await buildState();
+        const live = state.tenants.find((t) => t.id === tenantId);
+        if (live?.balanceUsd != null) balanceUsd = live.balanceUsd;
+      } catch {
+        // keep demo fallback
+      }
+      const dueTotal = due
+        ? due.rentUsd + due.utilitiesUsd + due.lateFeeUsd
+        : undefined;
+      reply = formatWalletBalanceReply({
+        name: tenant.name,
+        balanceUsd,
+        capUsd: tenant.capUsd,
+        dueTotalUsd: dueTotal,
+      });
+    } else if (!greetingOnly && isCapIntent(text)) {
+      let balanceUsd: number | null = DEMO_BALANCES[tenantId] ?? null;
+      try {
+        const state = await buildState();
+        const live = state.tenants.find((t) => t.id === tenantId);
+        if (live?.balanceUsd != null) balanceUsd = live.balanceUsd;
+      } catch {
+        // keep demo fallback
+      }
+      const bal = balanceUsd ?? 0;
+      const room = Math.max(0, Math.round((tenant.capUsd - bal) * 100) / 100);
+      reply = balanceUsd == null
+        ? `Your wallet cap is $${tenant.capUsd}.`
+        : `Your wallet cap is $${tenant.capUsd}. Balance $${balanceUsd}, so you can still add up to $${room}.`;
+    } else if (!greetingOnly && topUpAsk && !isOweIntent(text) && !asksWhenDue(text)) {
       reply = `To add money, use Top up in the app or say e.g. “Top up $100” in Polo chat. `
         + `Your wallet cap is $${tenant.capUsd}. `
         + `If a top-up would exceed the cap, you'll get an error and should retry with a smaller amount.`;
     } else if (!greetingOnly && (isMoneyIntent(text) || asksWhenDue(text))) {
       if (!due) {
-        reply = `I couldn't find a current balance for ${tenant.name}.`;
+        reply = `I couldn't find current dues for ${tenant.name}.`;
       } else {
         reply = formatMoneyReply({
           name: tenant.name,
