@@ -263,12 +263,14 @@ try {
 | `landlord-only` | destination isn't the verified landlord | "Blocked: scam address" |
 | `legal-late-fee` | fee in grace period, over the legal max, or more than accrued | "Blocked: illegal late fee" |
 | `cap` | rent ≠ share, utilities over max, or total over cap | "Blocked: overcharge" |
-| `once-per-month` | already paid this month and run | "Blocked: double charge" |
+| `once-per-month` | already paid this month and run | on **rent day**: "Already paid ✓" (not an error); from an **attack**: "Blocked: double charge" |
 | `window` | outside the payment window | "Blocked: wrong date" |
 | `intent-mismatch` | the agent's description doesn't match the real tx | "Blocked: agent lied" |
 | `tx-shape` | not a plain RLUSD payment from a known rent wallet with the right tag/signer | "Blocked: invalid payment" |
 | `ledger-quorum` | (attacks only) agent-only signature rejected by the XRP Ledger | "Blocked by the ledger: stolen key" |
 | `guardian-unreachable` | Guardian asleep or down; nothing was paid | "Guardian waking up, retry" |
+| `insufficient-funds` | (rent day only) wallet short; nothing was sent, the Guardian wasn't asked | "Short $X, top up" |
+| `error` | (rent day only) unexpected failure for that tenant; nothing was paid | "Couldn't pay, retry" |
 
 `decision.reason` is a plain-English sentence, safe to show as-is.
 

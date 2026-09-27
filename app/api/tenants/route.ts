@@ -27,7 +27,10 @@ export async function POST(req: Request) {
   const id = name.toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-|-$/g, "");
   let tenants: Tenant[];
   try {
-    tenants = await getTenants();
+    // Check every piece of config first: a spawn funds a wallet on-ledger (~2.6 XRP), which is wasted
+    // if the agent key can't then be encrypted and saved (REVIEW.md PR #16 should-fix 1).
+    for (const name of ["AGENT_KEY_SECRET", "XRPL_OPS_SEED", "XRPL_LANDLORD_SEED", "GUARDIAN_ADDRESS"]) envSeed(name);
+    tenants = await getTenants(); // also proves MongoDB is reachable
   } catch (error) {
     console.error("Spawn failed:", error instanceof Error ? error.name : "UnknownError");
     return Response.json({ success: false, error: "Spawn failed" }, { status: 500 });
