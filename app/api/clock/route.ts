@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireDemoKey } from "@/lib/demoKey";
+import { queueRentReminders } from "@/agent/reminders";
 import { advanceDemoDays, clockOf, getDemoState, setDemoToday } from "@/services/demoState";
 
 export const runtime = "nodejs";
@@ -29,7 +30,13 @@ export async function POST(req: Request) {
     } else {
       return NextResponse.json({ success: false, error: 'Send {"advanceDays": n} or {"jumpTo": "YYYY-MM-DD"}' }, { status: 400 });
     }
-    return NextResponse.json({ success: true, clock: clockOf(state) });
+    const reminders = await queueRentReminders();
+
+    return NextResponse.json({
+      success: true,
+      clock: clockOf(state),
+      reminders,
+    });
   } catch (error) {
     console.error("Clock update failed:", error instanceof Error ? error.name : "UnknownError");
     return NextResponse.json({ success: false, error: "Clock update failed" }, { status: 500 });
