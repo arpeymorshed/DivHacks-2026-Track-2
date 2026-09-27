@@ -3,7 +3,6 @@
 // signs → the live Guardian checks the real tx and co-signs or refuses → submit with both signatures.
 // Loaded only via dynamic import from mainAgent in real mode, so the offline tests never load xrpl.
 import { Wallet } from "xrpl";
-import { cycleDay, FEE_PER_DAY_USD, GRACE_DAYS, legalFeeCapUsd } from "../../guardian/rules";
 import type { PaymentIntent as LedgerIntent } from "../../lib/types";
 import { withClient } from "../../lib/xrpl/client";
 import { explorerTx } from "../../lib/xrpl/config";
@@ -11,18 +10,11 @@ import { requestCosign } from "../../lib/xrpl/guardianClient";
 import { paidOnLedger } from "../../lib/xrpl/history";
 import { periodKey } from "../../lib/xrpl/memos";
 import { agentSign, buildPayment, getBalances, hashAuditRecord, multisignSubmit } from "../../lib/xrpl/payments";
-import type { Due, GuardianDecision, LedgerPaymentResult, PaymentIntent, Tenant } from "../../types/rent";
+import type { GuardianDecision, LedgerPaymentResult, PaymentIntent, Tenant, Due } from "../../types/rent";
 import type { DemoClock } from "./demoState.ts";
 
-// The late fee the Guardian will accept on the demo date: none on days 1–5, then $5/day from day 6,
-// capped at min($50, 5% of the unit's rent). Day 8 → $15. Only applied once the due date has passed.
-export function withLateFee(due: Due, tenant: Tenant, clock: DemoClock): Due {
-  if (due.month !== clock.month) return due;
-  const day = cycleDay(clock.today, clock.month);
-  const unitRentUsd = tenant.share > 0 ? due.rentUsd / tenant.share : due.rentUsd;
-  const fee = Math.min(legalFeeCapUsd(unitRentUsd), FEE_PER_DAY_USD * Math.max(0, day - GRACE_DAYS));
-  return { ...due, daysLate: Math.max(0, day - 1), lateFeeUsd: fee };
-}
+// Re-export: pure late-fee math lives in lateFee.ts so GET /api/state does not load xrpl.
+export { withLateFee } from "./lateFee.ts";
 
 export type RealPaymentOutcome = { guardianDecision: GuardianDecision; payment: LedgerPaymentResult | null };
 
