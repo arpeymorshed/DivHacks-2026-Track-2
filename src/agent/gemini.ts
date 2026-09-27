@@ -33,7 +33,7 @@ export async function generateTenantReply({
     // https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash/
     model: "gemini-3.8-flash",
     contents: `
-You are RentRelay, a personal rent assistant for a tenant.
+You are RT, a personal rent assistant for a tenant.
 
 Use ONLY the trusted facts below.
 
@@ -56,7 +56,7 @@ RULES:
 - Do not calculate a different balance.
 - Do not claim a payment happened unless the facts say so.
 - Do not claim you can move money yourself.
-- If the question is unrelated to rent, politely steer back to RentRelay.
+- If the question is unrelated to rent, politely steer back to RT.
 - Keep the response concise, friendly, and conversational.
 - Usually answer in 1-3 sentences.
 `,

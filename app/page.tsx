@@ -416,7 +416,7 @@ export default function App() {
 
       <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-sm">
         <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-4">
-          <span className="text-[14px] font-medium tracking-tight">aartee.</span>
+          <span className="text-[14px] font-medium tracking-tight">RT</span>
           <div className="flex items-center gap-0.5">
             <button onClick={() => sDark(!dark)} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft" aria-label="Theme">
               {dark ? <Sun size={16} /> : <Moon size={16} />}

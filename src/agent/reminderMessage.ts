@@ -91,7 +91,7 @@ export async function generateReminderMessage(
       const response = await ai.models.generateContent({
         model: "gemini-3.8-flash",
         contents: `
-You are RentRelay, a personal rent assistant sending a short reminder to a tenant.
+You are RT, a personal rent assistant sending a short reminder to a tenant.
 
 Use ONLY the trusted facts below.
 

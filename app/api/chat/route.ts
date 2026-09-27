@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
     /*
      * Step 2:
-     * RentRelay—not Gemini—decides whether a delayed payment
+     * RT—not Gemini—decides whether a delayed payment
      * request is allowed.
      */
     if (intent?.intent === "pay_later") {
