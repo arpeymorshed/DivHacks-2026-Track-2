@@ -16,6 +16,15 @@ import type { DemoClock } from "./demoState.ts";
 // Re-export: pure late-fee math lives in lateFee.ts so GET /api/state does not load xrpl.
 export { withLateFee } from "./lateFee.ts";
 
+// Which of these tenants have already paid this month + run, from the ledger (the source of truth).
+export async function paidTenantIds(tenants: Tenant[], landlord: string, clock: DemoClock): Promise<Set<string>> {
+  const period = periodKey(clock.month, clock.run);
+  return withClient(async (client) => {
+    const paid = await Promise.all(tenants.map((t) => paidOnLedger(client, t.walletAddress, landlord, period)));
+    return new Set(tenants.filter((_, i) => paid[i]).map((t) => t.id));
+  });
+}
+
 export type RealPaymentOutcome = { guardianDecision: GuardianDecision; payment: LedgerPaymentResult | null };
 
 export async function payRentOnLedger(args: {
