@@ -1,209 +1,287 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Shield, ShieldX, RotateCcw, ExternalLink, Zap, RefreshCw, Clock, Home, UserPlus, CheckCircle2 } from "lucide-react";
+import { RotateCcw, RefreshCw, CheckCircle2 } from "lucide-react";
 
 const LA = "rLndQ7v...4kDf";
 const initT = () => ({
-  abhi:   { id:"abhi",name:"Abhimanyu Dudeja",ini:"A",unit:"4B",sh:0.5,rT:2900,rS:1450,ut:38,cap:1600,wa:"rAbhi8x...KqvP",bal:1520,ap:true,st:"paid",dl:0,lf:0,ag:"agent-abhi-4b" },
-  kashish: { id:"kashish",name:"Kashish",ini:"K",unit:"4B",sh:0.5,rT:2900,rS:1450,ut:38,cap:1600,wa:"rKash3m...NpxR",bal:980,ap:true,st:"late",dl:8,lf:15,ag:"agent-kashish-4b" },
-  musammat:  { id:"musammat",name:"Musammat",ini:"M",unit:"2A",sh:1.0,rT:1450,rS:1450,ut:52,cap:1600,wa:"rMusa7v...WxsT",bal:1550,ap:true,st:"due",dl:0,lf:0,ag:"agent-musammat-2a" },
+  abhi: { id: "abhi", name: "Abhimanyu Dudeja", ini: "A", unit: "4B", sh: 0.5, rT: 2900, rS: 1450, ut: 38, cap: 1600, wa: "rAbhi8x...KqvP", bal: 1520, ap: true, st: "paid", dl: 0, lf: 0, ag: "agent-abhi-4b" },
+  kashish: { id: "kashish", name: "Kashish", ini: "K", unit: "4B", sh: 0.5, rT: 2900, rS: 1450, ut: 38, cap: 1600, wa: "rKash3m...NpxR", bal: 980, ap: true, st: "late", dl: 8, lf: 15, ag: "agent-kashish-4b" },
+  musammat: { id: "musammat", name: "Musammat", ini: "M", unit: "2A", sh: 1.0, rT: 1450, rS: 1450, ut: 52, cap: 1600, wa: "rMusa7v...WxsT", bal: 1550, ap: true, st: "due", dl: 0, lf: 0, ag: "agent-musammat-2a" },
 });
-const UNITS=[{id:"4B",rent:2900,ts:["abhi","kashish"]},{id:"2A",rent:1450,ts:["musammat"]}];
-
-const ATK=[
-  {id:"scam",t:"Scam bank-account change",d:"Message claims landlord changed accounts, reroutes rent.",bk:"Guardian",ly:"g",v:`Destination rScam...9xyz doesn't match verified address (${LA}).`,x:"Guardian pins the landlord's on-chain credential. Mismatch = refused."},
-  {id:"inflate",t:"Inflated utility bill",d:"ConEd share misread as $380 instead of $38.",bk:"Guardian",ly:"g",v:"Monthly total $1,830 exceeds tenant cap of $1,600.",x:"Guardian tallies all charges before co-signing."},
-  {id:"double",t:"Double rent charge",d:"Landlord agent requests September rent again.",bk:"Guardian",ly:"g",v:"September 2026 already paid. Duplicate refused.",x:"Guardian tracks paid periods. Same month = refused."},
-  {id:"fee",t:"Illegal $200 late fee",d:"Fee exceeds NY cap, or charged during grace period.",bk:"Guardian",ly:"g",v:"$200 exceeds min($50, 5% × $1,450). Grace period violated.",x:"NY RPL §238-a. Guardian enforces the cap and grace window."},
-  {id:"key",t:"Stolen agent key",d:"Attacker signs with only the agent's key.",bk:"XRPL ledger",ly:"l",v:"1 signature, quorum requires 2. Rejected on-chain.",x:"Master key disabled. 2 of 3 needed. The ledger enforces this."},
+const UNITS = [{ id: "4B", rent: 2900, ts: ["abhi", "kashish"] }, { id: "2A", rent: 1450, ts: ["musammat"] }];
+const ATK = [
+  { id: "scam", t: "Scam bank-account change", d: "Message claims landlord changed accounts, reroutes rent.", bk: "Guardian", ly: "g", v: `Destination rScam...9xyz doesn't match verified address (${LA}).`, x: "Guardian pins the landlord's on-chain credential. Mismatch = refused." },
+  { id: "inflate", t: "Inflated utility bill", d: "ConEd share misread as $380 instead of $38.", bk: "Guardian", ly: "g", v: "Monthly total $1,830 exceeds tenant cap of $1,600.", x: "Guardian tallies all charges before co-signing." },
+  { id: "double", t: "Double rent charge", d: "Landlord agent requests September rent again.", bk: "Guardian", ly: "g", v: "September 2026 already paid. Duplicate refused.", x: "Guardian tracks paid periods. Same month = refused." },
+  { id: "fee", t: "Illegal $200 late fee", d: "Fee exceeds NY cap, or charged during grace period.", bk: "Guardian", ly: "g", v: "$200 exceeds min($50, 5% × $1,450). Grace period violated.", x: "NY RPL §238-a. Guardian enforces the cap and grace window." },
+  { id: "key", t: "Stolen agent key", d: "Attacker signs with only the agent's key.", bk: "XRPL ledger", ly: "l", v: "1 signature, quorum requires 2. Rejected on-chain.", x: "Master key disabled. 2 of 3 needed. The ledger enforces this." },
+];
+const AUD = [
+  { id: "a1", t: "Sep 1", w: "Abhimanyu", wh: "Rent", a: 1450, s: "ok", r: "Passed", tx: "E4F8A2...9C1D" },
+  { id: "a2", t: "Sep 1", w: "Abhimanyu", wh: "ConEd", a: 38, s: "ok", r: "Passed", tx: "B7D3F1...4E2A" },
+  { id: "a3", t: "Sep 1", w: "Musammat", wh: "Rent", a: 1450, s: "ok", r: "Passed", tx: "C2A9E5...7F3B" },
+  { id: "a4", t: "Sep 1", w: "Kashish", wh: "Rent", a: 1450, s: "fail", r: "Insufficient balance", tx: null },
+  { id: "a5", t: "Sep 3", w: "Abhimanyu", wh: "Scam", a: 1450, s: "block", r: "Unrecognized address", tx: null },
 ];
 
-const AUD=[
-  {id:"a1",t:"Sep 1",w:"Abhimanyu",wh:"Rent",a:1450,s:"ok",r:"Passed",tx:"E4F8A2...9C1D"},
-  {id:"a2",t:"Sep 1",w:"Abhimanyu",wh:"ConEd",a:38,s:"ok",r:"Passed",tx:"B7D3F1...4E2A"},
-  {id:"a3",t:"Sep 1",w:"Musammat",wh:"Rent",a:1450,s:"ok",r:"Passed",tx:"C2A9E5...7F3B"},
-  {id:"a4",t:"Sep 1",w:"Kashish",wh:"Rent",a:1450,s:"fail",r:"Insufficient balance",tx:null},
-  {id:"a5",t:"Sep 3",w:"Abhimanyu",wh:"Scam",a:1450,s:"block",r:"Unrecognized address",tx:null},
-];
-
-const f$=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-
-function useNf(){
-  const[ts,sTs]=useState([]);
-  const push=useCallback((m,c="#0d6e6e")=>{const id=""+Date.now();sTs(t=>[...t,{id,m,c}]);setTimeout(()=>sTs(t=>t.filter(x=>x.id!==id)),3200)},[]);
-  return{ts,push};
+const f$ = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function useNf() {
+  const [ts, sTs] = useState<{ id: string; m: string; c: string }[]>([]);
+  const push = useCallback((m: string, c = "accent") => {
+    const id = "" + Date.now();
+    sTs((t) => [...t, { id, m, c }]);
+    setTimeout(() => sTs((t) => t.filter((x) => x.id !== id)), 2600);
+  }, []);
+  return { ts, push };
+}
+const statusTone: Record<string, string> = {
+  paid: "text-ok", due: "text-info", late: "text-warn", blocked: "text-danger", failed: "text-danger",
+  ok: "text-ok", block: "text-danger", fail: "text-danger", processing: "text-accent",
+};
+const statusLabel: Record<string, string> = {
+  paid: "Paid", due: "Due", late: "Late", blocked: "Blocked", failed: "Failed",
+  ok: "Paid", block: "Blocked", fail: "Failed", processing: "Processing",
+};
+function St({ s }: { s: string }) {
+  if (!(s in statusLabel)) return null;
+  return <span className={`text-[12px] font-medium ${statusTone[s] || "text-info"}`}>{statusLabel[s]}</span>;
+}
+function Toasts({ ts }: { ts: { id: string; m: string; c: string }[] }) {
+  return (
+    <div className="fixed inset-x-4 top-3 z-[9999] mx-auto flex max-w-sm flex-col gap-2 md:inset-x-auto md:right-4">
+      {ts.map((t) => (
+        <div key={t.id} className="animate-rise rounded-md border border-line bg-surface px-3.5 py-2.5 text-sm text-ink shadow-panel">
+          {t.m}
+        </div>
+      ))}
+    </div>
+  );
+}
+function useSt(c: number, ms = 40) {
+  const [v, s] = useState<number[]>([]);
+  useEffect(() => {
+    s([]);
+    for (let i = 0; i < c; i++) setTimeout(() => s((p) => [...p, i]), (i + 1) * ms);
+  }, [c, ms]);
+  return v;
 }
 
-function St({s}){const m={paid:{c:"#1a7f4b",l:"Paid"},due:{c:"#2563eb",l:"Due"},late:{c:"#b8860b",l:"Late"},blocked:{c:"#c0392b",l:"Blocked"},failed:{c:"#c0392b",l:"Failed"},ok:{c:"#1a7f4b",l:"Paid"},block:{c:"#c0392b",l:"Blocked"},fail:{c:"#c0392b",l:"Failed"},processing:{c:"#0d6e6e",l:"Processing..."}};const v=m[s]||m.due;return <span style={{fontSize:12,fontWeight:600,color:v.c}}>{v.l}</span>}
+export default function DemoPage() {
+  const [tab, sTab] = useState("building");
+  const [dd, sDD] = useState(9);
+  const [tenants, sT] = useState(initT);
+  const [proc, sP] = useState<string | null>(null);
+  const [spSt, sSS] = useState<string[]>([]);
+  const [res, sR] = useState<Record<string, boolean | undefined>>({});
+  const [run, sRn] = useState<string | null>(null);
+  const nf = useNf();
+  const vis = useSt(ATK.length, 40);
 
-function Toasts({ts}){return <div style={{position:"fixed",top:16,right:16,zIndex:999,display:"flex",flexDirection:"column",gap:6}}>{ts.map(t=><div key={t.id} style={{background:"#fff",borderRadius:8,padding:"10px 14px",boxShadow:"0 4px 20px rgba(0,0,0,0.15)",borderLeft:`3px solid ${t.c}`,fontSize:13,fontWeight:500,maxWidth:300}}>{t.m}</div>)}</div>}
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    return () => { document.documentElement.setAttribute("data-theme", "light"); };
+  }, []);
 
-function useSt(c,ms=70){const[v,s]=useState([]);useEffect(()=>{s([]);for(let i=0;i<c;i++)setTimeout(()=>s(p=>[...p,i]),(i+1)*ms)},[c]);return v}
-
-export default function DemoPage(){
-  const[tab,sTab]=useState("building");
-  const[dd,sDD]=useState(9);
-  const[tenants,sT]=useState(initT);
-  const[proc,sP]=useState(null);
-  const[spSt,sSS]=useState([]);
-  const[res,sR]=useState({});
-  const[run,sRn]=useState(null);
-  const nf=useNf();
-  const vis=useSt(ATK.length,70);
-
-  function runRD(){
-    sDD(1);const o=["abhi","musammat","kashish"];let d=0;
-    o.forEach(id=>{
-      d+=600;setTimeout(()=>{sP(id);nf.push("Processing "+tenants[id].name+"...")},d);
-      d+=1e3;setTimeout(()=>{
-        const t=tenants[id];const tot=t.rS+t.ut+t.lf;
-        if(t.bal>=tot){sT(p=>({...p,[id]:{...p[id],st:"paid",bal:p[id].bal-tot}}));nf.push(t.name.split(" ")[0]+": paid","#1a7f4b")}
-        else{sT(p=>({...p,[id]:{...p[id],st:"failed"}}));nf.push(t.name.split(" ")[0]+": failed","#c0392b")}
-        sP(null)
-      },d)
-    })
+  function runRD() {
+    sDD(1);
+    const o = ["abhi", "musammat", "kashish"];
+    let d = 0;
+    o.forEach((id) => {
+      d += 500;
+      setTimeout(() => { sP(id); nf.push("Processing " + tenants[id as keyof typeof tenants].name + "..."); }, d);
+      d += 900;
+      setTimeout(() => {
+        const t = tenants[id as keyof typeof tenants];
+        const tot = t.rS + t.ut + t.lf;
+        if (t.bal >= tot) { sT((p) => ({ ...p, [id]: { ...p[id as keyof typeof p], st: "paid", bal: p[id as keyof typeof p].bal - tot } })); nf.push(t.name.split(" ")[0] + ": paid", "ok"); }
+        else { sT((p) => ({ ...p, [id]: { ...p[id as keyof typeof p], st: "failed" } })); nf.push(t.name.split(" ")[0] + ": failed", "danger"); }
+        sP(null);
+      }, d);
+    });
+  }
+  function spawn() {
+    sSS([]);
+    ["Wallet created", "Trust line set", "Signer list (2-of-3)", "Master key disabled", "Credential issued", "Live"].forEach((s, i) => setTimeout(() => sSS((p) => [...p, s]), i * 450 + 150));
+  }
+  function fire(a: typeof ATK[0]) {
+    if (run) return;
+    sRn(a.id); sR((r) => ({ ...r, [a.id]: undefined }));
+    setTimeout(() => { sR((r) => ({ ...r, [a.id]: true })); sRn(null); nf.push("Blocked: " + a.t, a.ly === "l" ? "accent" : "danger"); }, 1000);
   }
 
-  function spawn(){sSS([]);["Wallet created","Trust line set","Signer list (2-of-3)","Master key disabled","Credential issued","Live"].forEach((s,i)=>setTimeout(()=>sSS(p=>[...p,s]),i*550+200))}
-
-  function fire(a){if(run)return;sRn(a.id);sR(r=>({...r,[a.id]:undefined}));setTimeout(()=>{sR(r=>({...r,[a.id]:true}));sRn(null);nf.push("Blocked: "+a.t,a.ly==="l"?"#0d6e6e":"#c0392b")},1200)}
-
   return (
-    <div style={{minHeight:"100vh",background:"#111116",fontFamily:"'DM Sans',system-ui,sans-serif",color:"#fff"}}>
-      <Toasts ts={nf.ts}/>
+    <div className="min-h-screen bg-bg text-ink">
+      <Toasts ts={nf.ts} />
 
-      {/* top bar */}
-      <div style={{padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #222"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:28,height:28,borderRadius:7,background:"#0d6e6e",display:"flex",alignItems:"center",justifyContent:"center"}}><Shield size={14} color="#fff"/></div>
-          <span style={{fontSize:18,fontWeight:700}}>RentRelay</span>
-          <span style={{fontSize:13,color:"#666",marginLeft:8}}>Demo · Landlord + Guardian</span>
+      <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-sm">
+        <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-4">
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-[14px] font-medium tracking-tight">RentRelay</span>
+            <span className="text-[12px] text-ink-faint">Demo</span>
+          </div>
+          <button
+            onClick={() => { sDD(9); sT(initT()); sR({}); sRn(null); sSS([]); }}
+            className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-[12px] text-ink-muted hover:bg-surface"
+          >
+            <RotateCcw size={11} />Reset
+          </button>
         </div>
-        <button onClick={()=>{sDD(9);sT(initT());sR({});sRn(null);sSS([])}} style={{padding:"6px 14px",borderRadius:7,border:"1px solid #333",background:"transparent",fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:"inherit",color:"#888",display:"flex",alignItems:"center",gap:4}}><RotateCcw size={12}/>Reset all</button>
-      </div>
+        <div className="mx-auto flex max-w-3xl gap-4 px-4">
+          {[{ id: "building", l: "Building" }, { id: "guardian", l: "Guardian" }].map((tb) => (
+            <button
+              key={tb.id}
+              onClick={() => sTab(tb.id)}
+              className={`-mb-px border-b pb-2.5 text-[13px] ${tab === tb.id ? "border-ink font-medium text-ink" : "border-transparent text-ink-faint hover:text-ink-muted"}`}
+            >
+              {tb.l}
+            </button>
+          ))}
+        </div>
+      </header>
 
-      {/* tabs */}
-      <div style={{display:"flex",gap:2,padding:"16px 24px 0"}}>
-        {[{id:"building",l:"Building Console"},{id:"guardian",l:"Guardian Demo"}].map(tb=>(
-          <button key={tb.id} onClick={()=>sTab(tb.id)} style={{
-            padding:"10px 20px",borderRadius:8,border:tab===tb.id?"1px solid #444":"1px solid transparent",
-            background:tab===tb.id?"#1e1e24":"transparent",color:tab===tb.id?"#fff":"#888",
-            fontSize:14,fontWeight:tab===tb.id?600:400,cursor:"pointer",fontFamily:"inherit",
-          }}>{tb.l}</button>
-        ))}
-      </div>
-
-      <div style={{padding:"20px 24px"}}>
-
-        {/* ═══ BUILDING CONSOLE ═══ */}
-        {tab==="building"&&(
-          <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,flexWrap:"wrap",gap:12}}>
+      <div className="mx-auto max-w-3xl px-4 pb-20 pt-6">
+        {tab === "building" && (
+          <div className="animate-fade-in space-y-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 style={{fontSize:24,fontWeight:700}}>123 W 112th St</h1>
-                <p style={{fontSize:13,color:"#888",marginTop:2}}>Landlord: Arpey · 2 units · 3 tenants</p>
+                <h1 className="text-hero text-ink">123 W 112th St</h1>
+                <p className="mt-1 text-[13px] text-ink-muted">Landlord: Arpey · 2 units · 3 tenants</p>
               </div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <span style={{padding:"5px 10px",borderRadius:6,border:"1px solid #444",fontSize:12,fontWeight:600,color:"#aaa"}}>Sep {dd}</span>
-                <button onClick={()=>sDD(d=>Math.min(d+1,30))} style={{padding:"5px 10px",borderRadius:6,border:"1px solid #444",background:"transparent",fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"#aaa"}}>+1 day</button>
-                <button onClick={runRD} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#0d6e6e",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}><span style={{display:"flex",alignItems:"center",gap:4}}><Zap size={12}/>Rent day</span></button>
-                <button onClick={()=>{sDD(9);sT(initT())}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #444",background:"transparent",cursor:"pointer"}}><RotateCcw size={12} color="#888"/></button>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] text-ink-muted">Sep {dd}</span>
+                <button onClick={() => sDD((d) => Math.min(d + 1, 30))} className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-muted hover:bg-surface">+1 day</button>
+                <button onClick={runRD} className="rounded-md bg-ink px-2.5 py-1 text-[12px] font-medium text-bg hover:opacity-90">Rent day</button>
+                <button onClick={() => { sDD(9); sT(initT()); }} className="rounded-md p-1 text-ink-faint hover:bg-surface"><RotateCcw size={13} /></button>
               </div>
             </div>
 
-            {/* spawn */}
-            <div style={{padding:"12px 16px",border:"1px solid #333",borderRadius:8,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div><p style={{fontSize:14,fontWeight:600}}>Add a tenant</p><p style={{fontSize:12,color:"#888"}}>Spawn wallet + keys on-chain</p></div>
-              <button onClick={spawn} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #444",background:"transparent",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",color:"#aaa"}}>Spawn</button>
+            <div className="flex items-center justify-between rounded-md border border-line bg-surface px-3.5 py-3">
+              <div>
+                <p className="text-[13px] font-medium">Add tenant</p>
+                <p className="text-[12px] text-ink-faint">Spawn wallet on-chain</p>
+              </div>
+              <button onClick={spawn} className="rounded-md border border-line px-2.5 py-1 text-[12px] font-medium text-ink-muted hover:bg-bg">Spawn</button>
             </div>
-            {spSt.length>0&&<div style={{padding:"10px 16px",border:"1px solid #333",borderRadius:8,marginBottom:16}}>
-              {spSt.map((s,i)=><p key={i} style={{fontSize:13,padding:"4px 0",color:s==="Live"?"#1a7f4b":"#ccc",fontWeight:s==="Live"?700:400,display:"flex",alignItems:"center",gap:6}}>
-                {s==="Live"?<CheckCircle2 size={14} color="#1a7f4b"/>:<RefreshCw size={12} color="#0d6e6e" style={{animation:i===spSt.length-1&&s!=="Live"?"spin 1s linear infinite":"none"}}/>}
-                {s==="Live"?"Agent live":""+s}
-              </p>)}
-            </div>}
+            {spSt.length > 0 && (
+              <div className="space-y-1.5 rounded-md border border-line bg-surface px-3.5 py-3">
+                {spSt.map((s, i) => (
+                  <p key={i} className={`flex items-center gap-2 text-[13px] ${s === "Live" ? "font-medium text-ok" : "text-ink-muted"}`}>
+                    {s === "Live" ? <CheckCircle2 size={13} /> : <RefreshCw size={11} className={i === spSt.length - 1 && s !== "Live" ? "animate-spin" : ""} />}
+                    {s === "Live" ? "Agent live" : s}
+                  </p>
+                ))}
+              </div>
+            )}
 
-            {/* units */}
-            {UNITS.map(u=>{
-              const allP=u.ts.every(id=>tenants[id].st==="paid");const anyL=u.ts.some(id=>tenants[id].st==="late");
-              return <div key={u.id} style={{border:"1px solid #333",borderRadius:8,overflow:"hidden",marginBottom:12}}>
-                <div style={{padding:"10px 16px",background:"#1e1e24",borderBottom:"1px solid #333",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontWeight:700,fontSize:14}}><Home size={14} style={{display:"inline",marginRight:6,verticalAlign:"-2px"}} color="#888"/>Unit {u.id}<span style={{fontWeight:400,color:"#777",marginLeft:6}}>${u.rent.toLocaleString()}/mo</span></span>
-                  <St s={allP?"paid":anyL?"late":"due"}/>
-                </div>
-                {u.ts.map(tid=>{
-                  const tn=tenants[tid];const tot=tn.rS+tn.ut+tn.lf;const isP=proc===tid;
-                  return <div key={tid} style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #2a2a30",background:isP?"rgba(13,110,110,0.1)":"transparent",transition:"background 0.3s"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:30,height:30,borderRadius:8,background:"#2a2a30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#aaa"}}>{tn.ini}</div>
-                      <div><p style={{fontSize:14,fontWeight:600}}>{tn.name}</p><p style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#666"}}>{tn.ag}</p></div>
+            <div className="space-y-4">
+              {UNITS.map((u) => {
+                const allP = u.ts.every((id) => tenants[id as keyof typeof tenants].st === "paid");
+                const anyL = u.ts.some((id) => tenants[id as keyof typeof tenants].st === "late");
+                return (
+                  <section key={u.id}>
+                    <div className="mb-2 flex items-baseline justify-between">
+                      <h3 className="text-[13px] font-medium">Unit {u.id} <span className="font-normal text-ink-faint">${u.rent.toLocaleString()}/mo</span></h3>
+                      <St s={allP ? "paid" : anyL ? "late" : "due"} />
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:16,fontSize:13}}>
-                      <span style={{fontWeight:600}}>${f$(tot)}</span>
-                      <span style={{color:tn.bal>=tot?"#1a7f4b":"#c0392b",fontWeight:500}}>${f$(tn.bal)}</span>
-                      <St s={isP?"processing":tn.st}/>
+                    <div className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
+                      {u.ts.map((tid) => {
+                        const tn = tenants[tid as keyof typeof tenants];
+                        const tot = tn.rS + tn.ut + tn.lf;
+                        const isP = proc === tid;
+                        return (
+                          <div key={tid} className={`flex items-center justify-between px-3.5 py-3 ${isP ? "bg-accent-soft/50" : ""}`}>
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-bg text-[11px] font-medium text-ink-muted">{tn.ini}</div>
+                              <div>
+                                <p className="text-[13px] font-medium">{tn.name}</p>
+                                <p className="mono">{tn.ag}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-[13px]">
+                              <span className="tabular-nums text-ink-muted">${f$(tot)}</span>
+                              <span className={`tabular-nums ${tn.bal >= tot ? "text-ok" : "text-danger"}`}>${f$(tn.bal)}</span>
+                              <St s={isP ? "processing" : tn.st} />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                })}
-              </div>
-            })}
-
-            {/* audit */}
-            <p style={{fontWeight:700,fontSize:14,marginTop:20,marginBottom:10}}>Audit log</p>
-            <div style={{border:"1px solid #333",borderRadius:8,overflow:"hidden"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-                <thead><tr style={{borderBottom:"1px solid #333"}}>{["Time","Tenant","Type","Amount","Status","Rule","Tx"].map(h=><th key={h} style={{padding:"10px 12px",textAlign:"left",fontWeight:600,color:"#666",fontSize:11}}>{h}</th>)}</tr></thead>
-                <tbody>{AUD.map(r=><tr key={r.id} style={{borderBottom:"1px solid #2a2a30"}}>
-                  <td style={{padding:"10px 12px",color:"#777"}}>{r.t}</td>
-                  <td style={{padding:"10px 12px",fontWeight:500}}>{r.w}</td>
-                  <td style={{padding:"10px 12px",color:"#888"}}>{r.wh}</td>
-                  <td style={{padding:"10px 12px",fontWeight:500}}>${f$(r.a)}</td>
-                  <td style={{padding:"10px 12px"}}><St s={r.s}/></td>
-                  <td style={{padding:"10px 12px",color:"#888"}}>{r.r}</td>
-                  <td style={{padding:"10px 12px"}}>{r.tx?<span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"#0d6e6e"}}>{r.tx}</span>:<span style={{color:"#555"}}>—</span>}</td>
-                </tr>)}</tbody>
-              </table>
+                  </section>
+                );
+              })}
             </div>
+
+            <section>
+              <h3 className="mb-2 text-[13px] font-medium">Audit</h3>
+              <div className="overflow-x-auto rounded-md border border-line bg-surface">
+                <table className="w-full text-left text-[13px]">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] text-ink-faint">
+                      {["Time", "Who", "Type", "Amt", "Status", "Rule", "Tx"].map((h) => (
+                        <th key={h} className="px-3.5 py-2.5 font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {AUD.map((r) => (
+                      <tr key={r.id} className="border-b border-line-soft last:border-0">
+                        <td className="px-3.5 py-2.5 text-ink-faint">{r.t}</td>
+                        <td className="px-3.5 py-2.5">{r.w}</td>
+                        <td className="px-3.5 py-2.5 text-ink-muted">{r.wh}</td>
+                        <td className="px-3.5 py-2.5 tabular-nums">${f$(r.a)}</td>
+                        <td className="px-3.5 py-2.5"><St s={r.s} /></td>
+                        <td className="px-3.5 py-2.5 text-ink-muted">{r.r}</td>
+                        <td className="px-3.5 py-2.5">{r.tx ? <span className="mono text-accent">{r.tx}</span> : <span className="text-ink-faint">—</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
         )}
 
-        {/* ═══ GUARDIAN DEMO ═══ */}
-        {tab==="guardian"&&(
-          <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        {tab === "guardian" && (
+          <div className="animate-fade-in">
+            <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 style={{fontSize:24,fontWeight:700}}>What could go wrong?</h1>
-                <p style={{fontSize:14,color:"#888",marginTop:4}}>Five threats, each stopped by a different layer.</p>
+                <h1 className="text-hero">What could go wrong?</h1>
+                <p className="mt-1 text-[13px] text-ink-muted">Five attacks. Each one blocked.</p>
               </div>
-              <button onClick={()=>{sR({});sRn(null)}} style={{padding:"6px 14px",borderRadius:7,border:"1px solid #444",background:"transparent",fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"#888",display:"flex",alignItems:"center",gap:4}}><RotateCcw size={12}/>Reset</button>
+              <button onClick={() => { sR({}); sRn(null); }} className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-[12px] text-ink-muted hover:bg-surface">
+                <RotateCcw size={11} />Reset
+              </button>
             </div>
-            <div style={{display:"flex",gap:14,fontSize:12,color:"#666",marginBottom:20}}>
-              <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:10,height:3,borderRadius:2,background:"#c0392b"}}/>Guardian</span>
-              <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:10,height:3,borderRadius:2,background:"#0d6e6e"}}/>XRPL ledger</span>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {ATK.map((a,i)=>{
-                const show=vis.includes(i);const isR=run===a.id;const bl=res[a.id];const ac=a.ly==="l"?"#0d6e6e":"#c0392b";
-                return <div key={a.id} style={{background:"#1e1e24",borderRadius:8,overflow:"hidden",opacity:show?1:0,transform:show?"none":"translateY(10px)",transition:"all 0.3s ease",borderLeft:bl?`3px solid ${ac}`:"3px solid #333",padding:"16px 18px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
-                    <div><p style={{fontSize:15,fontWeight:600,marginBottom:4}}>{a.t}</p><p style={{fontSize:13,color:"#888",lineHeight:1.4}}>{a.d}</p></div>
-                    <button onClick={()=>fire(a)} disabled={isR} style={{padding:"7px 14px",borderRadius:6,border:bl?"1px solid #444":"none",background:bl?"transparent":"#c0392b",color:bl?"#999":"#fff",fontSize:12,fontWeight:600,cursor:isR?"wait":"pointer",fontFamily:"inherit",flexShrink:0}}>
-                      {isR?<span style={{display:"flex",alignItems:"center",gap:4}}><RefreshCw size={12} style={{animation:"spin 1s linear infinite"}}/>Testing</span>:bl?"Again":"Run"}
-                    </button>
+            <div className="mt-6 space-y-2">
+              {ATK.map((a, i) => {
+                const show = vis.includes(i);
+                const isR = run === a.id;
+                const bl = res[a.id];
+                return (
+                  <div key={a.id} className={`rounded-md border border-line bg-surface p-4 transition-opacity duration-200 ${show ? "opacity-100" : "opacity-0"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[14px] font-medium">{a.t}</p>
+                        <p className="mt-1 text-[13px] leading-snug text-ink-muted">{a.d}</p>
+                      </div>
+                      <button onClick={() => fire(a)} disabled={!!isR} className={`shrink-0 rounded-md px-2.5 py-1 text-[12px] font-medium ${bl ? "border border-line text-ink-muted" : "bg-ink text-bg hover:opacity-90"}`}>
+                        {isR ? <span className="flex items-center gap-1"><RefreshCw size={11} className="animate-spin" />Test</span> : bl ? "Again" : "Run"}
+                      </button>
+                    </div>
+                    {bl && (
+                      <div className="mt-3 border-t border-line pt-3">
+                        <p className={`text-[12px] font-medium ${a.ly === "l" ? "text-accent" : "text-danger"}`}>Blocked by {a.bk}</p>
+                        <p className="mt-1 text-[13px]">{a.v}</p>
+                        <p className="mt-0.5 text-[13px] text-ink-muted">{a.x}</p>
+                      </div>
+                    )}
                   </div>
-                  {bl&&<div style={{marginTop:12,padding:"12px 14px",borderRadius:6,background:a.ly==="l"?"rgba(13,110,110,0.12)":"rgba(192,57,43,0.1)"}}>
-                    <p style={{fontSize:13,fontWeight:700,color:ac,marginBottom:4}}>Blocked by {a.bk}</p>
-                    <p style={{fontSize:13,fontWeight:500,color:"#ddd",marginBottom:4}}>{a.v}</p>
-                    <p style={{fontSize:12,color:"#888"}}>{a.x}</p>
-                  </div>}
-                </div>
+                );
               })}
             </div>
           </div>
         )}
       </div>
-
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
