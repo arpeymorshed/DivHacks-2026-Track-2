@@ -8,7 +8,7 @@ import type { ActivityEntry, Due, DueStage, StateResponse, TenantState } from ".
 import { listActivity, listPaidRent } from "./activityLog.ts";
 import { clockOf, getDemoState, type DemoClock } from "./demoState.ts";
 import { getBuilding, getDues, getTenantAgents, getTenants } from "./rentRepository.ts";
-import { withLateFee } from "./lateFee.ts";
+import { lateFeeOpts, withLateFee } from "./lateFee.ts";
 import { realPaymentsEnabled } from "./xrplConfig.ts";
 
 export function stageOf(due: Due, clock: DemoClock, paid: boolean): DueStage {
@@ -50,8 +50,9 @@ export async function buildState(): Promise<StateResponse> {
     }
   }
 
-  const paidIds = new Set(tenants.filter((t) => paymentFor(paidRent, t.id, clock)).map((t) => t.id));
-  const unpaidInUnit = (unitId: string) => tenants.filter((x) => x.unitId === unitId && !paidIds.has(x.id)).length;
+  // Same late-fee inputs as rent day: tenants with a due this month, and this month + run's paid rent.
+  const withDue = tenants.flatMap((t) => { const d = dues.find((x) => x.tenantId === t.id); return d ? [{ tenant: t, due: d }] : []; });
+  const paidForFees = paidRent.flatMap((e) => (e.tenantId ? [{ tenantId: e.tenantId, amountUsd: e.amountUsd ?? 0 }] : []));
 
   const tenantStates: TenantState[] = tenants.map((t) => {
     const agent = agents.find((a) => a.tenantId === t.id);
@@ -59,7 +60,7 @@ export async function buildState(): Promise<StateResponse> {
     let dueState: TenantState["due"] = null;
     if (due) {
       const payment = paymentFor(paidRent, t.id, clock);
-      const today = payment ? due : withLateFee(due, t, clock, { lateRoommates: unpaidInUnit(t.unitId) }); // a paid due keeps what was paid
+      const today = payment ? due : withLateFee(due, t, clock, lateFeeOpts(t, withDue, paidForFees)); // a paid due keeps what was paid
       const total = payment ? payment.amountUsd : today.rentUsd + today.utilitiesUsd + today.lateFeeUsd;
       dueState = {
         month: due.month, dueDate: due.dueDate, rentUsd: due.rentUsd, utilitiesUsd: due.utilitiesUsd,

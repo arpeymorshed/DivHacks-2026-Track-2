@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { ActivityEntry, Due } from "../../types/rent";
 import { paymentFor, stageOf } from "./stateService.ts";
-import { withLateFee } from "./lateFee.ts";
+import { lateFeeOpts, withLateFee } from "./lateFee.ts";
 
 const due: Due = { tenantId: "kashish", month: "2026-10", rentUsd: 1450, utilitiesUsd: 38, dueDate: "2026-10-01", daysLate: 0, lateFeeUsd: 0, reason: "rent" };
 const clock = (today: string, run = 7) => ({ today, month: "2026-10", run });
@@ -28,6 +28,24 @@ test("T30: a paid tenant owes no fee; late roommates split the unit's cap by sha
   assert.equal(withLateFee(due, kashish, clock("2026-10-20"), { lateRoommates: 1 }).lateFeeUsd, 50); // alone: full cap
   assert.equal(withLateFee(due, kashish, clock("2026-10-20"), { lateRoommates: 2 }).lateFeeUsd, 25); // both late: $25 each
   assert.equal(withLateFee(due, kashish, clock("2026-10-08"), { lateRoommates: 2 }).lateFeeUsd, 15); // under the split cap anyway
+});
+
+test("T30: paying in sequence never exceeds the unit's legal cap (merge-check finding)", () => {
+  const abhimanyu = { ...kashish, id: "abhimanyu", name: "Abhimanyu" };
+  const dueFor = (id: string) => ({ ...due, tenantId: id });
+  const unit = [{ tenant: abhimanyu, due: dueFor("abhimanyu") }, { tenant: kashish, due: dueFor("kashish") }];
+  const day20 = clock("2026-10-20");
+  // Both unpaid on day 20: $25 each.
+  assert.equal(withLateFee(due, kashish, day20, lateFeeOpts(kashish, unit, [])).lateFeeUsd, 25);
+  // Kashish paid $1,513 (incl. $25 fee); Abhimanyu pays later: still $25, unit total $50 (was $75 before).
+  const afterKashish = [{ tenantId: "kashish", amountUsd: 1513 }];
+  assert.deepEqual(lateFeeOpts(abhimanyu, unit, afterKashish), { paid: false, lateRoommates: 2, unitFeesPaidUsd: 25 });
+  assert.equal(withLateFee(due, abhimanyu, day20, lateFeeOpts(abhimanyu, unit, afterKashish)).lateFeeUsd, 25);
+  // Abhimanyu paid on time (no fee): Kashish is the only late roommate and can owe the full $50.
+  const onTime = [{ tenantId: "abhimanyu", amountUsd: 1488 }];
+  assert.equal(withLateFee(due, kashish, day20, lateFeeOpts(kashish, unit, onTime)).lateFeeUsd, 50);
+  // A tenant who already paid owes nothing more.
+  assert.equal(withLateFee(due, kashish, day20, lateFeeOpts(kashish, unit, afterKashish)).lateFeeUsd, 0);
 });
 
 test("paid only counts for this month AND this run (a reset makes it unpaid again)", () => {

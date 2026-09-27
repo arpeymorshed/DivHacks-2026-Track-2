@@ -84,13 +84,20 @@ async function payAllWithMocks(payable: { tenant: Tenant; due: Due }[], building
 // Tenants pay in parallel (each ledger tx takes ~4–8s); one tenant's failure never stops the others.
 async function payAllOnLedger(payable: { tenant: Tenant; due: Due }[], building: Building, clock: DemoClock): Promise<RentDayResult[]> {
   const { paidTenantIds, payRentOnLedger, withLateFee } = await import("../services/xrplPayments.ts");
+  const { lateFeeOpts } = await import("../services/lateFee.ts");
+  const { listPaidRent } = await import("../services/activityLog.ts");
   const { getAgentSeed } = await import("../services/agentKeys.ts");
-  // Who has already paid decides who owes a late fee and how the unit's fee cap is split (T30).
+  // Who paid (ledger = source of truth) and what fees the unit already paid (activity log) decide each
+  // tenant's late fee and how the unit's legal cap is shared (T30).
   const paid = await paidTenantIds(payable.map((p) => p.tenant), building.landlordWallet, clock);
-  const unpaidInUnit = (unitId: string) => payable.filter((p) => p.tenant.unitId === unitId && !paid.has(p.tenant.id)).length;
+  const logged = await listPaidRent(clock.month, clock.run).catch(() => []);
+  const paidRent = payable.filter((p) => paid.has(p.tenant.id)).map((p) => ({
+    tenantId: p.tenant.id,
+    amountUsd: logged.find((e) => e.tenantId === p.tenant.id)?.amountUsd ?? p.due.rentUsd + p.due.utilitiesUsd,
+  }));
   return Promise.all(
     payable.map(async ({ tenant, due }): Promise<RentDayResult> => {
-      const dueToday = withLateFee(due, tenant, clock, { paid: paid.has(tenant.id), lateRoommates: unpaidInUnit(tenant.unitId) });
+      const dueToday = withLateFee(due, tenant, clock, lateFeeOpts(tenant, payable, paidRent));
       const intent = createPaymentIntent(tenant, dueToday, building.landlordWallet);
       try {
         const agentSeed = await getAgentSeed(tenant.id);
