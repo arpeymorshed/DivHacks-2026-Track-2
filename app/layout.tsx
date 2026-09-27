@@ -1,10 +1,17 @@
 import "./globals.css";
-import { Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Outfit, Syne, IBM_Plex_Mono } from "next/font/google";
 
-const jakarta = Plus_Jakarta_Sans({
+const outfit = Outfit({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-jakarta",
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const syne = Syne({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-syne",
   display: "swap",
 });
 
@@ -22,7 +29,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${syne.variable} ${plexMono.variable}`}>
       <head>
         <meta
           name="viewport"
