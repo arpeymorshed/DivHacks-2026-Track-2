@@ -98,20 +98,42 @@ function St({ s }: { s: string }) {
   if (!(s in label) || label[s] === "") return null;
   return <span className={`text-[12px] font-medium ${tone[s] || "text-info"}`}>{label[s]}</span>;
 }
-function AN({ value, p = "$" }: { value: number; p?: string }) {
+function AN({ value, p = "$", ms }: { value: number; p?: string; ms?: number }) {
   const [d, sd] = useState(value);
   const r = useRef(0);
+  const prev = useRef(value);
   useEffect(() => {
-    const fr = d, dur = 400, t0 = performance.now();
+    const fr = d;
+    const dropping = value < prev.current;
+    prev.current = value;
+    const dur = ms ?? (dropping ? 780 : 420);
+    const t0 = performance.now();
     function tick(n: number) {
       const pr = Math.min((n - t0) / dur, 1);
-      sd(fr + (value - fr) * (1 - Math.pow(1 - pr, 3)));
+      const eased = dropping ? 1 - Math.pow(1 - pr, 2.4) : 1 - Math.pow(1 - pr, 3);
+      sd(fr + (value - fr) * eased);
       if (pr < 1) r.current = requestAnimationFrame(tick);
     }
     r.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(r.current);
   }, [value]);
   return <span className="tabular-nums">{p}{f$(d)}</span>;
+}
+
+/** Brief +/− chip when wallet balance changes (top-up or rent draw). */
+function BalDelta({ amount }: { amount: number | null }) {
+  if (amount == null || amount === 0) return null;
+  const up = amount > 0;
+  return (
+    <span
+      key={amount + "-" + Math.abs(amount)}
+      className={`inline-flex animate-delta-pop items-center rounded-md px-1.5 py-0.5 text-[12px] font-medium tabular-nums ${
+        up ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"
+      }`}
+    >
+      {up ? "+" : "−"}${f$(Math.abs(amount))}
+    </span>
+  );
 }
 
 function Toasts({ ts }: { ts: any[] }) {
@@ -196,6 +218,7 @@ function Chat1({
   }
 
   if (!open) return null;
+  const showInlineTips = ms.length > 0 && ms.every((m) => m.r !== "u") && !typ;
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-bg animate-fade-in">
       <div className="flex items-center justify-between border-b border-line px-4 py-3 pt-11">
@@ -217,6 +240,23 @@ function Chat1({
             </div>
           </div>
         ))}
+        {showInlineTips && (
+          <div className="animate-rise pt-1">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Try asking</p>
+            <div className="flex flex-wrap gap-2">
+              {widgets.slice(0, 6).map((w) => (
+                <button
+                  key={"in-" + w.tag + w.prompt}
+                  onClick={() => send(w.prompt)}
+                  className="rounded-md border border-line bg-surface px-3 py-2 text-left hover:border-ink/25 hover:bg-bg"
+                >
+                  <span className="block text-[10px] uppercase tracking-wide text-ink-faint">{w.tag}</span>
+                  <span className="text-[13px] font-medium text-ink">{w.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {typ && (
           <div className="flex">
             <div className="flex gap-1 rounded-md border border-line bg-surface px-3 py-2.5">
@@ -227,14 +267,14 @@ function Chat1({
         <div ref={br} />
       </div>
 
-      <div className="border-t border-line bg-bg px-4 py-2.5">
+      <div className="border-t border-line bg-surface/80 px-4 py-2.5 backdrop-blur-sm">
         <p className="mb-1.5 text-[11px] font-medium text-ink-faint">Suggestions</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {widgets.map((w) => (
             <button
               key={w.tag + w.prompt}
               onClick={() => send(w.prompt)}
-              className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1.5 text-left hover:border-ink/25 hover:bg-bg"
+              className="shrink-0 rounded-md border border-line bg-bg px-2.5 py-1.5 text-left hover:border-ink/25"
             >
               <span className="block text-[10px] uppercase tracking-wide text-ink-faint">{w.tag}</span>
               <span className="text-[12.5px] font-medium text-ink">{w.label}</span>
@@ -292,10 +332,16 @@ function GroupChat() {
     }
     setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "Polo", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
   }
+  const tips = [
+    { tag: "Wallet", label: "Wallet balance", prompt: "What's my wallet balance?" },
+    { tag: "Balance", label: "What do I owe?", prompt: "What do I owe?" },
+    { tag: "Schedule", label: "When is rent due?", prompt: "When is rent due?" },
+    { tag: "Unit", label: "Is everyone paid?", prompt: "Is everyone paid?" },
+  ];
   return (
     <div>
       <p className="border-b border-line px-4 py-2 text-center text-xs text-ink-faint">Unit 4B</p>
-      <div className="space-y-0.5 px-4 pb-24 pt-3">
+      <div className="space-y-0.5 px-4 pb-32 pt-3">
         {msgs.map((m, i) => {
           const show = vis.includes(i);
           const isU = m.tp === "u";
@@ -328,9 +374,26 @@ function GroupChat() {
         )}
         <div ref={br} />
       </div>
-      <div className="fixed bottom-0 left-0 right-0 flex gap-2 border-t border-line bg-bg px-3 py-3 pb-7">
-        <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30" />
-        <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
+      <div className="fixed bottom-0 left-0 right-0 border-t border-line bg-bg">
+        <div className="border-b border-line bg-surface/80 px-3 py-2">
+          <p className="mb-1.5 text-[11px] font-medium text-ink-faint">Suggestions</p>
+          <div className="flex gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tips.map((w) => (
+              <button
+                key={w.prompt}
+                onClick={() => send(w.prompt)}
+                className="shrink-0 rounded-md border border-line bg-bg px-2.5 py-1.5 text-left hover:border-ink/25"
+              >
+                <span className="block text-[10px] uppercase tracking-wide text-ink-faint">{w.tag}</span>
+                <span className="text-[12.5px] font-medium text-ink">{w.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2 px-3 py-3 pb-7">
+          <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message unit chat" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30" />
+          <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
+        </div>
       </div>
     </div>
   );
@@ -373,7 +436,7 @@ function TopUp({ tn, open, close, go }: { tn: any; open: boolean; close: () => v
   );
 }
 
-function LandlordView({ tenants, sT, nf, dd, sDD }: any) {
+function LandlordView({ tenants, sT, nf, dd, sDD, balFlash }: any) {
   const [proc, sP] = useState<string | null>(null);
   const [spSt, sSS] = useState<string[]>([]);
   const [lTab, sLT] = useState("building");
@@ -387,13 +450,28 @@ function LandlordView({ tenants, sT, nf, dd, sDD }: any) {
     let d = 0;
     o.forEach((id) => {
       d += 450;
-      setTimeout(() => { sP(id); nf("Processing " + tenants[id].name + "..."); }, d);
+      setTimeout(() => {
+        sT((p: any) => {
+          const name = p[id]?.name ?? id;
+          nf("Processing " + name + "...");
+          return p;
+        });
+        sP(id);
+      }, d);
       d += 800;
       setTimeout(() => {
-        const t = tenants[id];
-        const tot = t.rS + t.ut + t.lf;
-        if (t.bal >= tot) { sT((p: any) => ({ ...p, [id]: { ...p[id], st: "paid", bal: p[id].bal - tot } })); nf(t.name.split(" ")[0] + ": paid", "ok"); }
-        else { sT((p: any) => ({ ...p, [id]: { ...p[id], st: "failed" } })); nf(t.name.split(" ")[0] + ": failed", "danger"); }
+        sT((p: any) => {
+          const t = p[id];
+          if (!t) return p;
+          const due = t.rS + t.ut + t.lf;
+          if (t.bal >= due) {
+            const next = Math.round((t.bal - due) * 100) / 100;
+            nf(t.name.split(" ")[0] + ": paid −$" + f$(due), "ok");
+            return { ...p, [id]: { ...t, st: "paid", bal: next, lf: 0, dl: 0 } };
+          }
+          nf(t.name.split(" ")[0] + ": failed (short $" + f$(due - t.bal) + ")", "danger");
+          return { ...p, [id]: { ...t, st: "failed" } };
+        });
         sP(null);
       }, d);
     });
@@ -475,9 +553,10 @@ function LandlordView({ tenants, sT, nf, dd, sDD }: any) {
                               <p className="mono">{tn.ag}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 text-[13px]">
+                          <div className="flex items-center gap-2 text-[13px]">
                             <span className="tabular-nums text-ink-muted">${f$(tot)}</span>
-                            <span className={`tabular-nums ${tn.bal >= tot ? "text-ok" : "text-danger"}`}>${f$(tn.bal)}</span>
+                            <span className={`tabular-nums ${tn.bal >= tot ? "text-ok" : "text-danger"}`}><AN value={tn.bal} /></span>
+                            {balFlash?.id === tid && <BalDelta key={balFlash.n} amount={balFlash.amt} />}
                             <St s={isP ? "processing" : tn.st} />
                           </div>
                         </div>
@@ -563,9 +642,30 @@ export default function App() {
   const [nfSel, sNfSel] = useState<any>(null);
   const [dd, sDD] = useState(9);
   const [dark, sDark] = useState(false);
+  const [balFlash, sBalFlash] = useState<{ id: string; amt: number; n: number } | null>(null);
   const nf = useNf();
+  const flashBal = (id: string, amt: number) => {
+    const n = Date.now();
+    sBalFlash({ id, amt, n });
+    setTimeout(() => sBalFlash((cur) => (cur && cur.n === n ? null : cur)), 2100);
+  };
 
   useEffect(() => { document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); }, [dark]);
+  const prevBals = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const next: Record<string, number> = {};
+    const deltas: { id: string; amt: number }[] = [];
+    for (const [id, tn] of Object.entries(tenants)) {
+      const prev = prevBals.current[id];
+      next[id] = tn.bal;
+      if (prev != null && tn.bal !== prev) {
+        deltas.push({ id, amt: Math.round((tn.bal - prev) * 100) / 100 });
+      }
+    }
+    prevBals.current = next;
+    // One change = top-up or a single rent draw. Many at once = demo reset (skip flash).
+    if (deltas.length === 1) flashBal(deltas[0].id, deltas[0].amt);
+  }, [tenants]);
   const isLandlord = role === "landlord";
   const tid = isLandlord ? "abhi" : role;
   const t = tenants[tid as keyof typeof tenants];
@@ -691,7 +791,7 @@ export default function App() {
         </div>
       )}
 
-      {isLandlord && <LandlordView tenants={tenants} sT={sT} nf={nf.push} dd={dd} sDD={sDD} />}
+      {isLandlord && <LandlordView tenants={tenants} sT={sT} nf={nf.push} dd={dd} sDD={sDD} balFlash={balFlash} />}
 
       {!isLandlord && tab === "dash" && (
         <main key={tid} className="mx-auto max-w-2xl animate-fade-in px-4 pb-24 pt-7">
@@ -725,17 +825,31 @@ export default function App() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[12px] text-ink-faint">Wallet</p>
-                <p className="mt-1 text-[22px] font-medium tracking-tight"><AN value={t.bal} /></p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="text-[22px] font-medium tracking-tight"><AN value={t.bal} /></p>
+                  {balFlash?.id === tid && <BalDelta key={balFlash.n} amount={balFlash.amt} />}
+                </div>
                 <p className="mono mt-1.5">{t.wa}</p>
               </div>
-              <div className="text-right">
-                {short && <p className="mb-1.5 text-[12px] text-danger">Short ${f$(tot - t.bal)}</p>}
-                <button onClick={() => sTU(true)} className="rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90">Top up</button>
-              </div>
+              <button onClick={() => sTU(true)} className="rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90">Top up</button>
             </div>
             <div className="mt-4 h-1 overflow-hidden rounded-sm bg-bg">
-              <div className={`h-full rounded-sm transition-all duration-500 ${short ? "bg-danger" : "bg-ok"}`} style={{ width: `${Math.min((t.bal / tot) * 100, 100)}%` }} />
+              <div className={`h-full rounded-sm transition-all duration-700 ${short ? "bg-danger" : "bg-ok"}`} style={{ width: `${Math.min((t.bal / tot) * 100, 100)}%` }} />
             </div>
+            {short ? (
+              <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
+                <div>
+                  <p className="text-[12px] text-ink-faint">Shortfall</p>
+                  <p className="mt-0.5 text-[18px] font-medium tabular-nums text-danger">−${f$(tot - t.bal)}</p>
+                  <p className="mt-0.5 text-[12px] text-ink-muted">Need ${f$(tot - t.bal)} more to cover this month.</p>
+                </div>
+                <button onClick={() => sTU(true)} className="shrink-0 rounded-md border border-danger/30 bg-danger-soft px-2.5 py-1.5 text-[12px] font-medium text-danger hover:opacity-90">
+                  Cover −${f$(tot - t.bal)}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-3 text-[12px] text-ok">Covered — wallet can pay ${f$(tot)} due.</p>
+            )}
           </section>
 
           <section className="mt-8">
