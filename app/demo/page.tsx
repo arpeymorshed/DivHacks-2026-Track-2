@@ -1,4 +1,5 @@
 "use client";
+import AarteeLogo from "../AarteeLogo";
 // Landlord console (/demo): everything here is live. State comes from GET /api/state; every button calls
 // the real route (rent day through the Guardian on XRPL Testnet, attacks, spawn, clock, reset).
 import { useCallback, useEffect, useState } from "react";
@@ -137,7 +138,7 @@ export default function DemoPage() {
       <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-sm">
         <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-4">
           <div className="flex items-baseline gap-2.5">
-            <span className="text-[14px] font-medium tracking-tight">RT</span>
+            <span className="text-[14px] font-medium tracking-tight"><AarteeLogo size={20} /></span>
             <span className="text-[12px] text-ink-faint">Landlord console</span>
           </div>
           <div className="flex items-center gap-1.5">
