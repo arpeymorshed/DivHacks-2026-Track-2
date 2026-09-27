@@ -167,6 +167,8 @@ function Chat1({
   const [typ, sT] = useState(false);
   const br = useRef<HTMLDivElement>(null);
   const ir = useRef<HTMLInputElement>(null);
+  const seq = useRef(0);
+  const busy = useRef(false);
 
   const totDue = tn.rS + tn.ut + tn.lf;
   const shortAmt = Math.max(0, Math.round((totDue - tn.bal) * 100) / 100);
@@ -195,11 +197,32 @@ function Chat1({
   })();
 
   useEffect(() => {
-    sM([]); sT(false);
-    if (open && d) setTimeout(() => { sM([{ id: "g", r: "a", t: d.hi }]); }, 120);
+    busy.current = false;
+    sM([]); sI(""); sT(false);
+    if (!open || !d) return;
+    const t = window.setTimeout(() => {
+      sM([{ id: "g", r: "a", t: d.hi }]);
+    }, 80);
+    return () => window.clearTimeout(t);
   }, [open, tid]);
-  useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [ms, typ]);
-  useEffect(() => { if (open) setTimeout(() => ir.current?.focus(), 180); }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => ir.current?.focus(), 200);
+    return () => window.clearTimeout(t);
+  }, [open, tid]);
+
+  useEffect(() => {
+    if (!typ && ms.length === 0) return;
+    br.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [ms.length, typ]);
 
   function toState(): TenantChatState {
     return {
@@ -209,72 +232,67 @@ function Chat1({
   }
 
   function send(t: string) {
-    sM((m) => [...m, { id: Date.now(), r: "u", t }]); sI(""); sT(true);
-    const a = buildPoloReply(t, toState(), onTopUp, d.an as Record<string, string>);
-    setTimeout(() => {
+    const text = t.trim();
+    if (!text || busy.current || typ) return;
+    busy.current = true;
+    const uid = `u-${++seq.current}`;
+    const aid = `a-${seq.current}`;
+    sM((m) => [...m, { id: uid, r: "u", t: text }]);
+    sI("");
+    sT(true);
+    const a = buildPoloReply(text, toState(), onTopUp, d.an as Record<string, string>);
+    window.setTimeout(() => {
       sT(false);
-      sM((m) => [...m, { id: Date.now() + 1, r: a.r, t: a.t }]);
-    }, 550 + Math.random() * 300);
+      sM((m) => [...m, { id: aid, r: a.r, t: a.t }]);
+      busy.current = false;
+    }, 480);
   }
 
   if (!open) return null;
-  const showInlineTips = ms.length > 0 && ms.every((m) => m.r !== "u") && !typ;
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-bg animate-fade-in">
-      <div className="flex items-center justify-between border-b border-line px-4 py-3 pt-11">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-bg" role="dialog" aria-label="RT chat">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div>
           <p className="text-[15px] font-medium">RT</p>
           <p className="text-xs text-ink-faint">Agent · Unit {tn.unit} · Cap ${f$(tn.cap)}</p>
         </div>
-        <button onClick={close} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft"><X size={16} /></button>
-      </div>
-      <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-4">
-        {ms.map((m) => (
-          <div key={m.id} className={`flex animate-rise ${m.r === "u" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[82%] whitespace-pre-wrap rounded-md px-3 py-2 text-[14px] leading-relaxed ${
-              m.r === "u" ? "bg-ink text-bg"
-                : m.r === "err" ? "border border-danger/30 bg-danger-soft text-danger"
-                : "border border-line bg-surface text-ink"
-            }`}>
-              {m.t}
-            </div>
-          </div>
-        ))}
-        {showInlineTips && (
-          <div className="animate-rise pt-1">
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Try asking</p>
-            <div className="flex flex-wrap gap-2">
-              {widgets.slice(0, 6).map((w) => (
-                <button
-                  key={"in-" + w.tag + w.prompt}
-                  onClick={() => send(w.prompt)}
-                  className="rounded-md border border-line bg-surface px-3 py-2 text-left hover:border-ink/25 hover:bg-bg"
-                >
-                  <span className="block text-[10px] uppercase tracking-wide text-ink-faint">{w.tag}</span>
-                  <span className="text-[13px] font-medium text-ink">{w.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {typ && (
-          <div className="flex">
-            <div className="flex gap-1 rounded-md border border-line bg-surface px-3 py-2.5">
-              {[0, 1, 2].map((i) => <div key={i} className="h-1 w-1 animate-pulse-dot rounded-full bg-ink-faint" style={{ animationDelay: `${i * 0.15}s` }} />)}
-            </div>
-          </div>
-        )}
-        <div ref={br} />
+        <button type="button" onClick={close} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft" aria-label="Close chat"><X size={16} /></button>
       </div>
 
-      <div className="border-t border-line bg-surface/80 px-4 py-2.5 backdrop-blur-sm">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-end gap-2.5">
+          {ms.map((m) => (
+            <div key={m.id} className={`flex ${m.r === "u" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[82%] whitespace-pre-wrap rounded-md px-3 py-2 text-[14px] leading-relaxed ${
+                m.r === "u" ? "bg-ink text-bg"
+                  : m.r === "err" ? "border border-danger/30 bg-danger-soft text-danger"
+                  : "border border-line bg-surface text-ink"
+              }`}>
+                {m.t}
+              </div>
+            </div>
+          ))}
+          {typ && (
+            <div className="flex justify-start">
+              <div className="flex gap-1 rounded-md border border-line bg-surface px-3 py-2.5">
+                {[0, 1, 2].map((i) => <div key={i} className="h-1 w-1 animate-pulse-dot rounded-full bg-ink-faint" style={{ animationDelay: `${i * 0.15}s` }} />)}
+              </div>
+            </div>
+          )}
+          <div ref={br} className="h-px w-full shrink-0" />
+        </div>
+      </div>
+
+      <div className="shrink-0 border-t border-line bg-bg px-4 py-2.5">
         <p className="mb-1.5 text-[11px] font-medium text-ink-faint">Suggestions</p>
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {widgets.map((w) => (
             <button
-              key={w.tag + w.prompt}
+              key={w.prompt}
+              type="button"
+              disabled={typ}
               onClick={() => send(w.prompt)}
-              className="shrink-0 rounded-md border border-line bg-bg px-2.5 py-1.5 text-left hover:border-ink/25"
+              className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1.5 text-left hover:border-ink/25 disabled:opacity-50"
             >
               <span className="block text-[10px] uppercase tracking-wide text-ink-faint">{w.tag}</span>
               <span className="text-[12.5px] font-medium text-ink">{w.label}</span>
@@ -283,20 +301,22 @@ function Chat1({
         </div>
       </div>
 
-      <div className="flex gap-2 border-t border-line px-3 py-3 pb-7">
+      <div className="flex shrink-0 gap-2 border-t border-line px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <input
           ref={ir}
           value={inp}
+          disabled={typ}
           onChange={(e) => sI(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }}
-          placeholder={"Try \u201cWhat\u2019s my wallet balance?\u201d or \u201cTop up $100\u201d"}
-          className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30"
+          onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) { e.preventDefault(); send(inp); } }}
+          placeholder="Ask about balance, dues, or top up"
+          className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30 disabled:opacity-60"
         />
-        <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
+        <button type="button" disabled={typ || !inp.trim()} onClick={() => send(inp)} className="rounded-md bg-ink px-3 text-bg hover:opacity-90 disabled:opacity-40"><Send size={16} /></button>
       </div>
     </div>
   );
 }
+
 
 function GroupChat() {
   const [msgs, sMsgs] = useState(GRP);
@@ -304,7 +324,8 @@ function GroupChat() {
   const [typ, sTyp] = useState(false);
   const vis = useSt(msgs.length, 45);
   const br = useRef<HTMLDivElement>(null);
-  useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, typ]);
+  const gcBusy = useRef(false);
+  useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs.length, typ]);
   const nameC: Record<string, string> = { "ag-m": "text-accent", "ag-j": "text-info", abhi: "text-ink", kashish: "text-ink", "?": "text-danger" };
   const answers: Record<string, string> = {
     "what do i owe": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
@@ -315,9 +336,12 @@ function GroupChat() {
     "when is rent due": "Next payment of $1,488 is due Oct 1 ($1,450 rent + $38 ConEd). Your wallet covers it.",
   };
   function send(text: string) {
-    sMsgs((m) => [...m, { id: Date.now(), f: "abhi", n: "Abhimanyu", m: text, t: "now", tp: "u" }]);
+    const trimmed = text.trim();
+    if (!trimmed || gcBusy.current || typ) return;
+    gcBusy.current = true;
+    sMsgs((m) => [...m, { id: Date.now(), f: "abhi", n: "Abhimanyu", m: trimmed, t: "now", tp: "u" }]);
     sInp(""); sTyp(true);
-    const q = text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
+    const q = trimmed.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
     const key = Object.keys(answers).sort((a, b) => b.length - a.length).find((k) => q.includes(k));
     const abhiState: TenantChatState = {
       name: "Abhimanyu Dudeja", unit: "4B", bal: 1520, cap: 1600,
@@ -327,10 +351,14 @@ function GroupChat() {
     if (key && !q.includes("wallet") && key !== "total" && !q.includes("balance")) {
       reply = answers[key];
     } else {
-      const a = buildPoloReply(text, abhiState, () => ({ ok: false as const, error: "Top-ups happen in your personal RT chat.", room: 80 }), answers);
+      const a = buildPoloReply(trimmed, abhiState, () => ({ ok: false as const, error: "Top-ups happen in your personal RT chat.", room: 80 }), answers);
       reply = a.t;
     }
-    setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "RT", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
+    setTimeout(() => {
+      sTyp(false);
+      sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "RT", m: reply, t: "now", tp: "ag" }]);
+      gcBusy.current = false;
+    }, 500);
   }
   const tips = [
     { tag: "Wallet", label: "Wallet balance", prompt: "What's my wallet balance?" },
@@ -343,7 +371,7 @@ function GroupChat() {
       <p className="border-b border-line px-4 py-2 text-center text-xs text-ink-faint">Unit 4B</p>
       <div className="space-y-0.5 px-4 pb-32 pt-3">
         {msgs.map((m, i) => {
-          const show = vis.includes(i);
+          const show = vis.includes(i) || m.t === "now";
           const isU = m.tp === "u";
           const prev = i > 0 ? msgs[i - 1] : null;
           const showDate = !prev || m.t.split(",")[0] !== prev.t.split(",")[0];
@@ -381,8 +409,10 @@ function GroupChat() {
             {tips.map((w) => (
               <button
                 key={w.prompt}
+                type="button"
+                disabled={typ}
                 onClick={() => send(w.prompt)}
-                className="shrink-0 rounded-md border border-line bg-bg px-2.5 py-1.5 text-left hover:border-ink/25"
+                className="shrink-0 rounded-md border border-line bg-bg px-2.5 py-1.5 text-left hover:border-ink/25 disabled:opacity-50"
               >
                 <span className="block text-[10px] uppercase tracking-wide text-ink-faint">{w.tag}</span>
                 <span className="text-[12.5px] font-medium text-ink">{w.label}</span>
@@ -899,7 +929,7 @@ export default function App() {
 
       {!isLandlord && tab === "group" && <GroupChat />}
 
-      {!isLandlord && tab === "dash" && (
+      {!isLandlord && tab === "dash" && !c1 && (
         <button
           type="button"
           onClick={() => sC1(true)}

@@ -1,4 +1,4 @@
-// Thin client for the Aartee backend. The bot is only a delivery channel:
+// Thin client for the aartee. backend. The bot is only a delivery channel:
 // all tenant logic (agents, wallets, XRPL) lives behind these two routes.
 
 export type OutboxMessage = { id: string; tenantId: string; text: string };

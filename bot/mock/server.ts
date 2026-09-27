@@ -1,4 +1,4 @@
-// Mock Aartee backend for local development. Implements the same contract
+// Mock aartee. backend for local development. Implements the same contract
 // the real backend will expose, so the bot can be built and tested without it.
 //
 //   POST /api/chat    { tenantId, text } -> { reply }
@@ -80,7 +80,7 @@ function replyFor(tenantId: string, text: string): string {
     return `Your rent wallet has ${usd(t.walletBalance)}, enough to cover the ${usd(total)} due ${t.dueDate}.`;
   }
   if (/^(hi|hello|hey)$/.test(q) || /^(hi|hello|hey)\b/.test(q) && q.split(" ").length <= 3) {
-    return `Hi ${t.name}! I'm your Aartee agent. Ask me about rent, utilities, your wallet, or when rent is due.`;
+    return `Hi ${t.name}! I'm RT, your aartee. agent. Ask me about rent, utilities, your wallet, or when rent is due.`;
   }
   if (/\bwhen\b/.test(q) || q.includes("due date") || q.includes("deadline") || q.includes("by when")) {
     return `Your next payment of ${usd(total)} is due ${t.dueDate}. Breakdown: rent ${usd(t.rent)} + utilities ${usd(t.utilities)} = ${usd(total)}.`;
@@ -149,4 +149,4 @@ Bun.serve({
   },
 });
 
-console.log(`[mock] Aartee mock backend on http://localhost:${PORT}`);
+console.log(`[mock] aartee. mock backend on http://localhost:${PORT}`);
