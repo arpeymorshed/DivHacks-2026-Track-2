@@ -18,14 +18,14 @@ bun install
 bun start
 ```
 
-## RentRelay messaging layer
+## Aartee messaging layer
 
-This bot is RentRelay's iMessage delivery channel. It holds no wallet keys and runs no
-XRPL or AI logic; it only relays messages between tenants and the RentRelay backend.
+This bot is Aartee's iMessage delivery channel. It holds no wallet keys and runs no
+XRPL or AI logic; it only relays messages between tenants and the Aartee backend.
 
 - **Inbound:** a registered tenant texts the bot → `POST {API_BASE_URL}/api/chat` with
   `{ tenantId, text }` → the `{ reply }` is sent back (with a typing indicator).
-  Unregistered numbers get "This number isn't registered with RentRelay."
+  Unregistered numbers get "This number isn't registered with Aartee."
 - **Outbound:** every 5 seconds the bot calls `GET {API_BASE_URL}/api/outbox` and texts each
   new `{ id, tenantId, text }` to that tenant. After a successful send it calls
   `POST {API_BASE_URL}/api/outbox/:id/ack`, and the backend stops returning that message.
@@ -33,7 +33,7 @@ XRPL or AI logic; it only relays messages between tenants and the RentRelay back
   nothing is sent twice, even after a restart or when an ack fails. A failed ack is retried
   on the next poll without resending. A failed send is not acked and is retried. Delete that
   file to resend everything.
-- **Errors:** if the backend is down or errors, tenants get "RentRelay is having trouble right
+- **Errors:** if the backend is down or errors, tenants get "Aartee is having trouble right
   now" and the bot keeps running. Failed outbox sends are retried on the next poll.
 
 ### Backend contract
@@ -50,7 +50,7 @@ XRPL or AI logic; it only relays messages between tenants and the RentRelay back
 |---|---|
 | `PROJECT_ID`, `PROJECT_SECRET` | Spectrum credentials from the Photon dashboard |
 | `TENANT_PHONES` | Tenants as `tenantId:+1phone` pairs, comma-separated, e.g. `abhimanyu:+15551234567,kashish:+15557654321` |
-| `API_BASE_URL` | RentRelay backend. `http://localhost:4000` for the mock |
+| `API_BASE_URL` | Aartee backend. `http://localhost:4000` for the mock |
 
 ### Run with the mock backend
 
@@ -69,7 +69,7 @@ message per tenant. Queue another one to test outbound delivery:
 
 ```sh
 curl -X POST localhost:4000/api/outbox -H 'content-type: application/json' \
-  -d '{"tenantId":"kashish","text":"Test reminder from RentRelay"}'
+  -d '{"tenantId":"kashish","text":"Test reminder from Aartee"}'
 ```
 
 The mock's outbox lives in memory, so restarting it brings back the same starting ids

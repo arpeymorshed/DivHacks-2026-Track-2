@@ -1,5 +1,5 @@
 #!/bin/bash
-# RentRelay demo reset: clears the bot's sent list, resets the backend, starts the bot.
+# Aartee demo reset: clears the bot's sent list, resets the backend, starts the bot.
 cd "$(dirname "$0")"
 rm -f .outbox-sent.json
 echo "Resetting backend..."
