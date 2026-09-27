@@ -2,40 +2,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ChevronDown, CheckCircle2, RotateCcw, Send, RefreshCw, Bell, X, MessageCircle,
-  Moon, Sun,
+  Moon, Sun, ExternalLink,
 } from "lucide-react";
+import Link from "next/link";
+import { api, errorText, shortAddr, usd } from "@/app/lib/api";
+import { useDemoState } from "@/app/lib/useDemoState";
+import type { ActivityEntry, TenantState } from "@/types/rent";
 
-const LA = "rLndQ7v...4kDf";
-const initT = () => ({
-  abhi: { id: "abhi", name: "Abhimanyu Dudeja", ini: "A", unit: "4B", sh: 0.5, rT: 2900, rS: 1450, ut: 38, cap: 1600, wa: "rAbhi8x...KqvP", bal: 1520, ap: true, st: "paid", dl: 0, lf: 0, ag: "agent-abhi-4b", str: 11 },
-  kashish: { id: "kashish", name: "Kashish", ini: "K", unit: "4B", sh: 0.5, rT: 2900, rS: 1450, ut: 38, cap: 1600, wa: "rKash3m...NpxR", bal: 980, ap: true, st: "late", dl: 8, lf: 15, ag: "agent-kashish-4b", str: 0 },
-  musammat: { id: "musammat", name: "Musammat", ini: "M", unit: "2A", sh: 1.0, rT: 1450, rS: 1450, ut: 52, cap: 1600, wa: "rMusa7v...WxsT", bal: 1550, ap: true, st: "due", dl: 0, lf: 0, ag: "agent-musammat-2a", str: 7 },
-});
-const UNITS = [{ id: "4B", rent: 2900, ts: ["abhi", "kashish"] }, { id: "2A", rent: 1450, ts: ["musammat"] }];
-const AUD = [
-  { id: "a1", t: "Sep 1", w: "Abhimanyu", wh: "Rent", a: 1450, s: "ok", r: "Passed", tx: "E4F8A2...9C1D" },
-  { id: "a2", t: "Sep 1", w: "Abhimanyu", wh: "ConEd", a: 38, s: "ok", r: "Passed", tx: "B7D3F1...4E2A" },
-  { id: "a3", t: "Sep 1", w: "Musammat", wh: "Rent", a: 1450, s: "ok", r: "Passed", tx: "C2A9E5...7F3B" },
-  { id: "a4", t: "Sep 1", w: "Kashish", wh: "Rent", a: 1450, s: "fail", r: "Insufficient balance", tx: null },
-  { id: "a5", t: "Sep 3", w: "Abhimanyu", wh: "Scam", a: 1450, s: "block", r: "Unrecognized address", tx: null },
-];
-const ATK = [
-  { id: "scam", t: "Scam bank-account change", d: "Message reroutes rent to a new address.", bk: "Guardian", ly: "g", v: `Destination rScam...9xyz doesn't match verified address (${LA}).`, x: "Guardian pins the landlord's on-chain credential." },
-  { id: "inflate", t: "Inflated utility bill", d: "ConEd share misread as $380 instead of $38.", bk: "Guardian", ly: "g", v: "Monthly total $1,830 exceeds tenant cap of $1,600.", x: "Guardian tallies all charges before co-signing." },
-  { id: "double", t: "Double rent charge", d: "Landlord agent requests September rent again.", bk: "Guardian", ly: "g", v: "September 2026 already paid. Duplicate refused.", x: "Guardian tracks paid periods." },
-  { id: "fee", t: "Illegal $200 late fee", d: "Fee exceeds NY cap, or charged in grace period.", bk: "Guardian", ly: "g", v: "$200 exceeds min($50, 5% x $1,450). Grace violated.", x: "NY RPL 238-a. Guardian enforces both." },
-  { id: "key", t: "Stolen agent key", d: "Attacker signs with only the agent's key.", bk: "XRPL ledger", ly: "l", v: "1 signature, quorum requires 2. Rejected on-chain.", x: "Master key disabled. 2 of 3 needed. Ledger enforces." },
-];
-const ACT = {
-  abhi: [{ id: 1, tp: "ok", m: "Rent $1,450.00 paid", t: "Sep 1", tx: "E4F8A2...9C1D" }, { id: 2, tp: "ok", m: "ConEd $38.00 paid", t: "Sep 1", tx: "B7D3F1...4E2A" }, { id: 3, tp: "note", m: "September settled", t: "Sep 1" }, { id: 4, tp: "block", m: "Scam blocked — unrecognized payee address", t: "Sep 3" }],
-  kashish: [{ id: 1, tp: "warn", m: "Wallet short $508 for Sep 1 rent", t: "Aug 29" }, { id: 2, tp: "warn", m: "Rent day — still short", t: "Sep 1" }, { id: 3, tp: "warn", m: "Grace period: 4 days left", t: "Sep 3" }, { id: 4, tp: "alert", m: "Late fee: $5/day, now $15", t: "Sep 9" }],
-  musammat: [{ id: 1, tp: "note", m: "Oct 1 dues covered by wallet", t: "Sep 28" }, { id: 2, tp: "note", m: "Autopay scheduled", t: "Sep 30" }],
-};
-const CHAT1 = {
-  abhi: { hi: "September's settled — rent and ConEd paid. Nothing due.", sg: ["What did I pay?", "Why is ConEd $38?", "Is Kashish's rent paid?"], an: { "What did I pay?": "Rent $1,450 (50% of 4B) plus ConEd $38. Total $1,488, both on Sep 1, verified on-chain.", "Why is ConEd $38?": "Building bill was $128. 4B pays $76 by square footage, split 50/50 with Kashish. Your share: $38.", "Is Kashish's rent paid?": "Not yet. He's 8 days late with a $15 fee accruing. His agent is on it. Doesn't affect you." } },
-  kashish: { hi: "September rent is 8 days overdue. Late fee: $15. What do you need?", sg: ["Why the late fee?", "Can I pay on the 5th?", "Total owed?"], an: { "Why the late fee?": "Due Sep 1, grace ended Sep 5. Fee is $5/day after that, capped at $50. You're 3 days past grace = $15.", "Can I pay on the 5th?": "I can request an extension. If approved, the fee pauses until Oct 5. Want me to send it?", "Total owed?": "Rent $1,450 + ConEd $38 + fee $15 = $1,503. Wallet has $980. Top up $523 and I'll pay immediately." } },
-  musammat: { hi: "October rent covered. Autopay on. Nothing to do.", sg: ["ConEd share?", "Payment streak?", "When is rent day?"], an: { "ConEd share?": "Building bill $128. Unit 2A = 41% = $52. You're the sole tenant.", "Payment streak?": "7 months on time. Visible to your landlord as a reference.", "When is rent day?": "Oct 1. Autopay is on, wallet covers it. I'll handle it." } },
-};
+// The group chat below is a scripted story (there's no group-chat backend); everything else on this page is live.
+const LA = "rLD4K9g…VxZS"; // the real landlord address, shown in the scripted story
+const CHAT_SUGGESTIONS = ["What do I owe?", "Why is ConEd $38?", "Can I pay on the 5th?"];
+const fmtDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const fmtWhen = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const GRP = [
   { id: 1, f: "ag-m", n: "Polo", m: "Rent reminder — Abhimanyu, $1,450 + ConEd $38 due Oct 1. Wallet covers it.", t: "Sep 28, 10:00 AM", tp: "ag" },
   { id: 2, f: "ag-j", n: "Polo-K", m: "Rent reminder — Kashish, $1,450 + ConEd $38 due Oct 1. Wallet short $508.", t: "Sep 28, 10:00 AM", tp: "ag" },
@@ -67,11 +45,7 @@ function useSt(c: number, ms = 40) {
 }
 function useNf() {
   const [ts, sTs] = useState<any[]>([]);
-  const [h, sH] = useState([
-    { id: "n0", m: "Abhimanyu's rent paid", t: "Sep 1", r: true, c: "ok", detail: "Rent $1,450 and ConEd $38 paid. Verified on-chain.", tag: "Payment" },
-    { id: "n1", m: "Scam payment blocked", t: "Sep 3", r: false, c: "danger", detail: "Unknown address rScam...9xyz rejected by Guardian.", tag: "Blocked" },
-    { id: "n2", m: "Kashish overdue — day 8", t: "Sep 9", r: false, c: "warn", detail: "Wallet short. Late fee $15 accruing. Cap: $50.", tag: "Overdue" },
-  ]);
+  const [h, sH] = useState<any[]>([]);
   const push = useCallback((m: string, c = "accent") => {
     const id = "" + Date.now();
     const n = { id, m, t: "now", r: false, c, detail: m, tag: "Update" };
@@ -84,12 +58,12 @@ function useNf() {
 }
 
 const tone: Record<string, string> = {
-  paid: "text-ok", due: "text-info", late: "text-warn", blocked: "text-danger", failed: "text-danger",
+  paid: "text-ok", due: "text-info", grace: "text-info", upcoming: "text-ink-faint", late: "text-warn", blocked: "text-danger", failed: "text-danger",
   ok: "text-ok", block: "text-danger", fail: "text-danger", processing: "text-accent", note: "text-ink-faint",
   warn: "text-warn", alert: "text-warn",
 };
 const label: Record<string, string> = {
-  paid: "Paid", due: "Due", late: "Late", blocked: "Blocked", failed: "Failed",
+  paid: "Paid", due: "Due", grace: "Grace period", upcoming: "Upcoming", late: "Late", blocked: "Blocked", failed: "Failed",
   ok: "Paid", block: "Blocked", fail: "Failed", processing: "Processing",
   note: "", warn: "", alert: "",
 };
@@ -125,9 +99,7 @@ function Toasts({ ts }: { ts: any[] }) {
   );
 }
 
-function Chat1({ tid, open, close }: { tid: string; open: boolean; close: () => void }) {
-  const d = CHAT1[tid as keyof typeof CHAT1];
-  const tn = initT()[tid as keyof ReturnType<typeof initT>];
+function Chat1({ tid, unit, hi, open, close }: { tid: string; unit: string; hi: string; open: boolean; close: () => void }) {
   const [ms, sM] = useState<any[]>([]);
   const [inp, sI] = useState("");
   const [typ, sT] = useState(false);
@@ -136,14 +108,16 @@ function Chat1({ tid, open, close }: { tid: string; open: boolean; close: () => 
   const ir = useRef<HTMLInputElement>(null);
   useEffect(() => {
     sM([]); sS([]); sT(false);
-    if (open && d) setTimeout(() => { sM([{ id: "g", r: "a", t: d.hi }]); setTimeout(() => sS(d.sg), 280); }, 120);
-  }, [open, tid]);
+    if (open) setTimeout(() => { sM([{ id: "g", r: "a", t: hi }]); setTimeout(() => sS(CHAT_SUGGESTIONS), 280); }, 120);
+  }, [open, tid]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [ms, typ]);
   useEffect(() => { if (open) setTimeout(() => ir.current?.focus(), 180); }, [open]);
-  function send(t: string) {
+  async function send(t: string) {
+    if (!t.trim() || typ) return;
     sM((m) => [...m, { id: Date.now(), r: "u", t }]); sS([]); sI(""); sT(true);
-    const a = d.an[t as keyof typeof d.an] || "Let me check on that.";
-    setTimeout(() => { sT(false); sM((m) => [...m, { id: Date.now() + 1, r: "a", t: a }]); setTimeout(() => sS(d.sg.filter((s) => s !== t)), 250); }, 650 + Math.random() * 350);
+    let a: string;
+    try { a = (await api.chat(tid, t)).reply; } catch (e) { a = `I couldn't reach the server: ${errorText(e)}`; }
+    sT(false); sM((m) => [...m, { id: Date.now() + 1, r: "a", t: a }]); setTimeout(() => sS(CHAT_SUGGESTIONS.filter((x) => x !== t)), 250);
   }
   if (!open) return null;
   return (
@@ -151,7 +125,7 @@ function Chat1({ tid, open, close }: { tid: string; open: boolean; close: () => 
       <div className="flex items-center justify-between border-b border-line px-4 py-3 pt-11">
         <div>
           <p className="text-[15px] font-medium">Polo</p>
-          <p className="text-xs text-ink-faint">Agent · Unit {tn.unit}</p>
+          <p className="text-xs text-ink-faint">Agent · Unit {unit}</p>
         </div>
         <button onClick={close} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft"><X size={16} /></button>
       </div>
@@ -180,7 +154,7 @@ function Chat1({ tid, open, close }: { tid: string; open: boolean; close: () => 
         </div>
       )}
       <div className="flex gap-2 border-t border-line px-3 py-3 pb-7">
-        <input ref={ir} value={inp} onChange={(e) => sI(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Ask anything" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30" />
+        <input ref={ir} value={inp} onChange={(e) => sI(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Ask anything" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30" />
         <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
       </div>
     </div>
@@ -246,7 +220,7 @@ function GroupChat() {
         <div ref={br} />
       </div>
       <div className="fixed bottom-0 left-0 right-0 flex gap-2 border-t border-line bg-bg px-3 py-3 pb-7">
-        <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30" />
+        <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30" />
         <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
       </div>
     </div>
@@ -270,7 +244,7 @@ function TopUp({ tn, open, close, go }: { tn: any; open: boolean; close: () => v
             <button key={v} onClick={() => sA("" + v)} className={`rounded-md px-3 py-1.5 text-[13px] font-medium ${a === "" + v ? "bg-ink text-bg" : "border border-line text-ink hover:bg-bg"}`}>${v}</button>
           ))}
         </div>
-        <input value={a} onChange={(e) => sA(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Custom amount" className="mt-3 w-full rounded-md border border-line bg-bg px-3 py-2 text-center text-[14px] focus:border-ink/30" />
+        <input value={a} onChange={(e) => sA(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Custom amount" className="mt-3 w-full rounded-md border border-line bg-bg px-3 py-2 text-center text-[16px] sm:text-[14px] focus:border-ink/30" />
         <div className="mt-4 flex gap-2">
           <button onClick={close} className="flex-1 rounded-md px-3 py-2 text-[13px] text-ink-muted hover:bg-bg">Cancel</button>
           <button onClick={() => { if (parseFloat(a) > 0) { go(parseFloat(a)); close(); sA(""); } }} className="flex-1 rounded-md bg-accent px-3 py-2 text-[13px] font-medium text-white hover:opacity-90">Confirm</button>
@@ -280,214 +254,65 @@ function TopUp({ tn, open, close, go }: { tn: any; open: boolean; close: () => v
   );
 }
 
-function LandlordView({ tenants, sT, nf, dd, sDD }: any) {
-  const [proc, sP] = useState<string | null>(null);
-  const [spSt, sSS] = useState<string[]>([]);
-  const [lTab, sLT] = useState("building");
-  const [res, sR] = useState<Record<string, boolean | undefined>>({});
-  const [run, sRn] = useState<string | null>(null);
-  const vis = useSt(ATK.length, 35);
-
-  function runRD() {
-    sDD(1);
-    const o = ["abhi", "musammat", "kashish"];
-    let d = 0;
-    o.forEach((id) => {
-      d += 450;
-      setTimeout(() => { sP(id); nf("Processing " + tenants[id].name + "..."); }, d);
-      d += 800;
-      setTimeout(() => {
-        const t = tenants[id];
-        const tot = t.rS + t.ut + t.lf;
-        if (t.bal >= tot) { sT((p: any) => ({ ...p, [id]: { ...p[id], st: "paid", bal: p[id].bal - tot } })); nf(t.name.split(" ")[0] + ": paid", "ok"); }
-        else { sT((p: any) => ({ ...p, [id]: { ...p[id], st: "failed" } })); nf(t.name.split(" ")[0] + ": failed", "danger"); }
-        sP(null);
-      }, d);
-    });
-  }
-  function spawn() {
-    sSS([]);
-    ["Wallet created", "Trust line set", "Signer list (2-of-3)", "Master key disabled", "Credential issued", "Live"].forEach((s, i) => setTimeout(() => sSS((p) => [...p, s]), i * 420 + 120));
-  }
-  function fire(a: typeof ATK[0]) {
-    if (run) return;
-    sRn(a.id); sR((r) => ({ ...r, [a.id]: undefined }));
-    setTimeout(() => { sR((r) => ({ ...r, [a.id]: true })); sRn(null); nf("Blocked: " + a.t, a.ly === "l" ? "accent" : "danger"); }, 900);
-  }
-
-  return (
-    <div className="mx-auto max-w-2xl px-4 pb-20 pt-5">
-      <div className="mb-6 flex gap-5 border-b border-line">
-        {[{ id: "building", l: "Building" }, { id: "guardian", l: "Guardian" }].map((tb) => (
-          <button key={tb.id} onClick={() => sLT(tb.id)} className={`-mb-px border-b pb-2.5 text-[13px] ${lTab === tb.id ? "border-ink font-medium text-ink" : "border-transparent text-ink-faint hover:text-ink-muted"}`}>
-            {tb.l}
-          </button>
-        ))}
-      </div>
-
-      {lTab === "building" && (
-        <div className="animate-fade-in space-y-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="text-hero text-ink">123 W 112th St</h2>
-              <p className="mt-1 text-[13px] text-ink-muted">2 units · 3 tenants</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[13px] text-ink-muted">Sep {dd}</span>
-              <button onClick={() => sDD((d: number) => Math.min(d + 1, 30))} className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-muted hover:bg-surface">+1 day</button>
-              <button onClick={runRD} className="rounded-md bg-ink px-2.5 py-1 text-[12px] font-medium text-bg hover:opacity-90">Rent day</button>
-              <button onClick={() => { sDD(9); sT(initT()); }} className="rounded-md p-1 text-ink-faint hover:bg-surface"><RotateCcw size={13} /></button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between border border-line bg-surface px-3.5 py-3 rounded-md">
-            <div>
-              <p className="text-[13px] font-medium">Add tenant</p>
-              <p className="text-[12px] text-ink-faint">Spawn wallet on-chain</p>
-            </div>
-            <button onClick={spawn} className="rounded-md border border-line px-2.5 py-1 text-[12px] font-medium text-ink-muted hover:bg-bg">Spawn</button>
-          </div>
-          {spSt.length > 0 && (
-            <div className="space-y-1.5 rounded-md border border-line bg-surface px-3.5 py-3">
-              {spSt.map((s, i) => (
-                <p key={i} className={`flex items-center gap-2 text-[13px] ${s === "Live" ? "font-medium text-ok" : "text-ink-muted"}`}>
-                  {s === "Live" ? <CheckCircle2 size={13} /> : <RefreshCw size={11} className={i === spSt.length - 1 && s !== "Live" ? "animate-spin" : ""} />}
-                  {s === "Live" ? "Agent live" : s}
-                </p>
-              ))}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {UNITS.map((u) => {
-              const allP = u.ts.every((id) => tenants[id].st === "paid");
-              const anyL = u.ts.some((id) => tenants[id].st === "late");
-              return (
-                <section key={u.id}>
-                  <div className="mb-2 flex items-baseline justify-between">
-                    <h3 className="text-[13px] font-medium">Unit {u.id} <span className="font-normal text-ink-faint">${u.rent.toLocaleString()}/mo</span></h3>
-                    <St s={allP ? "paid" : anyL ? "late" : "due"} />
-                  </div>
-                  <div className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
-                    {u.ts.map((tid) => {
-                      const tn = tenants[tid];
-                      const tot = tn.rS + tn.ut + tn.lf;
-                      const isP = proc === tid;
-                      return (
-                        <div key={tid} className={`flex items-center justify-between px-3.5 py-3 ${isP ? "bg-accent-soft/50" : ""}`}>
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-bg text-[11px] font-medium text-ink-muted">{tn.ini}</div>
-                            <div>
-                              <p className="text-[13px] font-medium">{tn.name}</p>
-                              <p className="mono">{tn.ag}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 text-[13px]">
-                            <span className="tabular-nums text-ink-muted">${f$(tot)}</span>
-                            <span className={`tabular-nums ${tn.bal >= tot ? "text-ok" : "text-danger"}`}>${f$(tn.bal)}</span>
-                            <St s={isP ? "processing" : tn.st} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-
-          <section>
-            <h3 className="mb-2 text-[13px] font-medium">Audit</h3>
-            <div className="overflow-x-auto rounded-md border border-line bg-surface">
-              <table className="w-full text-left text-[13px]">
-                <thead>
-                  <tr className="border-b border-line text-[11px] text-ink-faint">
-                    {["Time", "Who", "Type", "Amt", "Status"].map((h) => <th key={h} className="px-3.5 py-2.5 font-medium">{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {AUD.map((r) => (
-                    <tr key={r.id} className="border-b border-line-soft last:border-0">
-                      <td className="px-3.5 py-2.5 text-ink-faint">{r.t}</td>
-                      <td className="px-3.5 py-2.5">{r.w}</td>
-                      <td className="px-3.5 py-2.5 text-ink-muted">{r.wh}</td>
-                      <td className="px-3.5 py-2.5 tabular-nums">${f$(r.a)}</td>
-                      <td className="px-3.5 py-2.5"><St s={r.s} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {lTab === "guardian" && (
-        <div className="animate-fade-in">
-          <h2 className="text-hero">What could go wrong?</h2>
-          <p className="mt-1 text-[13px] text-ink-muted">Five attacks. Each one blocked.</p>
-          <div className="mt-6 space-y-2">
-            {ATK.map((a, i) => {
-              const show = vis.includes(i);
-              const isR = run === a.id;
-              const bl = res[a.id];
-              return (
-                <div key={a.id} className={`rounded-md border border-line bg-surface p-4 transition-opacity duration-200 ${show ? "opacity-100" : "opacity-0"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[14px] font-medium">{a.t}</p>
-                      <p className="mt-1 text-[13px] leading-snug text-ink-muted">{a.d}</p>
-                    </div>
-                    <button onClick={() => fire(a)} disabled={!!isR} className={`shrink-0 rounded-md px-2.5 py-1 text-[12px] font-medium ${bl ? "border border-line text-ink-muted" : "bg-ink text-bg hover:opacity-90"}`}>
-                      {isR ? <span className="flex items-center gap-1"><RefreshCw size={11} className="animate-spin" />Test</span> : bl ? "Again" : "Run"}
-                    </button>
-                  </div>
-                  {bl && (
-                    <div className="mt-3 border-t border-line pt-3">
-                      <p className={`text-[12px] font-medium ${a.ly === "l" ? "text-accent" : "text-danger"}`}>Blocked by {a.bk}</p>
-                      <p className="mt-1 text-[13px]">{a.v}</p>
-                      <p className="mt-0.5 text-[13px] text-ink-muted">{a.x}</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function App() {
-  const [role, sRole] = useState("abhi");
+  const { state, error, refresh } = useDemoState();
+  const [role, sRole] = useState("abhimanyu");
   const [pk, sPk] = useState(false);
-  const [tenants, sT] = useState(initT);
   const [nfO, sNfO] = useState(false);
   const [tab, sTab] = useState("dash");
   const [tu, sTU] = useState(false);
   const [c1, sC1] = useState(false);
   const [nfSel, sNfSel] = useState<any>(null);
-  const [dd, sDD] = useState(9);
   const [dark, sDark] = useState(false);
+  const [topping, sTopping] = useState(false);
   const nf = useNf();
 
   useEffect(() => { document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); }, [dark]);
   const isLandlord = role === "landlord";
-  const tid = isLandlord ? "abhi" : role;
-  const t = tenants[tid as keyof typeof tenants];
-  const acts = ACT[tid as keyof typeof ACT] || [];
-  const tot = t.rS + t.ut + t.lf;
-  const short = t.bal < tot;
+  const tenantsS: TenantState[] = state?.tenants ?? [];
+  const unitName = (unitId: string) => state?.building.units.find((u) => u.id === unitId)?.name ?? "";
+  const cur = tenantsS.find((x) => x.id === role) ?? tenantsS[0];
+  const tid = cur?.id ?? "abhimanyu";
+  // View model for the (unchanged) layout, built from GET /api/state.
+  const t = {
+    id: tid, name: cur?.name ?? "", ini: (cur?.name ?? "?")[0], unit: cur ? unitName(cur.unitId) : "",
+    sh: cur?.share ?? 0, rS: cur?.due?.rentUsd ?? 0, ut: cur?.due?.utilitiesUsd ?? 0, lf: cur?.due?.lateFeeUsd ?? 0,
+    cap: cur?.capUsd ?? 0, wa: cur?.walletAddress ?? "", walletUrl: cur?.walletExplorerUrl ?? "", bal: cur?.balanceUsd ?? 0,
+    st: cur?.due?.stage ?? "due", dl: cur?.due?.daysLate ?? 0, payment: cur?.due?.payment ?? null,
+  };
+  const mine: ActivityEntry[] = (state?.activity ?? []).filter((e) => e.tenantId === tid);
+  const acts = mine.map((e) => ({
+    id: e.id,
+    tp: e.status === "paid" || e.status === "done" ? "ok" : e.status === "blocked" ? "block" : "warn",
+    m: e.status === "blocked" ? `${e.title}: blocked` : e.status === "refused" && e.rule === "once-per-month" ? `${e.title}: already paid` : e.status === "refused" ? `${e.title}: ${e.reason ?? "not paid"}` : e.title,
+    t: fmtWhen(e.time), tx: e.explorerUrl,
+  }));
+  const blocked = mine.filter((e) => e.kind === "attack" && e.status === "blocked");
+  const tot = t.payment ? t.payment.amountUsd : t.rS + t.ut + t.lf;
+  const short = cur?.balanceUsd !== null && t.st !== "paid" && t.bal < tot;
   const vis = useSt(acts.length, 35);
-  function topUp(id: string, a: number) {
-    sT((p) => ({ ...p, [id]: { ...p[id as keyof typeof p], bal: p[id as keyof typeof p].bal + a } }));
-    nf.push("Topped up +$" + f$(a), "ok");
+  const month = state ? new Date(`${state.clock.month}-01T00:00:00Z`).toLocaleDateString("en-US", { month: "long", timeZone: "UTC" }) : "";
+  const hi = !state ? "" : t.payment ? `${month} is paid: ${usd(t.payment.amountUsd)} on the ledger. Nothing due.`
+    : t.st === "late" ? `${month} rent is ${t.dl} days late. Total ${usd(tot)} including a ${usd(t.lf)} late fee.`
+    : `${month} rent: ${usd(tot)} (${usd(t.rS)} rent + ${usd(t.ut)} ConEd). ${short ? `Your wallet is short ${usd(tot - t.bal)}.` : "Your wallet covers it."}`;
+
+  async function topUp(id: string, a: number) {
+    if (topping) return;
+    sTopping(true);
+    try {
+      const r = await api.topUp(id, a);
+      nf.push(`Topped up ${usd(r.usd)} · wallet now ${usd(r.walletBalanceUsd)}`, "ok");
+    } catch (e) {
+      nf.push(errorText(e), "danger");
+    } finally {
+      sTopping(false);
+      void refresh();
+    }
   }
 
   const roles = [
-    ...Object.values(tenants).map((tn) => ({ id: tn.id, name: tn.name, ini: tn.ini, sub: "Unit " + tn.unit, type: "tenant" as const })),
-    { id: "landlord", name: "Arpey", ini: "AR", sub: "Landlord", type: "landlord" as const },
+    ...tenantsS.map((tn) => ({ id: tn.id, name: tn.name, ini: tn.name[0], sub: "Unit " + unitName(tn.unitId), type: "tenant" as const })),
+    { id: "landlord", name: state?.building.landlordName ?? "Arpey", ini: "AR", sub: "Landlord", type: "landlord" as const },
   ];
   const activeRole = roles.find((r) => r.id === role) || roles[0];
   const dot: Record<string, string> = { ok: "bg-ok", danger: "bg-danger", warn: "bg-warn", accent: "bg-accent" };
@@ -498,7 +323,7 @@ export default function App() {
 
       <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-sm">
         <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-4">
-          <span className="text-[14px] font-medium tracking-tight">RentRelay</span>
+          <span className="text-[14px] font-medium tracking-tight">Aartee</span>
           <div className="flex items-center gap-0.5">
             <button onClick={() => sDark(!dark)} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft" aria-label="Theme">
               {dark ? <Sun size={16} /> : <Moon size={16} />}
@@ -584,21 +409,31 @@ export default function App() {
         </div>
       )}
 
-      {isLandlord && <LandlordView tenants={tenants} sT={sT} nf={nf.push} dd={dd} sDD={sDD} />}
+      {!state && (
+        <main className="mx-auto max-w-2xl px-4 pt-10 text-[13px] text-ink-faint">{error ? <span className="text-danger">Can&apos;t reach the app: {error}</span> : "Loading your rent wallet from the ledger…"}</main>
+      )}
 
-      {!isLandlord && tab === "dash" && (
-        <main key={tid} className="mx-auto max-w-2xl animate-fade-in px-4 pb-24 pt-7">
+      {state && isLandlord && (
+        <main className="mx-auto max-w-2xl animate-fade-in px-4 pb-24 pt-7">
+          <p className="text-[12px] text-ink-faint">Landlord</p>
+          <h1 className="mt-1 text-display text-ink">{state.building.landlordName}</h1>
+          <p className="mt-3 text-[13px] text-ink-muted">Run rent day, spawn tenant agents and try the attacks in the landlord console.</p>
+          <Link href="/demo" className="mt-6 inline-flex items-center gap-1.5 rounded-md bg-ink px-3 py-2 text-[13px] font-medium text-bg hover:opacity-90">
+            Open the landlord console <ExternalLink size={13} />
+          </Link>
+        </main>
+      )}
+
+      {state && !isLandlord && tab === "dash" && (
+        <main key={tid} className="mx-auto max-w-2xl animate-fade-in px-4 pb-32 pt-7">
           <p className="text-[12px] text-ink-faint">Unit {t.unit} · {t.sh * 100}% share</p>
           <h1 className="mt-1 text-display text-ink">{t.name.split(" ")[0]}</h1>
-          {t.str > 0 && (
-            <p className="mt-2 text-[13px] text-ink-muted"><span className="text-ink">{t.str} months</span> on time</p>
-          )}
 
           <section className="mt-8">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[13px] text-ink-muted">
-                  {t.st === "paid" ? "September settled" : t.st === "late" ? `${t.dl} days overdue` : "Due Oct 1"}
+                  {t.st === "paid" ? `${month} paid` : t.st === "late" ? `${t.dl} days overdue` : `Due ${fmtDay(state.clock.month + "-01")}`}
                 </p>
                 <p className={`mt-1 text-display ${t.st === "paid" ? "text-ok" : t.st === "late" ? "text-warn" : "text-ink"}`}>
                   <AN value={tot} />
@@ -611,7 +446,11 @@ export default function App() {
               <div className="flex justify-between"><dt className="text-ink-muted">ConEd</dt><dd className="tabular-nums">${f$(t.ut)}</dd></div>
               {t.lf > 0 && <div className="flex justify-between text-warn"><dt>Late fee</dt><dd className="tabular-nums">${f$(t.lf)}</dd></div>}
             </dl>
-            <p className="mt-3 text-[12px] text-ink-faint">Building ConEd $128 · split by Gemini</p>
+            {t.payment?.explorerUrl ? (
+              <a href={t.payment.explorerUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[12px] text-accent hover:underline">Paid on the XRP Ledger <ExternalLink size={11} /></a>
+            ) : (
+              <p className="mt-3 text-[12px] text-ink-faint">ConEd is your share of the building bill</p>
+            )}
           </section>
 
           <section className="mt-7 rounded-md border border-line bg-surface p-4">
@@ -619,11 +458,11 @@ export default function App() {
               <div>
                 <p className="text-[12px] text-ink-faint">Wallet</p>
                 <p className="mt-1 text-[22px] font-medium tracking-tight"><AN value={t.bal} /></p>
-                <p className="mono mt-1.5">{t.wa}</p>
+                <a href={t.walletUrl} target="_blank" rel="noreferrer" className="mono mt-1.5 inline-flex items-center gap-1 text-accent hover:underline">{shortAddr(t.wa)} <ExternalLink size={10} /></a>
               </div>
               <div className="text-right">
                 {short && <p className="mb-1.5 text-[12px] text-danger">Short ${f$(tot - t.bal)}</p>}
-                <button onClick={() => sTU(true)} className="rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90">Top up</button>
+                <button onClick={() => sTU(true)} disabled={topping} className="rounded-md bg-accent disabled:opacity-60 px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90">Top up</button>
               </div>
             </div>
             <div className="mt-4 h-1 overflow-hidden rounded-sm bg-bg">
@@ -633,11 +472,11 @@ export default function App() {
 
           <section className="mt-8">
             <h2 className="text-[13px] font-medium">Rules</h2>
-            <dl className="mt-3 space-y-0 text-[13px]">
-              {[["Cap", "$" + t.cap.toLocaleString()], ["Autopay", t.ap ? "On" : "Off"], ["Keys", "2 of 3"], ["Landlord", LA]].map(([l, v]) => (
+            <dl className="mt-3 space-y-0 pr-12 text-[13px] sm:pr-0">
+              {[["Cap", "$" + t.cap.toLocaleString()], ["Autopay", "On"], ["Keys", "2 of 3"], ["Landlord", shortAddr(state.building.landlordWallet)]].map(([l, v]) => (
                 <div key={l} className="flex justify-between border-b border-line-soft py-2.5 last:border-0">
                   <dt className="text-ink-muted">{l}</dt>
-                  <dd className={`${l === "Autopay" && t.ap ? "text-ok" : l === "Landlord" ? "mono" : ""}`}>{v}</dd>
+                  <dd className={`${l === "Autopay" ? "text-ok" : l === "Landlord" ? "mono" : ""}`}>{v}</dd>
                 </div>
               ))}
             </dl>
@@ -646,14 +485,15 @@ export default function App() {
           <section className="mt-7">
             <div className="flex items-baseline justify-between">
               <h2 className="text-[13px] font-medium">Protected</h2>
-              <span className="text-[12px] text-ink-faint">1 blocked</span>
+              <span className="text-[12px] text-ink-faint">{blocked.length} blocked</span>
             </div>
-            <p className="mt-1 text-[13px] text-ink-muted">Scam payment refused · Sep 3</p>
+            <p className="mt-1 text-[13px] text-ink-muted">{blocked[0] ? `${blocked[0].title} · refused ${fmtWhen(blocked[0].time)}` : "No attacks on your wallet yet. The Guardian and the ledger are watching."}</p>
           </section>
 
           <section className="mt-8">
             <h2 className="mb-1 text-[13px] font-medium">Activity</h2>
             <div>
+              {acts.length === 0 && <p className="py-3 text-[13px] text-ink-faint">No activity yet this run.</p>}
               {acts.map((a, i) => {
                 const show = vis.includes(i);
                 const c = a.tp === "ok" ? "bg-ok" : a.tp === "block" ? "bg-danger" : a.tp === "warn" || a.tp === "alert" ? "bg-warn" : "bg-ink-faint";
@@ -664,7 +504,7 @@ export default function App() {
                       <p className="text-[13px]">{a.m}</p>
                       <div className="mt-0.5 flex gap-2 text-[11px] text-ink-faint">
                         <span>{a.t}</span>
-                        {"tx" in a && typeof a.tx === "string" && <span className="mono text-accent">{a.tx}</span>}
+                        {a.tx && <a href={a.tx} target="_blank" rel="noreferrer" className="mono inline-flex items-center gap-0.5 text-accent hover:underline">ledger<ExternalLink size={9} /></a>}
                       </div>
                     </div>
                     <St s={a.tp} />
@@ -676,16 +516,16 @@ export default function App() {
         </main>
       )}
 
-      {!isLandlord && tab === "group" && <GroupChat />}
+      {state && !isLandlord && tab === "group" && <GroupChat />}
 
-      {!isLandlord && tab === "dash" && (
+      {state && !isLandlord && tab === "dash" && (
         <button onClick={() => sC1(true)} className="fixed bottom-5 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-md bg-ink text-bg shadow-panel hover:opacity-90" aria-label="Chat">
           <MessageCircle size={18} />
         </button>
       )}
 
-      {!isLandlord && <Chat1 tid={tid} open={c1} close={() => sC1(false)} />}
-      {!isLandlord && <TopUp tn={t} open={tu} close={() => sTU(false)} go={(a) => topUp(tid, a)} />}
+      {state && !isLandlord && <Chat1 tid={tid} unit={t.unit} hi={hi} open={c1} close={() => sC1(false)} />}
+      {state && !isLandlord && <TopUp tn={t} open={tu} close={() => sTU(false)} go={(a) => topUp(tid, a)} />}
     </div>
   );
 }
