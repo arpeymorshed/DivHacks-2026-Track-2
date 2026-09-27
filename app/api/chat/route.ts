@@ -12,6 +12,7 @@ import {
 } from "@/agent/gemini";
 
 import { evaluatePayLaterRequest } from "@/agent/paymentNegotiation";
+import { asksAboutWallet, mightBePayLater, walletSentence } from "@/agent/walletReply";
 import { clockOf, getDemoState } from "@/services/demoState";
 
 const MAX_TEXT_CHARS = 1000;
@@ -20,6 +21,19 @@ import type {
   ChatRequest,
   ChatResponse,
 } from "@/types/rent";
+
+// The tenant's rent-wallet balance in USD, live from the ledger, or null if the lookup fails.
+// xrpl is loaded lazily inside the request: importing it at the top of a route breaks Vercel (HTML 500s).
+async function walletBalanceUsd(address: string): Promise<number | null> {
+  try {
+    const { withClient } = await import("@/lib/xrpl/client");
+    const { getBalances } = await import("@/lib/xrpl/payments");
+    return await withClient(async (client) => (await getBalances(client, address)).usd);
+  } catch (error) {
+    console.error("Wallet balance lookup failed:", error instanceof Error ? error.name : "UnknownError");
+    return null;
+  }
+}
 
 function isChatRequest(value: unknown): value is ChatRequest {
   return typeof value === "object"
@@ -94,7 +108,8 @@ export async function POST(request: Request) {
       | null = null;
 
     try {
-      intent = await parseTenantRequest(text);
+      // Only messages that could be a "pay on the Nth" request need Gemini's intent parser.
+      if (mightBePayLater(text)) intent = await parseTenantRequest(text);
     } catch (error) {
       console.error(
         "Gemini intent parsing failed:",
@@ -151,6 +166,10 @@ export async function POST(request: Request) {
       + due.utilitiesUsd
       + due.lateFeeUsd;
 
+    // Wallet questions get the live balance (and how far short / covered the tenant is).
+    const balance = asksAboutWallet(text) ? await walletBalanceUsd(tenant.walletAddress) : null;
+    const wallet = balance === null ? null : walletSentence(balance, totalUsd);
+
     let reply: string;
 
     try {
@@ -165,6 +184,7 @@ export async function POST(request: Request) {
           dueDate: due.dueDate,
           daysLate: due.daysLate,
           reason: due.reason,
+          ...(balance === null ? {} : { walletBalanceUsd: balance, walletSummary: wallet ?? undefined }),
         },
       });
     } catch (error) {
@@ -180,7 +200,8 @@ export async function POST(request: Request) {
           due.lateFeeUsd > 0
             ? ` + $${due.lateFeeUsd} late fee.`
             : "."
-        );
+        )
+        + (wallet ? ` ${wallet}` : "");
     }
 
     return NextResponse.json(
