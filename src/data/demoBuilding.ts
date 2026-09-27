@@ -7,7 +7,7 @@ import type {
 
 export const building: Building = {
   id: "building-1",
-  name: "RentRelay Demo Building",
+  name: "RT Demo Building",
   landlordName: "Arpey",
   // Real XRPL Testnet addresses (scripts/setup-xrpl.ts). Addresses are public; keys come from env.
   landlordWallet: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",

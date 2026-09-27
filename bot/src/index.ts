@@ -5,11 +5,11 @@ import { createBackend, type OutboxMessage } from "./backend.ts";
 import { loadConfig, maskAddress, normalizeAddress } from "./config.ts";
 import { createSentStore } from "./sentStore.ts";
 
-// aartee. messaging layer. This bot only delivers messages between tenants'
-// iMessage and the aartee. backend. It holds no wallet keys and runs no
+// RT messaging layer. This bot only delivers messages between tenants'
+// iMessage and the RT backend. It holds no wallet keys and runs no
 // agent logic; that all lives behind API_BASE_URL.
 
-const UNREGISTERED_REPLY = "This number isn't registered with aartee.";
+const UNREGISTERED_REPLY = "This number isn't registered with RT.";
 const TROUBLE_REPLY = "RT is having trouble right now. Try again in a moment.";
 const OUTBOX_POLL_MS = 5_000;
 const SENT_IDS_FILE = join(import.meta.dir, "..", ".outbox-sent.json");
@@ -35,7 +35,7 @@ const app = await Spectrum({
 const im = imessage(app);
 
 console.log(
-  `[bot] RT (aartee.) bot running. Backend: ${config.apiBaseUrl}. ` +
+  `[bot] RT bot running. Backend: ${config.apiBaseUrl}. ` +
     `Tenants: ${[...tenantToPhone.keys()].join(", ")}. Already-sent outbox ids: ${sent.size()}.`,
 );
 
