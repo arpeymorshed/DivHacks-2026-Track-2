@@ -38,9 +38,9 @@ export async function seedDemoData() {
   }
 
   for (const due of dues) {
-    await duesCollection.updateOne(
+    await duesCollection.replaceOne(
       { tenantId: due.tenantId, month: due.month },
-      { $set: due },
+      due,
       { upsert: true }
     );
   }

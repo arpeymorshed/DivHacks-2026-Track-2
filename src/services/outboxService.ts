@@ -92,9 +92,19 @@ export async function resetDemoOutbox() {
     modified += result.modifiedCount;
   }
 
+  const deletedReminders = await outbox.deleteMany({
+    tenantId: {
+      $in: ["abhimanyu", "kashish", "musammat"],
+    },
+    dedupeKey: {
+      $regex: "^rent-reminder:",
+    },
+  });
+
   return {
     matched: messages.length,
     modified,
+    deletedReminders: deletedReminders.deletedCount,
   };
 }
 
