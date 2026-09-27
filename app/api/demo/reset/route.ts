@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireDemoKey } from "@/lib/demoKey";
+import { seedDemoData } from "@/lib/seedDemoData";
 import { resetDemoOutbox } from "@/services/outboxService";
 import { resetDemoState } from "@/services/demoState";
 import { getTenants } from "@/services/rentRepository";
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
   const denied = requireDemoKey(req);
   if (denied) return denied;
   try {
+    const seeded = await seedDemoData();
     const result = await resetDemoOutbox();
     const state = await resetDemoState();
     let funds = null;
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
+      seeded,
       reset: result,
       state,
       funds,
