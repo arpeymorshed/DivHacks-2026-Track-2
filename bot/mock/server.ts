@@ -1,4 +1,4 @@
-// Mock RentRelay backend for local development. Implements the same contract
+// Mock Aartee backend for local development. Implements the same contract
 // the real backend will expose, so the bot can be built and tested without it.
 //
 //   POST /api/chat    { tenantId, text } -> { reply }
@@ -61,7 +61,7 @@ function replyFor(tenantId: string, text: string): string {
   const q = text.toLowerCase();
 
   if (/\b(hi|hello|hey)\b/.test(q)) {
-    return `Hi ${t.name}! I'm your RentRelay agent. Ask me about rent, utilities, your wallet, or when rent is due.`;
+    return `Hi ${t.name}! I'm your Aartee agent. Ask me about rent, utilities, your wallet, or when rent is due.`;
   }
   if (q.includes("due") || q.includes("when")) {
     return `Your next payment of ${usd(total)} is due ${t.dueDate}.`;
@@ -123,4 +123,4 @@ Bun.serve({
   },
 });
 
-console.log(`[mock] RentRelay mock backend on http://localhost:${PORT}`);
+console.log(`[mock] Aartee mock backend on http://localhost:${PORT}`);
