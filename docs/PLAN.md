@@ -68,14 +68,15 @@ Framing: *"Your agent's job is to make sure you never pay a late fee. And if you
    - not already paid this month
    - legal late fee (cap, grace, once per month)
 4. **Demo clock** (a simulated "today" stored in the DB) + `/api/tick`: every agent acts on the simulated date.
-5. Seed building: Unit 4B (Maya 50%, Jordan 50%, $2,900 rent), Unit 2A (Priya, $1,450). Rules, caps, rent wallets funded.
+5. Seed building: landlord **Arpey**. Unit 4B (**Abhimanyu** 50%, pays on time; **Kashish** 50%, the late one, pays a $15 fee on day 8; $2,900 rent), Unit 2A (**Musammat** 100%, $1,450). Rules, caps, rent wallets funded.
+   - _Decision 2026-09-26 (Arpey): the demo uses the team's names in place of Maya/Jordan/Priya. Display only: the Guardian keys rent wallets by address, so no wallets, keys or on-chain data change._
 6. **Autonomous rent day:** tick on the 1st → each tenant agent pays its share with the Guardian's co-signature and an audit memo → the main agent reconciles.
 7. Landlord console: building grid (units → tenants → paid / due / grace / late + fee), explorer links, audit log.
 8. **Demo controls + reset:** "+1 day", "jump to rent day", "reset building."
 
 **Tier 2: what makes it win**
 9. **Late fees:** days-late tracking, $5/day accrual to the cap, rent + fee paid together (fee itemized in the memo).
-10. **Tenant view** (phone-style): Maya's dues card, rent wallet, and a **web chat with her agent**. This is the Photon fallback and what judges can test.
+10. **Tenant view** (phone-style): Abhimanyu's dues card, rent wallet, and a **web chat with their agent**. This is the Photon fallback and what judges can test.
 11. Gemini agent brain: reminders by stage (upcoming / due / grace / late), Q&A ("why is ConEd $38?"), and the **"pay on the 5th" negotiation** within the grace policy.
 12. Gemini reads the building ConEd bill (image) → per-unit split → added to each tenant's amount due.
 13. **Spawn live:** the landlord adds a tenant → the ops account funds a new wallet → trust line, signer list, master disabled → **credential issued and accepted** (KYA). The steps show live in the console.
@@ -180,6 +181,8 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 | **P3: Frontend** | Tenant phone view + web chat, landlord console grid, spawn animation, attack panel, demo controls | Both views render from mock `/api/state` JSON |
 | **P4: Photon + ship** | Spectrum bot, `.tech` domain, Vercel/env, fixtures (ConEd bill, scam text), preflight, deck, Devpost, backup video, testing | App deployed at the domain, and a Photon bot replying in iMessage |
 
+_Frontend status 2026-09-26: Kashish's `origin/frontend` (tenant app, group chat, landlord view, dark mode) is a standalone Next.js app using **all mock data**. The Builder is moving it onto `frontend-integration` from `main` (board T01a), which also delivers T01's Next.js scaffold. Wiring it to `/api/state`, `/api/clock`, `/api/attacks/:name` and `/api/topup` is still needed (T19/T20/T32/T38)._
+
 **Team rules:**
 - One branch per person, and each person edits only their own folders.
 - Mocks sit behind the real function signatures, so nobody blocks anyone.
@@ -199,10 +202,10 @@ _Owner: Arpey (P1), assigned 2026-09-26. Verify every detail below against xrpl.
 | 9:30 AM | **Submit on Devpost** |
 
 ## Demo script (~3 min, tenant first)
-1. **(20s) Maya's phone:** her agent texts *"Rent this month: $1,488 ($1,450 + $38 ConEd). You're covered, and I'll pay on the 1st."* She asks "why is ConEd $38?", and it explains the building bill split.
+1. **(20s) Abhimanyu's phone:** their agent texts *"Rent this month: $1,488 ($1,450 + $38 ConEd). You're covered, and I'll pay on the 1st."* Abhimanyu asks "why is ConEd $38?", and the agent explains the building bill split.
 2. **(20s) Why an agent:** changing amounts, roommates pay separately, scam-proof, it talks to you.
 3. **(30s) Behind the scenes:** in the landlord console, a new tenant is added → **a new agent spawns live**: wallet funded by the main agent, credential issued.
-4. **(40s) Rent day:** jump the demo clock to the 1st → every agent pays **on its own** → the grid turns green, except Jordan (short). Jordan texted *"I get paid on the 5th"*, and his agent agreed (inside the grace period, no fee). He forgets. Day 8 → his agent pays rent + **$15**, capped by NY law. **Maya paid nothing extra.** Open the transaction on the explorer.
+4. **(40s) Rent day:** jump the demo clock to the 1st → every agent pays **on its own** → the grid turns green, except Kashish (short). Kashish texted *"I get paid on the 5th"*, and their agent agreed (inside the grace period, no fee). Kashish forgets. Day 8 → their agent pays rent + **$15**, capped by NY law. **Abhimanyu paid nothing extra.** Open the transaction on the explorer.
 5. **(45s) What could go wrong:** scam "new bank account" text → blocked. Landlord agent tries a $200 late fee → blocked (illegal). Stolen agent key → **the ledger itself** rejects it.
 6. **(20s) Close:** *"A personal rent agent for every tenant. It reminds, explains and pays on time, and it can't be scammed, can't overcharge you, and can't break the law. The AI decides. The ledger enforces."*
 
