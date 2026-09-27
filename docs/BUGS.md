@@ -3,6 +3,7 @@
 _Owned by the Debugger chat. Anyone may add a bug. Format: `- [ ] YYYY-MM-DD: symptom, steps to reproduce, (fixed: cause + fix)`._
 
 ## Open
+- [ ] 2026-09-26: Every API route that talks to XRPL hangs under Next.js (`/api/demo/reset`, `/api/rent-day`, `/api/topup`, `/api/attacks`, `/api/tenants`). Steps: `npm run dev`, `POST /api/demo/reset` → no response; dev log shows `TypeError: bufferUtil.mask is not a function` (ws/lib/buffer-util.js) and then an xrpl `server_info` timeout. Cause: webpack bundles `ws` (used by xrpl) and breaks its optional native helpers. The same code works under plain Node/tsx. Would also break on Vercel. Fix (Builder, branch `fix/xrpl-server-bundling`): `experimental.serverComponentsExternalPackages: ["xrpl", "ws"]` in next.config.mjs. Found by the end-to-end route test of PR #16. **Fixed on `fix/xrpl-server-bundling`; verified: full route flow passes (rent day real payments, already-paid refusal, day-8 top-up + late fee, attacks, reset → pays again).**
 - [ ] 2026-09-26: `/demo` toasts are unreadable in dark mode: light text on a white box. Steps: open /demo, switch to dark mode, trigger any toast (e.g. "+1 day" or an attack). Cause: `app/demo/page.tsx:39` sets `background:"#fff"` with no text colour (the `/` toasts use `var(--sf)` and are fine). Fix: use `var(--sf)` like `/`. Found by merge-check run-locally on `frontend-integration` (non-blocking). Owner: Kashish / Debugger.
 
 ## Fixed
