@@ -16,7 +16,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata = {
-  title: "RentRelay",
+  title: "aartee.",
   description: "Your personal rent agent",
 };
 

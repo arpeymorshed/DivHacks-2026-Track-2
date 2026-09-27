@@ -86,7 +86,7 @@ export function formatWalletBalanceReply(opts: {
   if (opts.balanceUsd == null) {
     return (
       `I can't read ${opts.name}'s on-chain wallet balance right now. `
-      + `Your wallet cap is $${opts.capUsd}. Open Polo in the app for the live demo balance.`
+      + `Your wallet cap is $${opts.capUsd}. Open RT in the app for the live demo balance.`
     );
   }
   const room = Math.max(0, Math.round((opts.capUsd - opts.balanceUsd) * 100) / 100);

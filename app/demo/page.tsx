@@ -116,7 +116,7 @@ export default function DemoPage() {
       <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-sm">
         <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-4">
           <div className="flex items-baseline gap-2.5">
-            <span className="text-[14px] font-medium tracking-tight">RentRelay</span>
+            <span className="text-[14px] font-medium tracking-tight">aartee.</span>
             <span className="text-[12px] text-ink-faint">Demo</span>
           </div>
           <button

@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         ? `Your wallet cap is $${tenant.capUsd}.`
         : `Your wallet cap is $${tenant.capUsd}. Balance $${balanceUsd}, so you can still add up to $${room}.`;
     } else if (!greetingOnly && topUpAsk && !isOweIntent(text) && !asksWhenDue(text)) {
-      reply = `To add money, use Top up in the app or say e.g. “Top up $100” in Polo chat. `
+      reply = `To add money, use Top up in the app or say e.g. “Top up $100” in RT chat. `
         + `Your wallet cap is $${tenant.capUsd}. `
         + `If a top-up would exceed the cap, you'll get an error and should retry with a smaller amount.`;
     } else if (!greetingOnly && (isMoneyIntent(text) || asksWhenDue(text))) {
