@@ -11,27 +11,27 @@ import type { ActivityEntry, TenantState } from "@/types/rent";
 
 // The group chat below is a scripted story (there's no group-chat backend); everything else on this page is live.
 const LA = "rLD4K9g…VxZS"; // the real landlord address, shown in the scripted story
-const CHAT_SUGGESTIONS = ["What do I owe?", "Why is ConEd $38?", "Can I pay on the 5th?"];
+const CHAT_SUGGESTIONS = ["What's my wallet balance?", "What do I owe?", "When is rent due?", "Why is ConEd $38?", "Can I pay on the 5th?"];
 const fmtDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const GRP = [
-  { id: 1, f: "ag-m", n: "Polo", m: "Rent reminder — Abhimanyu, $1,450 + ConEd $38 due Oct 1. Wallet covers it.", t: "Sep 28, 10:00 AM", tp: "ag" },
-  { id: 2, f: "ag-j", n: "Polo-K", m: "Rent reminder — Kashish, $1,450 + ConEd $38 due Oct 1. Wallet short $508.", t: "Sep 28, 10:00 AM", tp: "ag" },
+  { id: 1, f: "ag-m", n: "RT", m: "Rent reminder — Abhimanyu, $1,450 + ConEd $38 due Oct 1. Wallet covers it.", t: "Sep 28, 10:00 AM", tp: "ag" },
+  { id: 2, f: "ag-j", n: "RT-K", m: "Rent reminder — Kashish, $1,450 + ConEd $38 due Oct 1. Wallet short $508.", t: "Sep 28, 10:00 AM", tp: "ag" },
   { id: 3, f: "kashish", n: "Kashish", m: "why is ConEd $38?", t: "Sep 28, 10:12 AM", tp: "u" },
-  { id: 4, f: "ag-j", n: "Polo-K", m: "Building bill $128. Unit 4B pays $76 (59% sq ft), split 50/50 = $38 each.", t: "Sep 28, 10:12 AM", tp: "ag" },
+  { id: 4, f: "ag-j", n: "RT-K", m: "Building bill $128. Unit 4B pays $76 (59% sq ft), split 50/50 = $38 each.", t: "Sep 28, 10:12 AM", tp: "ag" },
   { id: 5, f: "abhi", n: "Abhimanyu", m: "mine's covered right?", t: "Sep 28, 11:30 AM", tp: "u" },
-  { id: 6, f: "ag-m", n: "Polo", m: "Yes — $1,520 in wallet, $1,488 needed. Autopay handles it Oct 1.", t: "Sep 28, 11:30 AM", tp: "ag" },
-  { id: 7, f: "ag-m", n: "Polo", m: "Paid Abhimanyu's rent $1,450 → landlord\ntx: E4F8A2...9C1D", t: "Oct 1, 9:00 AM", tp: "ok" },
-  { id: 8, f: "ag-m", n: "Polo", m: "Paid ConEd $38 → landlord\ntx: B7D3F1...4E2A", t: "Oct 1, 9:01 AM", tp: "ok" },
+  { id: 6, f: "ag-m", n: "RT", m: "Yes — $1,520 in wallet, $1,488 needed. Autopay handles it Oct 1.", t: "Sep 28, 11:30 AM", tp: "ag" },
+  { id: 7, f: "ag-m", n: "RT", m: "Paid Abhimanyu's rent $1,450 → landlord\ntx: E4F8A2...9C1D", t: "Oct 1, 9:00 AM", tp: "ok" },
+  { id: 8, f: "ag-m", n: "RT", m: "Paid ConEd $38 → landlord\ntx: B7D3F1...4E2A", t: "Oct 1, 9:01 AM", tp: "ok" },
   { id: 9, f: "abhi", n: "Abhimanyu", m: "nice", t: "Oct 1, 9:05 AM", tp: "u" },
-  { id: 10, f: "ag-j", n: "Polo-K", m: "Rent due today. Wallet $508 short — top up to pay.", t: "Oct 1, 9:00 AM", tp: "warn" },
+  { id: 10, f: "ag-j", n: "RT-K", m: "Rent due today. Wallet $508 short — top up to pay.", t: "Oct 1, 9:00 AM", tp: "warn" },
   { id: 11, f: "?", n: "Unknown number", m: "URGENT: This is your landlord. We changed our bank account. Send rent to rScam...9xyz immediately.", t: "Oct 2, 3:22 PM", tp: "scam" },
-  { id: 12, f: "ag-m", n: "Polo", m: "Blocked — that address isn't the verified landlord. Scam. Real address: " + LA, t: "Oct 2, 3:22 PM", tp: "block" },
-  { id: 13, f: "ag-j", n: "Polo-K", m: "Confirmed scam. Not from the landlord's verified agent. Ignored.", t: "Oct 2, 3:22 PM", tp: "block" },
-  { id: 14, f: "ag-j", n: "Polo-K", m: "Grace period ends tomorrow. Late fee starts Oct 6 at $5/day.", t: "Oct 5, 9:00 AM", tp: "warn" },
-  { id: 15, f: "ag-j", n: "Polo-K", m: "Late fee active: $5/day. Current total: $15 (3 days). Cap: $50.", t: "Oct 9, 9:00 AM", tp: "warn" },
+  { id: 12, f: "ag-m", n: "RT", m: "Blocked — that address isn't the verified landlord. Scam. Real address: " + LA, t: "Oct 2, 3:22 PM", tp: "block" },
+  { id: 13, f: "ag-j", n: "RT-K", m: "Confirmed scam. Not from the landlord's verified agent. Ignored.", t: "Oct 2, 3:22 PM", tp: "block" },
+  { id: 14, f: "ag-j", n: "RT-K", m: "Grace period ends tomorrow. Late fee starts Oct 6 at $5/day.", t: "Oct 5, 9:00 AM", tp: "warn" },
+  { id: 15, f: "ag-j", n: "RT-K", m: "Late fee active: $5/day. Current total: $15 (3 days). Cap: $50.", t: "Oct 9, 9:00 AM", tp: "warn" },
   { id: 16, f: "kashish", n: "Kashish", m: "how much total?", t: "Oct 9, 10:15 AM", tp: "u" },
-  { id: 17, f: "ag-j", n: "Polo-K", m: "Rent $1,450 + ConEd $38 + fee $15 = $1,503.\nWallet $980. Top up $523.", t: "Oct 9, 10:15 AM", tp: "ag" },
+  { id: 17, f: "ag-j", n: "RT-K", m: "Rent $1,450 + ConEd $38 + fee $15 = $1,503.\nWallet $980. Top up $523.", t: "Oct 9, 10:15 AM", tp: "ag" },
 ];
 
 const f$ = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -46,8 +46,9 @@ function useSt(c: number, ms = 40) {
 function useNf() {
   const [ts, sTs] = useState<any[]>([]);
   const [h, sH] = useState<any[]>([]);
+  const seq = useRef(0);
   const push = useCallback((m: string, c = "accent") => {
-    const id = "" + Date.now();
+    const id = `t-${Date.now()}-${++seq.current}`;
     const n = { id, m, t: "now", r: false, c, detail: m, tag: "Update" };
     sTs((t) => [...t, n]);
     sH((x) => [n, ...x]);
@@ -74,17 +75,35 @@ function St({ s }: { s: string }) {
 function AN({ value, p = "$" }: { value: number; p?: string }) {
   const [d, sd] = useState(value);
   const r = useRef(0);
+  const prev = useRef(value);
   useEffect(() => {
-    const fr = d, dur = 400, t0 = performance.now();
+    const fr = d;
+    const dropping = value < prev.current;
+    prev.current = value;
+    const dur = dropping ? 780 : 420;
+    const t0 = performance.now();
     function tick(n: number) {
       const pr = Math.min((n - t0) / dur, 1);
-      sd(fr + (value - fr) * (1 - Math.pow(1 - pr, 3)));
+      const eased = dropping ? 1 - Math.pow(1 - pr, 2.4) : 1 - Math.pow(1 - pr, 3);
+      sd(fr + (value - fr) * eased);
       if (pr < 1) r.current = requestAnimationFrame(tick);
     }
     r.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(r.current);
   }, [value]);
   return <span className="tabular-nums">{p}{f$(d)}</span>;
+}
+
+function BalDelta({ amount }: { amount: number | null }) {
+  if (amount == null || amount === 0) return null;
+  const up = amount > 0;
+  return (
+    <span className={`inline-flex animate-delta-pop items-center rounded-md px-1.5 py-0.5 text-[12px] font-medium tabular-nums ${
+      up ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"
+    }`}>
+      {up ? "+" : "−"}${f$(Math.abs(amount))}
+    </span>
+  );
 }
 
 function Toasts({ ts }: { ts: any[] }) {
@@ -99,67 +118,128 @@ function Toasts({ ts }: { ts: any[] }) {
   );
 }
 
-function Chat1({ tid, unit, hi, open, close }: { tid: string; unit: string; hi: string; open: boolean; close: () => void }) {
-  const [ms, sM] = useState<any[]>([]);
+function Chat1({ tid, unit, hi, open, close, cap }: { tid: string; unit: string; hi: string; open: boolean; close: () => void; cap?: number }) {
+  const [ms, sM] = useState<{ id: string; r: "u" | "a" | "err"; t: string }[]>([]);
   const [inp, sI] = useState("");
   const [typ, sT] = useState(false);
   const [sg, sS] = useState<string[]>([]);
   const br = useRef<HTMLDivElement>(null);
   const ir = useRef<HTMLInputElement>(null);
+  const seq = useRef(0);
+  const busy = useRef(false);
+
   useEffect(() => {
-    sM([]); sS([]); sT(false);
-    if (open) setTimeout(() => { sM([{ id: "g", r: "a", t: hi }]); setTimeout(() => sS(CHAT_SUGGESTIONS), 280); }, 120);
-  }, [open, tid]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [ms, typ]);
-  useEffect(() => { if (open) setTimeout(() => ir.current?.focus(), 180); }, [open]);
-  async function send(t: string) {
-    if (!t.trim() || typ) return;
-    sM((m) => [...m, { id: Date.now(), r: "u", t }]); sS([]); sI(""); sT(true);
+    busy.current = false;
+    sM([]); sS([]); sI(""); sT(false);
+    if (!open) return;
+    let t2 = 0;
+    const t1 = window.setTimeout(() => {
+      sM([{ id: "g", r: "a", t: hi }]);
+      t2 = window.setTimeout(() => sS(CHAT_SUGGESTIONS), 220);
+    }, 80);
+    return () => {
+      window.clearTimeout(t1);
+      if (t2) window.clearTimeout(t2);
+    };
+  }, [open, tid, hi]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  useEffect(() => {
+    if (!typ && ms.length === 0) return;
+    br.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [ms.length, typ]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => ir.current?.focus(), 180);
+    return () => window.clearTimeout(t);
+  }, [open, tid]);
+
+  async function send(raw: string) {
+    const text = raw.trim();
+    if (!text || busy.current || typ) return;
+    busy.current = true;
+    const uid = `u-${++seq.current}`;
+    const aid = `a-${seq.current}`;
+    sM((m) => [...m, { id: uid, r: "u", t: text }]);
+    sS([]); sI(""); sT(true);
     let a: string;
-    try { a = (await api.chat(tid, t)).reply; } catch (e) { a = `I couldn't reach the server: ${errorText(e)}`; }
-    sT(false); sM((m) => [...m, { id: Date.now() + 1, r: "a", t: a }]); setTimeout(() => sS(CHAT_SUGGESTIONS.filter((x) => x !== t)), 250);
+    let kind: "a" | "err" = "a";
+    try {
+      a = (await api.chat(tid, text)).reply;
+    } catch (e) {
+      a = `I couldn't reach the server: ${errorText(e)}`;
+      kind = "err";
+    }
+    sT(false);
+    sM((m) => [...m, { id: aid, r: kind, t: a }]);
+    busy.current = false;
+    window.setTimeout(() => sS(CHAT_SUGGESTIONS.filter((x) => x !== text)), 200);
   }
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-bg animate-fade-in">
-      <div className="flex items-center justify-between border-b border-line px-4 py-3 pt-11">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-bg" role="dialog" aria-label="RT chat">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div>
-          <p className="text-[15px] font-medium">Polo</p>
-          <p className="text-xs text-ink-faint">Agent · Unit {unit}</p>
+          <p className="text-[15px] font-medium">RT</p>
+          <p className="text-xs text-ink-faint">Agent · Unit {unit}{cap ? ` · Cap $${f$(cap)}` : ""}</p>
         </div>
-        <button onClick={close} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft"><X size={16} /></button>
+        <button type="button" onClick={close} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft" aria-label="Close chat"><X size={16} /></button>
       </div>
-      <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-4">
-        {ms.map((m) => (
-          <div key={m.id} className={`flex animate-rise ${m.r === "u" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[82%] whitespace-pre-wrap rounded-md px-3 py-2 text-[14px] leading-relaxed ${m.r === "u" ? "bg-ink text-bg" : "border border-line bg-surface text-ink"}`}>
-              {m.t}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <div className="mx-auto flex min-h-full max-w-2xl flex-col justify-end gap-2.5">
+          {ms.map((m) => (
+            <div key={m.id} className={`flex ${m.r === "u" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[82%] whitespace-pre-wrap rounded-md px-3 py-2 text-[14px] leading-relaxed ${
+                m.r === "u" ? "bg-ink text-bg"
+                  : m.r === "err" ? "border border-danger/30 bg-danger-soft text-danger"
+                  : "border border-line bg-surface text-ink"
+              }`}>{m.t}</div>
             </div>
-          </div>
-        ))}
-        {typ && (
-          <div className="flex">
-            <div className="flex gap-1 rounded-md border border-line bg-surface px-3 py-2.5">
-              {[0, 1, 2].map((i) => <div key={i} className="h-1 w-1 animate-pulse-dot rounded-full bg-ink-faint" style={{ animationDelay: `${i * 0.15}s` }} />)}
+          ))}
+          {typ && (
+            <div className="flex justify-start">
+              <div className="flex gap-1 rounded-md border border-line bg-surface px-3 py-2.5">
+                {[0, 1, 2].map((i) => <div key={i} className="h-1 w-1 animate-pulse-dot rounded-full bg-ink-faint" style={{ animationDelay: `${i * 0.15}s` }} />)}
+              </div>
             </div>
-          </div>
-        )}
-        <div ref={br} />
+          )}
+          <div ref={br} className="h-px w-full shrink-0" />
+        </div>
       </div>
       {sg.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-line px-4 py-2.5">
-          {sg.map((s) => (
-            <button key={s} onClick={() => send(s)} className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink-muted hover:border-ink/20 hover:text-ink">{s}</button>
-          ))}
+        <div className="shrink-0 border-t border-line bg-bg px-4 py-2.5">
+          <p className="mb-1.5 text-[11px] font-medium text-ink-faint">Suggestions</p>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {sg.map((s) => (
+              <button key={s} type="button" disabled={typ} onClick={() => send(s)} className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink-muted hover:border-ink/20 hover:text-ink disabled:opacity-50">{s}</button>
+            ))}
+          </div>
         </div>
       )}
-      <div className="flex gap-2 border-t border-line px-3 py-3 pb-7">
-        <input ref={ir} value={inp} onChange={(e) => sI(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Ask anything" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30" />
-        <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
+      <div className="flex shrink-0 gap-2 border-t border-line px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <input
+          ref={ir}
+          value={inp}
+          disabled={typ}
+          onChange={(e) => sI(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) { e.preventDefault(); void send(inp); } }}
+          placeholder="Ask about balance, dues, or top up"
+          className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30 disabled:opacity-60"
+        />
+        <button type="button" disabled={typ || !inp.trim()} onClick={() => void send(inp)} className="rounded-md bg-ink px-3 text-bg hover:opacity-90 disabled:opacity-40"><Send size={16} /></button>
       </div>
     </div>
   );
 }
+
 
 function GroupChat() {
   const [msgs, sMsgs] = useState(GRP);
@@ -181,12 +261,12 @@ function GroupChat() {
     sInp(""); sTyp(true);
     const key = Object.keys(answers).find((k) => text.toLowerCase().includes(k));
     const reply = key ? answers[key] : "Let me check on that and get back to you.";
-    setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "Polo", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
+    setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "RT", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
   }
   return (
     <div>
       <p className="border-b border-line px-4 py-2 text-center text-xs text-ink-faint">Unit 4B</p>
-      <div className="space-y-0.5 px-4 pb-24 pt-3">
+      <div className="space-y-0.5 px-4 pb-32 pt-3">
         {msgs.map((m, i) => {
           const show = vis.includes(i);
           const isU = m.tp === "u";
@@ -219,9 +299,16 @@ function GroupChat() {
         )}
         <div ref={br} />
       </div>
-      <div className="fixed bottom-0 left-0 right-0 flex gap-2 border-t border-line bg-bg px-3 py-3 pb-7">
-        <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30" />
-        <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
+      <div className="fixed bottom-0 left-0 right-0 border-t border-line bg-bg">
+        <div className="flex gap-1.5 overflow-x-auto border-b border-line px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {["What's my wallet balance?", "What do I owe?", "Is everyone paid?", "When is rent due?"].map((s) => (
+            <button key={s} type="button" disabled={typ} onClick={() => send(s)} className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-ink hover:border-ink/25 disabled:opacity-50">{s}</button>
+          ))}
+        </div>
+        <div className="flex gap-2 px-3 py-3 pb-7">
+          <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message unit chat" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30" />
+          <button type="button" onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
+        </div>
       </div>
     </div>
   );
@@ -268,6 +355,12 @@ export default function App() {
   const nf = useNf();
 
   useEffect(() => { document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); }, [dark]);
+  useEffect(() => {
+    if (!state?.tenants?.length) return;
+    if (role !== "landlord" && !state.tenants.some((x) => x.id === role)) {
+      sRole(state.tenants[0].id);
+    }
+  }, [state, role]);
   const isLandlord = role === "landlord";
   const tenantsS: TenantState[] = state?.tenants ?? [];
   const unitName = (unitId: string) => state?.building.units.find((u) => u.id === unitId)?.name ?? "";
@@ -314,7 +407,7 @@ export default function App() {
     ...tenantsS.map((tn) => ({ id: tn.id, name: tn.name, ini: tn.name[0], sub: "Unit " + unitName(tn.unitId), type: "tenant" as const })),
     { id: "landlord", name: state?.building.landlordName ?? "Arpey", ini: "AR", sub: "Landlord", type: "landlord" as const },
   ];
-  const activeRole = roles.find((r) => r.id === role) || roles[0];
+  const activeRole = roles.find((r) => r.id === role) || roles[0] || { id: "loading", name: "Loading", ini: "·", sub: "", type: "tenant" as const };
   const dot: Record<string, string> = { ok: "bg-ok", danger: "bg-danger", warn: "bg-warn", accent: "bg-accent" };
 
   return (
@@ -323,7 +416,7 @@ export default function App() {
 
       <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-sm">
         <div className="mx-auto flex h-12 max-w-2xl items-center justify-between px-4">
-          <span className="text-[14px] font-medium tracking-tight">Aartee</span>
+          <span className="text-[14px] font-medium tracking-tight">aartee.</span>
           <div className="flex items-center gap-0.5">
             <button onClick={() => sDark(!dark)} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft" aria-label="Theme">
               {dark ? <Sun size={16} /> : <Moon size={16} />}
@@ -339,7 +432,7 @@ export default function App() {
             </button>
           </div>
         </div>
-        {!isLandlord && (
+        {state && !isLandlord && (
           <div className="mx-auto flex max-w-2xl gap-4 px-4">
             {[{ id: "dash", l: "Home" }, { id: "group", l: `Unit ${t.unit}` }].map((tb) => (
               <button key={tb.id} onClick={() => { sTab(tb.id); window.scrollTo(0, 0); }} className={`-mb-px border-b pb-2.5 text-[13px] ${tab === tb.id ? "border-ink font-medium" : "border-transparent text-ink-faint hover:text-ink-muted"}`}>
@@ -410,7 +503,13 @@ export default function App() {
       )}
 
       {!state && (
-        <main className="mx-auto max-w-2xl px-4 pt-10 text-[13px] text-ink-faint">{error ? <span className="text-danger">Can&apos;t reach the app: {error}</span> : "Loading your rent wallet from the ledger…"}</main>
+        <main className="mx-auto max-w-2xl px-4 pt-10 text-[13px] text-ink-muted">
+          {error ? (
+            <p className="text-danger">Can&apos;t reach the app: {error}. Seed Mongo / set env, or open <Link className="underline" href="/demo">/demo</Link>.</p>
+          ) : (
+            <p>Loading your rent wallet from the ledger…</p>
+          )}
+        </main>
       )}
 
       {state && isLandlord && (
@@ -426,8 +525,11 @@ export default function App() {
 
       {state && !isLandlord && tab === "dash" && (
         <main key={tid} className="mx-auto max-w-2xl animate-fade-in px-4 pb-32 pt-7">
+          {state.warnings?.length > 0 && (
+            <p className="mb-4 rounded-md border border-line bg-surface px-3.5 py-2.5 text-[12px] text-warn">{state.warnings[0]}</p>
+          )}
           <p className="text-[12px] text-ink-faint">Unit {t.unit} · {t.sh * 100}% share</p>
-          <h1 className="mt-1 text-display text-ink">{t.name.split(" ")[0]}</h1>
+          <h1 className="mt-1 text-display text-ink">Welcome, {t.name.split(" ")[0]}!</h1>
 
           <section className="mt-8">
             <div className="flex items-start justify-between gap-3">
@@ -460,14 +562,25 @@ export default function App() {
                 <p className="mt-1 text-[22px] font-medium tracking-tight"><AN value={t.bal} /></p>
                 <a href={t.walletUrl} target="_blank" rel="noreferrer" className="mono mt-1.5 inline-flex items-center gap-1 text-accent hover:underline">{shortAddr(t.wa)} <ExternalLink size={10} /></a>
               </div>
-              <div className="text-right">
-                {short && <p className="mb-1.5 text-[12px] text-danger">Short ${f$(tot - t.bal)}</p>}
-                <button onClick={() => sTU(true)} disabled={topping} className="rounded-md bg-accent disabled:opacity-60 px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90">Top up</button>
-              </div>
+              <button type="button" onClick={() => sTU(true)} disabled={topping} className="rounded-md bg-accent disabled:opacity-60 px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90">Top up</button>
             </div>
             <div className="mt-4 h-1 overflow-hidden rounded-sm bg-bg">
-              <div className={`h-full rounded-sm transition-all duration-500 ${short ? "bg-danger" : "bg-ok"}`} style={{ width: `${Math.min((t.bal / tot) * 100, 100)}%` }} />
+              <div className={`h-full rounded-sm transition-all duration-700 ${short ? "bg-danger" : "bg-ok"}`} style={{ width: `${Math.min((tot > 0 ? t.bal / tot : 1) * 100, 100)}%` }} />
             </div>
+            {short ? (
+              <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3">
+                <div>
+                  <p className="text-[12px] text-ink-faint">Shortfall</p>
+                  <p className="mt-0.5 text-[18px] font-medium tabular-nums text-danger">−${f$(tot - t.bal)}</p>
+                  <p className="mt-0.5 text-[12px] text-ink-muted">Need ${f$(tot - t.bal)} more to cover this month.</p>
+                </div>
+                <button type="button" onClick={() => sTU(true)} className="shrink-0 rounded-md border border-danger/30 bg-danger-soft px-2.5 py-1.5 text-[12px] font-medium text-danger hover:opacity-90">
+                  Cover −${f$(tot - t.bal)}
+                </button>
+              </div>
+            ) : tot > 0 ? (
+              <p className="mt-3 text-[12px] text-ok">Covered — wallet can pay ${f$(tot)} due.</p>
+            ) : null}
           </section>
 
           <section className="mt-8">
@@ -518,13 +631,14 @@ export default function App() {
 
       {state && !isLandlord && tab === "group" && <GroupChat />}
 
-      {state && !isLandlord && tab === "dash" && (
-        <button onClick={() => sC1(true)} className="fixed bottom-5 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-md bg-ink text-bg shadow-panel hover:opacity-90" aria-label="Chat">
+      {state && !isLandlord && tab === "dash" && !c1 && (
+        <button type="button" onClick={() => sC1(true)} className="fixed bottom-5 right-4 z-50 flex items-center gap-2 rounded-md bg-ink px-3.5 py-2.5 text-bg shadow-panel hover:opacity-90" aria-label="Ask RT">
           <MessageCircle size={18} />
+          <span className="text-[13px] font-medium">Ask RT</span>
         </button>
       )}
 
-      {state && !isLandlord && <Chat1 tid={tid} unit={t.unit} hi={hi} open={c1} close={() => sC1(false)} />}
+      {state && !isLandlord && <Chat1 tid={tid} unit={t.unit} hi={hi} open={c1} close={() => sC1(false)} cap={t.cap} />}
       {state && !isLandlord && <TopUp tn={t} open={tu} close={() => sTU(false)} go={(a) => topUp(tid, a)} />}
     </div>
   );

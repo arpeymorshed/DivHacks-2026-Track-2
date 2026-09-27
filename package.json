@@ -20,6 +20,7 @@
     "test:attacks": "tsx scripts/test-attacks.ts",
     "test:topup": "tsx scripts/test-topup.ts",
     "test:state": "tsx --test src/services/*.test.ts",
+    "test:polo": "tsx src/lib/poloChat.test.ts",
     "preflight": "tsx scripts/preflight.ts"
   },
   "dependencies": {

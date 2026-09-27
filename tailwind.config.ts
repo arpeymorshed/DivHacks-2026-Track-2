@@ -62,11 +62,18 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.4" },
         },
+        deltaPop: {
+          "0%": { opacity: "0", transform: "translateY(4px) scale(0.96)" },
+          "18%": { opacity: "1", transform: "translateY(0) scale(1)" },
+          "75%": { opacity: "1" },
+          "100%": { opacity: "0", transform: "translateY(-6px)" },
+        },
       },
       animation: {
         "fade-in": "fadeIn 0.15s ease",
         rise: "rise 0.18s ease",
         "pulse-dot": "pulseDot 1.2s ease-in-out infinite",
+        "delta-pop": "deltaPop 2.1s ease forwards",
       },
     },
   },

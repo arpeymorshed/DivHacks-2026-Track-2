@@ -6,7 +6,7 @@
 
 ```bash
 npm install
-npm run dev              # web app: http://localhost:3000 (tenant view) and /demo (landlord console)
+npm run dev              # web app: http://localhost:3000 (aartee. tenant view) and /demo (landlord console)
 npm run guardian         # Guardian co-signing service on :4001 (needs .secrets/, see docs/MONEY-LAYER.md)
 npm run build            # production build of the web app (what Vercel runs)
 npm run typecheck        # strict typecheck of lib/, guardian/, scripts/ (tsconfig.server.json)
@@ -35,7 +35,7 @@ integration guide: [docs/MONEY-LAYER.md](docs/MONEY-LAYER.md).
 | **MLH MongoDB Atlas** | All app data. |
 
 ## Idea (tenant first)
-**RentRelay gives every NYC tenant a personal rent agent that lives in their texts.** It tells you exactly what you owe this month (rent plus your share of the building ConEd bill) and why. It pays on time automatically from your rent wallet, splits fairly with roommates so nobody fronts rent, and it **can't be scammed, can't overcharge you, and can't break the law.**
+**aartee. gives every NYC tenant a personal rent agent that lives in their texts.** It tells you exactly what you owe this month (rent plus your share of the building ConEd bill) and why. It pays on time automatically from your rent wallet, splits fairly with roommates so nobody fronts rent, and it **can't be scammed, can't overcharge you, and can't break the law.**
 
 Behind the scenes, the **landlord's main agent** runs the building: it spawns one agent per tenant, tells each one what's due, and reconciles payments. But **tenant agents work for the tenant.** They hold the tenant's money under the tenant's rules, and the landlord's agent has no key to any tenant wallet.
 
