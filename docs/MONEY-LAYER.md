@@ -7,6 +7,15 @@ This guide covers what **P2 (agents + backend)** needs to build on top of it: wh
 numbers the Guardian enforces, and the security rules. Working examples: `scripts/test-payment.ts` (rent,
 attacks, double charge) and `scripts/spawn-tenant.ts` (spawn a tenant live).
 
+> **Update 2026-09-26 (branch `p1-real-payments`):** the money layer is now wired into P2's backend.
+> `POST /api/rent-day` pays for real through the Guardian (`src/services/xrplPayments.ts`), and these routes exist:
+> `GET/POST /api/clock`, `POST /api/demo/reset` (bumps `run` + recycles RLUSD), `POST /api/topup`,
+> `POST /api/attacks/:name`, `POST /api/tenants` (spawn, NDJSON stream). Extra env for the app (values sent privately):
+> `GUARDIAN_ADDRESS`, `AGENT_KEY_SECRET` (any long random string; encrypts spawned agents' keys), and optionally
+> `RENT_PAYMENTS=mock|real` (default: real when `GUARDIAN_URL` + the 3 agent seeds are set). Team names are display-only:
+> Abhimanyu → `XRPL_*_MAYA_*` wallet, Kashish → `JORDAN`, Musammat → `PRIYA`, Arpey → landlord.
+> Live check without MongoDB: `npm run guardian` + `npx tsx scripts/check-real-rent-day.ts`.
+
 ---
 
 ## 1. How a rent payment flows

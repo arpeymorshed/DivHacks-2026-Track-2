@@ -73,6 +73,7 @@ export type PaymentIntent = {
 export type GuardianDecision = {
   approved: boolean;
   reason: string;
+  rule?: string; // real Guardian only: which rule decided (e.g. "once-per-month"); see docs/MONEY-LAYER.md §6
 };
 
 export type MockPaymentResult = {
@@ -84,11 +85,31 @@ export type MockPaymentResult = {
   txHash: string;
 };
 
+// A real XRPL Testnet payment (src/services/xrplPayments.ts).
+export type LedgerPaymentResult = {
+  success: boolean; // true only when the ledger result is tesSUCCESS
+  status: "paid" | "failed";
+  tenantId: string;
+  amountUsd: number;
+  destination: string;
+  txHash: string;
+  ledgerCode: string; // e.g. "tesSUCCESS"
+  explorerUrl: string; // testnet.xrpl.org link
+  period: string; // "2026-10#run3": the on-ledger month/run tag
+};
+
 export type RentDayResult = {
   tenantId: string;
   intent: PaymentIntent;
   guardianDecision: GuardianDecision;
-  payment: MockPaymentResult | null;
+  payment: MockPaymentResult | LedgerPaymentResult | null;
+};
+
+// Demo clock + run, stored in MongoDB (collection "demoState"). Reset bumps `run`.
+export type DemoState = {
+  id: "demo";
+  today: string; // "2026-10-01"
+  run: number;
 };
 
 export type AuditEntry = {

@@ -9,7 +9,8 @@ export const building: Building = {
   id: "building-1",
   name: "RentRelay Demo Building",
   landlordName: "Arpey",
-  landlordWallet: "rARPEY_DEMO",
+  // Real XRPL Testnet addresses (scripts/setup-xrpl.ts). Addresses are public; keys come from env.
+  landlordWallet: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",
   units: [
     {
       id: "unit-4b",
@@ -31,7 +32,7 @@ export const tenants: Tenant[] = [
     unitId: "unit-4b",
     share: 0.5,
     capUsd: 1600,
-    walletAddress: "rABHIMANYU_DEMO",
+    walletAddress: "rpLaekX6YCi9r5Vc3VUyAwEtLyT1F5PifS", // on-ledger "maya" wallet
     agentId: "agent-abhimanyu",
     phoneNumber: process.env.DEMO_ABHIMANYU_PHONE ?? "",
   },
@@ -41,7 +42,7 @@ export const tenants: Tenant[] = [
     unitId: "unit-4b",
     share: 0.5,
     capUsd: 1600,
-    walletAddress: "rKASHISH_DEMO",
+    walletAddress: "rJddJZQpVm7UESBCWxZncVLQb8xK9GbZwy", // on-ledger "jordan" wallet
     agentId: "agent-kashish",
     phoneNumber: process.env.DEMO_KASHISH_PHONE ?? "",
   },
@@ -50,8 +51,8 @@ export const tenants: Tenant[] = [
     name: "Musammat",
     unitId: "unit-2a",
     share: 1.0,
-    capUsd: 2200,
-    walletAddress: "rMUSAMMAT_DEMO",
+    capUsd: 1600, // must match the Guardian policy for this wallet (docs/MONEY-LAYER.md §3)
+    walletAddress: "r9hSWg45gqatR6GT3YTm7PVNwb8FzfNAT4", // on-ledger "priya" wallet
     agentId: "agent-musammat",
     phoneNumber: process.env.DEMO_MUSAMMAT_PHONE ?? "",
   },
@@ -99,7 +100,7 @@ export const dues: Due[] = [
   {
     tenantId: "musammat",
     month: "2026-10",
-    rentUsd: 1900,
+    rentUsd: 1450, // Unit 2A is $1,450 at 100%; the Guardian enforces rent == share exactly
     utilitiesUsd: 52,
     dueDate: "2026-10-01",
     daysLate: 0,
