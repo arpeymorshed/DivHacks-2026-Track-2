@@ -4,51 +4,43 @@
 
 :root,
 [data-theme="light"] {
-  --bg: #f3f6f4;
+  --bg: #f7f7f5;
   --sf: #ffffff;
-  --bd: #dde4df;
-  --bdL: #ebf0ec;
-  --tx: #0c1210;
-  --txM: #5a6660;
-  --txL: #8f9b95;
-  --ac: #0d7a6f;
-  --acL: #d9f2ee;
-  --ok: #178a52;
-  --okL: #e3f7ec;
-  --no: #d12b2b;
-  --noL: #fde8e8;
-  --am: #b86e00;
-  --amL: #fff1d6;
-  --bl: #2a5bd7;
-  --blL: #e8efff;
-  --wash: radial-gradient(120% 80% at 10% -10%, #d7f3ee 0%, transparent 55%),
-    radial-gradient(90% 70% at 100% 0%, #e8efe6 0%, transparent 50%),
-    linear-gradient(180deg, #f7faf8 0%, #eef3f0 100%);
-  --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+  --bd: #e6e6e1;
+  --bdL: #efefea;
+  --tx: #1a1a18;
+  --txM: #6b6b64;
+  --txL: #9a9a92;
+  --ac: #2f6f68;
+  --acL: #e8f2f0;
+  --ok: #2d6a4f;
+  --okL: #eaf3ee;
+  --no: #b42318;
+  --noL: #fef3f2;
+  --am: #9a6700;
+  --amL: #fef7e8;
+  --bl: #3451b2;
+  --blL: #eef1fb;
 }
 
 [data-theme="dark"] {
-  --bg: #0a0e0c;
-  --sf: #131916;
-  --bd: #25302b;
-  --bdL: #1a211d;
-  --tx: #f1f5f2;
-  --txM: #9aa89f;
-  --txL: #6e7a73;
-  --ac: #3db8ab;
-  --acL: rgba(13, 122, 111, 0.22);
-  --ok: #3dd68c;
-  --okL: rgba(23, 138, 82, 0.22);
-  --no: #ff6b6b;
-  --noL: rgba(209, 43, 43, 0.2);
-  --am: #f0b429;
-  --amL: rgba(184, 110, 0, 0.22);
-  --bl: #7aa2ff;
-  --blL: rgba(42, 91, 215, 0.22);
-  --wash: radial-gradient(100% 70% at 0% 0%, rgba(61, 184, 171, 0.18) 0%, transparent 50%),
-    radial-gradient(80% 60% at 100% 10%, rgba(42, 91, 215, 0.12) 0%, transparent 45%),
-    linear-gradient(180deg, #0c110f 0%, #0a0e0c 100%);
-  --grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  --bg: #141413;
+  --sf: #1c1c1a;
+  --bd: #2e2e2b;
+  --bdL: #232321;
+  --tx: #ecece9;
+  --txM: #a0a099;
+  --txL: #6f6f68;
+  --ac: #6bb3aa;
+  --acL: rgba(47, 111, 104, 0.22);
+  --ok: #5db88a;
+  --okL: rgba(45, 106, 79, 0.22);
+  --no: #f07066;
+  --noL: rgba(180, 35, 24, 0.2);
+  --am: #dab35c;
+  --amL: rgba(154, 103, 0, 0.2);
+  --bl: #8da2e8;
+  --blL: rgba(52, 81, 178, 0.22);
 }
 
 @layer base {
@@ -58,42 +50,16 @@
 
   html,
   body {
-    @apply min-h-full font-sans text-ink antialiased;
-    background: var(--bg);
+    @apply min-h-full bg-bg font-sans text-ink antialiased;
     -webkit-font-smoothing: antialiased;
   }
 
-  body {
-    background-image: var(--wash);
-    background-attachment: fixed;
-  }
-
-  body::before {
-    content: "";
-    pointer-events: none;
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    opacity: 0.035;
-    background-image: var(--grain);
-    background-size: 180px 180px;
-  }
-
-  body > * {
-    position: relative;
-    z-index: 1;
-  }
-
   button {
-    @apply outline-none transition-all duration-200 ease-out;
-  }
-
-  button:active:not(:disabled) {
-    transform: scale(0.97);
+    @apply outline-none transition-colors duration-150;
   }
 
   input {
-    @apply outline-none transition-all duration-200 ease-out;
+    @apply outline-none transition-colors duration-150;
   }
 
   ::selection {
@@ -104,37 +70,6 @@
 
 @layer components {
   .mono {
-    @apply font-mono text-[11px] tracking-wide text-ink-faint;
+    @apply font-mono text-[11px] text-ink-faint;
   }
-
-  .press {
-    @apply transition-transform duration-200 ease-out active:scale-95;
-  }
-
-  .glass {
-    border: 1px solid color-mix(in srgb, var(--bd) 60%, transparent);
-    background: color-mix(in srgb, var(--sf) 82%, transparent);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-  .sheet {
-    animation: sheetIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-    border-radius: 1.75rem;
-    background: var(--sf);
-    box-shadow: 0 18px 50px rgba(12, 18, 16, 0.12);
-    outline: 1px solid color-mix(in srgb, var(--bd) 80%, transparent);
-  }
-
-  .stagger > * {
-    animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  .stagger > *:nth-child(1) { animation-delay: 0.02s; }
-  .stagger > *:nth-child(2) { animation-delay: 0.07s; }
-  .stagger > *:nth-child(3) { animation-delay: 0.12s; }
-  .stagger > *:nth-child(4) { animation-delay: 0.17s; }
-  .stagger > *:nth-child(5) { animation-delay: 0.22s; }
-  .stagger > *:nth-child(6) { animation-delay: 0.27s; }
-  .stagger > *:nth-child(7) { animation-delay: 0.32s; }
 }

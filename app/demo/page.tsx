@@ -30,64 +30,39 @@ function useNf() {
   const push = useCallback((m: string, c = "accent") => {
     const id = "" + Date.now();
     sTs((t) => [...t, { id, m, c }]);
-    setTimeout(() => sTs((t) => t.filter((x) => x.id !== id)), 2800);
+    setTimeout(() => sTs((t) => t.filter((x) => x.id !== id)), 2600);
   }, []);
   return { ts, push };
 }
-const softBg: Record<string, string> = {
-  paid: "bg-ok-soft text-ok", due: "bg-info-soft text-info", late: "bg-warn-soft text-warn",
-  blocked: "bg-danger-soft text-danger", failed: "bg-danger-soft text-danger",
-  ok: "bg-ok-soft text-ok", block: "bg-danger-soft text-danger", fail: "bg-danger-soft text-danger",
-  processing: "bg-accent-soft text-accent",
+const statusTone: Record<string, string> = {
+  paid: "text-ok", due: "text-info", late: "text-warn", blocked: "text-danger", failed: "text-danger",
+  ok: "text-ok", block: "text-danger", fail: "text-danger", processing: "text-accent",
 };
 const statusLabel: Record<string, string> = {
   paid: "Paid", due: "Due", late: "Late", blocked: "Blocked", failed: "Failed",
   ok: "Paid", block: "Blocked", fail: "Failed", processing: "Processing",
 };
 function St({ s }: { s: string }) {
-  return (
-    <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold tracking-wide ${softBg[s] || "bg-info-soft text-info"}`}>
-      {statusLabel[s] || "Due"}
-    </span>
-  );
+  return <span className={`text-[12px] font-medium ${statusTone[s] || "text-info"}`}>{statusLabel[s] || "Due"}</span>;
 }
 function Toasts({ ts }: { ts: { id: string; m: string; c: string }[] }) {
   return (
     <div className="fixed inset-x-4 top-3 z-[9999] mx-auto flex max-w-sm flex-col gap-2 md:inset-x-auto md:right-4">
       {ts.map((t) => (
-        <div key={t.id} className="animate-toast-in glass rounded-2xl px-4 py-3 text-sm font-medium text-ink shadow-lift">
+        <div key={t.id} className="animate-rise rounded-md border border-line bg-surface px-3.5 py-2.5 text-sm text-ink shadow-panel">
           {t.m}
         </div>
       ))}
     </div>
   );
 }
-function useSt(c: number, ms = 70) {
+function useSt(c: number, ms = 40) {
   const [v, s] = useState<number[]>([]);
   useEffect(() => {
     s([]);
     for (let i = 0; i < c; i++) setTimeout(() => s((p) => [...p, i]), (i + 1) * ms);
   }, [c, ms]);
   return v;
-}
-function SegTabs({ tabs, value, onChange }: { tabs: { id: string; l: string }[]; value: string; onChange: (id: string) => void }) {
-  return (
-    <div className="relative flex gap-1 rounded-2xl bg-surface/70 p-1 ring-1 ring-line/70 backdrop-blur">
-      {tabs.map((tb) => {
-        const on = value === tb.id;
-        return (
-          <button
-            key={tb.id}
-            onClick={() => onChange(tb.id)}
-            className={`relative z-10 flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-200 ${on ? "text-ink" : "text-ink-faint hover:text-ink-muted"}`}
-          >
-            {on && <span className="absolute inset-0 -z-10 animate-tab-slide rounded-xl bg-bg shadow-soft ring-1 ring-line/80" />}
-            {tb.l}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function DemoPage() {
@@ -99,7 +74,7 @@ export default function DemoPage() {
   const [res, sR] = useState<Record<string, boolean | undefined>>({});
   const [run, sRn] = useState<string | null>(null);
   const nf = useNf();
-  const vis = useSt(ATK.length, 70);
+  const vis = useSt(ATK.length, 40);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", "dark");
@@ -111,9 +86,9 @@ export default function DemoPage() {
     const o = ["abhi", "musammat", "kashish"];
     let d = 0;
     o.forEach((id) => {
-      d += 600;
+      d += 500;
       setTimeout(() => { sP(id); nf.push("Processing " + tenants[id as keyof typeof tenants].name + "..."); }, d);
-      d += 1e3;
+      d += 900;
       setTimeout(() => {
         const t = tenants[id as keyof typeof tenants];
         const tot = t.rS + t.ut + t.lf;
@@ -125,102 +100,105 @@ export default function DemoPage() {
   }
   function spawn() {
     sSS([]);
-    ["Wallet created", "Trust line set", "Signer list (2-of-3)", "Master key disabled", "Credential issued", "Live"].forEach((s, i) => setTimeout(() => sSS((p) => [...p, s]), i * 550 + 200));
+    ["Wallet created", "Trust line set", "Signer list (2-of-3)", "Master key disabled", "Credential issued", "Live"].forEach((s, i) => setTimeout(() => sSS((p) => [...p, s]), i * 450 + 150));
   }
   function fire(a: typeof ATK[0]) {
     if (run) return;
     sRn(a.id); sR((r) => ({ ...r, [a.id]: undefined }));
-    setTimeout(() => { sR((r) => ({ ...r, [a.id]: true })); sRn(null); nf.push("Blocked: " + a.t, a.ly === "l" ? "accent" : "danger"); }, 1200);
+    setTimeout(() => { sR((r) => ({ ...r, [a.id]: true })); sRn(null); nf.push("Blocked: " + a.t, a.ly === "l" ? "accent" : "danger"); }, 1000);
   }
 
   return (
-    <div className="min-h-screen text-ink">
+    <div className="min-h-screen bg-bg text-ink">
       <Toasts ts={nf.ts} />
 
-      <header className="sticky top-0 z-40 border-b border-line/50 bg-bg/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-5">
-          <div className="flex items-baseline gap-3">
-            <span className="font-display text-[17px] font-bold tracking-tight">RentRelay</span>
-            <span className="text-xs font-medium text-ink-faint">Demo</span>
+      <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-sm">
+        <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-4">
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-[14px] font-medium tracking-tight">RentRelay</span>
+            <span className="text-[12px] text-ink-faint">Demo</span>
           </div>
           <button
             onClick={() => { sDD(9); sT(initT()); sR({}); sRn(null); sSS([]); }}
-            className="press flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium text-ink-muted ring-1 ring-line hover:bg-surface"
+            className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-[12px] text-ink-muted hover:bg-surface"
           >
-            <RotateCcw size={12} />Reset
+            <RotateCcw size={11} />Reset
           </button>
         </div>
-        <div className="mx-auto max-w-3xl px-5 pb-3">
-          <SegTabs
-            tabs={[{ id: "building", l: "Building" }, { id: "guardian", l: "Guardian" }]}
-            value={tab}
-            onChange={sTab}
-          />
+        <div className="mx-auto flex max-w-3xl gap-4 px-4">
+          {[{ id: "building", l: "Building" }, { id: "guardian", l: "Guardian" }].map((tb) => (
+            <button
+              key={tb.id}
+              onClick={() => sTab(tb.id)}
+              className={`-mb-px border-b pb-2.5 text-[13px] ${tab === tb.id ? "border-ink font-medium text-ink" : "border-transparent text-ink-faint hover:text-ink-muted"}`}
+            >
+              {tb.l}
+            </button>
+          ))}
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-5 pb-24 pt-8">
+      <div className="mx-auto max-w-3xl px-4 pb-20 pt-6">
         {tab === "building" && (
-          <div key="building" className="stagger space-y-8">
-            <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="animate-fade-in space-y-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-faint">Property</p>
-                <h1 className="mt-1 font-display text-hero text-ink">123 W 112th St</h1>
-                <p className="mt-1 text-sm text-ink-muted">Landlord: Arpey · 2 units · 3 tenants</p>
+                <h1 className="text-hero text-ink">123 W 112th St</h1>
+                <p className="mt-1 text-[13px] text-ink-muted">Landlord: Arpey · 2 units · 3 tenants</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-ink-muted">Sep {dd}</span>
-                <button onClick={() => sDD((d) => Math.min(d + 1, 30))} className="press rounded-xl px-3 py-1.5 text-xs font-medium text-ink-muted ring-1 ring-line hover:bg-surface">+1 day</button>
-                <button onClick={runRD} className="press rounded-xl bg-ink px-3.5 py-1.5 text-xs font-semibold text-bg">Rent day</button>
-                <button onClick={() => { sDD(9); sT(initT()); }} className="press rounded-xl p-1.5 text-ink-faint hover:bg-surface"><RotateCcw size={14} /></button>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] text-ink-muted">Sep {dd}</span>
+                <button onClick={() => sDD((d) => Math.min(d + 1, 30))} className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-muted hover:bg-surface">+1 day</button>
+                <button onClick={runRD} className="rounded-md bg-ink px-2.5 py-1 text-[12px] font-medium text-bg hover:opacity-90">Rent day</button>
+                <button onClick={() => { sDD(9); sT(initT()); }} className="rounded-md p-1 text-ink-faint hover:bg-surface"><RotateCcw size={13} /></button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-2xl glass px-4 py-3.5">
+            <div className="flex items-center justify-between rounded-md border border-line bg-surface px-3.5 py-3">
               <div>
-                <p className="text-sm font-semibold">Add tenant</p>
-                <p className="text-xs text-ink-faint">Spawn wallet on-chain</p>
+                <p className="text-[13px] font-medium">Add tenant</p>
+                <p className="text-[12px] text-ink-faint">Spawn wallet on-chain</p>
               </div>
-              <button onClick={spawn} className="press rounded-xl bg-accent px-3.5 py-1.5 text-xs font-semibold text-white">Spawn</button>
+              <button onClick={spawn} className="rounded-md border border-line px-2.5 py-1 text-[12px] font-medium text-ink-muted hover:bg-bg">Spawn</button>
             </div>
             {spSt.length > 0 && (
-              <div className="space-y-2 rounded-2xl glass p-4">
+              <div className="space-y-1.5 rounded-md border border-line bg-surface px-3.5 py-3">
                 {spSt.map((s, i) => (
-                  <p key={i} className={`flex items-center gap-2 text-sm ${s === "Live" ? "font-semibold text-ok" : "text-ink-muted"}`}>
-                    {s === "Live" ? <CheckCircle2 size={14} /> : <RefreshCw size={12} className={i === spSt.length - 1 && s !== "Live" ? "animate-spin" : ""} />}
+                  <p key={i} className={`flex items-center gap-2 text-[13px] ${s === "Live" ? "font-medium text-ok" : "text-ink-muted"}`}>
+                    {s === "Live" ? <CheckCircle2 size={13} /> : <RefreshCw size={11} className={i === spSt.length - 1 && s !== "Live" ? "animate-spin" : ""} />}
                     {s === "Live" ? "Agent live" : s}
                   </p>
                 ))}
               </div>
             )}
 
-            <div className="space-y-5">
+            <div className="space-y-4">
               {UNITS.map((u) => {
                 const allP = u.ts.every((id) => tenants[id as keyof typeof tenants].st === "paid");
                 const anyL = u.ts.some((id) => tenants[id as keyof typeof tenants].st === "late");
                 return (
                   <section key={u.id}>
-                    <div className="mb-3 flex items-center justify-between">
-                      <h3 className="text-sm font-semibold">Unit {u.id} <span className="font-normal text-ink-faint">${u.rent.toLocaleString()}/mo</span></h3>
+                    <div className="mb-2 flex items-baseline justify-between">
+                      <h3 className="text-[13px] font-medium">Unit {u.id} <span className="font-normal text-ink-faint">${u.rent.toLocaleString()}/mo</span></h3>
                       <St s={allP ? "paid" : anyL ? "late" : "due"} />
                     </div>
-                    <div className="divide-y divide-line/70 overflow-hidden rounded-2xl glass">
+                    <div className="divide-y divide-line overflow-hidden rounded-md border border-line bg-surface">
                       {u.ts.map((tid) => {
                         const tn = tenants[tid as keyof typeof tenants];
                         const tot = tn.rS + tn.ut + tn.lf;
                         const isP = proc === tid;
                         return (
-                          <div key={tid} className={`flex items-center justify-between px-4 py-3.5 transition-colors duration-300 ${isP ? "bg-accent-soft/70" : ""}`}>
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg text-xs font-bold ring-1 ring-line">{tn.ini}</div>
+                          <div key={tid} className={`flex items-center justify-between px-3.5 py-3 ${isP ? "bg-accent-soft/50" : ""}`}>
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-bg text-[11px] font-medium text-ink-muted">{tn.ini}</div>
                               <div>
-                                <p className="text-sm font-semibold">{tn.name}</p>
+                                <p className="text-[13px] font-medium">{tn.name}</p>
                                 <p className="mono">{tn.ag}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3 text-sm">
-                              <span className="tabular-nums font-medium">${f$(tot)}</span>
-                              <span className={`tabular-nums font-semibold ${tn.bal >= tot ? "text-ok" : "text-danger"}`}>${f$(tn.bal)}</span>
+                            <div className="flex items-center gap-3 text-[13px]">
+                              <span className="tabular-nums text-ink-muted">${f$(tot)}</span>
+                              <span className={`tabular-nums ${tn.bal >= tot ? "text-ok" : "text-danger"}`}>${f$(tn.bal)}</span>
                               <St s={isP ? "processing" : tn.st} />
                             </div>
                           </div>
@@ -233,26 +211,26 @@ export default function DemoPage() {
             </div>
 
             <section>
-              <h3 className="mb-3 text-sm font-semibold">Audit</h3>
-              <div className="overflow-x-auto rounded-2xl glass">
-                <table className="w-full text-left text-sm">
+              <h3 className="mb-2 text-[13px] font-medium">Audit</h3>
+              <div className="overflow-x-auto rounded-md border border-line bg-surface">
+                <table className="w-full text-left text-[13px]">
                   <thead>
-                    <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                    <tr className="border-b border-line text-[11px] text-ink-faint">
                       {["Time", "Who", "Type", "Amt", "Status", "Rule", "Tx"].map((h) => (
-                        <th key={h} className="px-4 py-3">{h}</th>
+                        <th key={h} className="px-3.5 py-2.5 font-medium">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {AUD.map((r) => (
-                      <tr key={r.id} className="border-b border-line-soft last:border-0 transition-colors hover:bg-bg/40">
-                        <td className="px-4 py-3 text-ink-faint">{r.t}</td>
-                        <td className="px-4 py-3 font-medium">{r.w}</td>
-                        <td className="px-4 py-3 text-ink-muted">{r.wh}</td>
-                        <td className="px-4 py-3 tabular-nums font-medium">${f$(r.a)}</td>
-                        <td className="px-4 py-3"><St s={r.s} /></td>
-                        <td className="px-4 py-3 text-ink-muted">{r.r}</td>
-                        <td className="px-4 py-3">{r.tx ? <span className="mono text-accent">{r.tx}</span> : <span className="text-ink-faint">—</span>}</td>
+                      <tr key={r.id} className="border-b border-line-soft last:border-0">
+                        <td className="px-3.5 py-2.5 text-ink-faint">{r.t}</td>
+                        <td className="px-3.5 py-2.5">{r.w}</td>
+                        <td className="px-3.5 py-2.5 text-ink-muted">{r.wh}</td>
+                        <td className="px-3.5 py-2.5 tabular-nums">${f$(r.a)}</td>
+                        <td className="px-3.5 py-2.5"><St s={r.s} /></td>
+                        <td className="px-3.5 py-2.5 text-ink-muted">{r.r}</td>
+                        <td className="px-3.5 py-2.5">{r.tx ? <span className="mono text-accent">{r.tx}</span> : <span className="text-ink-faint">—</span>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -263,42 +241,37 @@ export default function DemoPage() {
         )}
 
         {tab === "guardian" && (
-          <div key="guardian" className="animate-fade-up">
-            <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="animate-fade-in">
+            <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-ink-faint">Threats</p>
-                <h1 className="mt-1 font-display text-hero">What could go wrong?</h1>
-                <p className="mt-2 text-sm text-ink-muted">Five attacks. Tap Run to watch each get blocked.</p>
+                <h1 className="text-hero">What could go wrong?</h1>
+                <p className="mt-1 text-[13px] text-ink-muted">Five attacks. Each one blocked.</p>
               </div>
-              <button onClick={() => { sR({}); sRn(null); }} className="press flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium text-ink-muted ring-1 ring-line hover:bg-surface">
-                <RotateCcw size={12} />Reset
+              <button onClick={() => { sR({}); sRn(null); }} className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-[12px] text-ink-muted hover:bg-surface">
+                <RotateCcw size={11} />Reset
               </button>
             </div>
-            <div className="mt-6 flex gap-5 text-xs font-medium text-ink-faint">
-              <span className="flex items-center gap-2"><span className="h-px w-3 bg-danger" />Guardian</span>
-              <span className="flex items-center gap-2"><span className="h-px w-3 bg-accent" />XRPL ledger</span>
-            </div>
-            <div className="mt-8 space-y-3">
+            <div className="mt-6 space-y-2">
               {ATK.map((a, i) => {
                 const show = vis.includes(i);
                 const isR = run === a.id;
                 const bl = res[a.id];
                 return (
-                  <div key={a.id} className={`rounded-2xl glass p-5 transition-all duration-300 ease-snappy hover:shadow-lift ${show ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"}`}>
-                    <div className="flex items-start justify-between gap-4">
+                  <div key={a.id} className={`rounded-md border border-line bg-surface p-4 transition-opacity duration-200 ${show ? "opacity-100" : "opacity-0"}`}>
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold tracking-tight">{a.t}</p>
-                        <p className="mt-1 text-sm leading-relaxed text-ink-muted">{a.d}</p>
+                        <p className="text-[14px] font-medium">{a.t}</p>
+                        <p className="mt-1 text-[13px] leading-snug text-ink-muted">{a.d}</p>
                       </div>
-                      <button onClick={() => fire(a)} disabled={!!isR} className={`press shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-semibold ${bl ? "text-ink-muted ring-1 ring-line" : "bg-ink text-bg"}`}>
-                        {isR ? <span className="flex items-center gap-1"><RefreshCw size={12} className="animate-spin" />Test</span> : bl ? "Again" : "Run"}
+                      <button onClick={() => fire(a)} disabled={!!isR} className={`shrink-0 rounded-md px-2.5 py-1 text-[12px] font-medium ${bl ? "border border-line text-ink-muted" : "bg-ink text-bg hover:opacity-90"}`}>
+                        {isR ? <span className="flex items-center gap-1"><RefreshCw size={11} className="animate-spin" />Test</span> : bl ? "Again" : "Run"}
                       </button>
                     </div>
                     {bl && (
-                      <div className="mt-4 animate-fade-up border-t border-line pt-4">
-                        <p className={`text-xs font-semibold uppercase tracking-wider ${a.ly === "l" ? "text-accent" : "text-danger"}`}>Blocked by {a.bk}</p>
-                        <p className="mt-1.5 text-sm font-semibold">{a.v}</p>
-                        <p className="mt-1 text-sm text-ink-muted">{a.x}</p>
+                      <div className="mt-3 border-t border-line pt-3">
+                        <p className={`text-[12px] font-medium ${a.ly === "l" ? "text-accent" : "text-danger"}`}>Blocked by {a.bk}</p>
+                        <p className="mt-1 text-[13px]">{a.v}</p>
+                        <p className="mt-0.5 text-[13px] text-ink-muted">{a.x}</p>
                       </div>
                     )}
                   </div>

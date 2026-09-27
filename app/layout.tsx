@@ -1,17 +1,10 @@
 import "./globals.css";
-import { Outfit, Syne, IBM_Plex_Mono } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 
-const outfit = Outfit({
+const plex = IBM_Plex_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-outfit",
-  display: "swap",
-});
-
-const syne = Syne({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-syne",
+  weight: ["400", "500", "600"],
+  variable: "--font-sans",
   display: "swap",
 });
 
@@ -29,7 +22,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${outfit.variable} ${syne.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${plex.variable} ${plexMono.variable}`}>
       <head>
         <meta
           name="viewport"
