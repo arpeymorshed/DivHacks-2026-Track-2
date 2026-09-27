@@ -1,5 +1,9 @@
 // Memos on every rent payment. Shared by the app (writes them) and the Guardian (reads them).
-import { convertHexToString, convertStringToHex } from "xrpl";
+// Plain Buffer hex helpers (same output as xrpl's convertStringToHex/convertHexToString) so this file
+// doesn't load xrpl: guardian/rules imports it, and /api/state and /api/clock must work even when
+// xrpl can't load (it crashed those routes on Vercel, docs/BUGS.md 2026-09-27).
+const convertStringToHex = (s: string) => Buffer.from(s, "utf8").toString("hex").toUpperCase();
+const convertHexToString = (hex: string) => Buffer.from(hex, "hex").toString("utf8");
 
 // sha256 of the audit record (hex), stored in the app's AuditEntry too.
 export const AUDIT_MEMO_TYPE = "rentrelay/audit";
