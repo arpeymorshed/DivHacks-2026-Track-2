@@ -30,7 +30,7 @@ const intent = createPaymentIntent(
 deepStrictEqual(intent, {
   tenantId: "abhimanyu",
   agentId: "agent-abhimanyu",
-  destination: "rARPEY_DEMO",
+  destination: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",
   amountUsd: 1488,
   currency: "RLUSD",
   month: "2026-10",

@@ -2,6 +2,24 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-26: PR #16 `p1-real-payments` @ 9a18f37 (T21a real money layer in P2's backend; routes for T33/T35/T37): ✅ approved
+**Ran from a clean scratch copy:** `npm ci` · `next build` ✅ (all 11 API routes compile) · `npm run typecheck` ✅ · `test:guardian` 18/18 ✅ · P2 `npm test` (mock mode) ✅. PR CI (build-test, smoke, claude-review, merge-gate) is green.
+**Not run:** `scripts/check-real-rent-day.ts`, because it moves real RLUSD. The Builder reports it live.
+- **Rent day** (`src/services/xrplPayments.ts`): builds the tagged payment (`month#run`), then agent-sign → live Guardian → multisign. It checks `paidOnLedger`, and **checks the balance before asking the Guardian**, so a short wallet can't leave a "still settling" record (`:51-66`). The late fee uses the Guardian's own constants, so day 8 = $15. Tenants pay in parallel and one failure doesn't stop the others (`src/agent/mainAgent.ts`). Without the XRPL env it falls back to the mocks, and the tests use that.
+- **Seed** (`src/data/demoBuilding.ts`): the addresses match the Guardian policy (abhimanyu→`rpLaek…`, kashish→`rJddJZ…`, musammat→`r9hSWg…`, landlord `rLD4K9…`). Musammat's rent is $1,450 and cap $1,600, matching the policy's `rentShareUsd`. The team names are display-only, as decided.
+- **Routes:** every target is built on the server (`/api/topup`, `/api/attacks/:name`). `:name` is checked against `ATTACKS`. `/api/tenants` validates the name, streams NDJSON steps, **drops `backupSeed`**, and reads `GUARDIAN_ADDRESS` from plain env. Agent keys are stored with AES-256-GCM under `AGENT_KEY_SECRET` (`src/services/agentKeys.ts`). Errors log only the class name. The earlier review notes are all honoured.
+- **Reset** bumps `run` and recycles landlord → bank → seed balances (`src/services/demoFunds.ts`). The seed balances ($1,500 / $1,000 / $1,600) fit under the $1,600 wallet cap.
+- Also checked, outside this PR: `/api/seed` is disabled in production, and `/api/db-test` doesn't leak the Mongo URI.
+
+Should fix (small, non-blocking):
+1. **A spawn can burn XRP before a config error shows.** `saveAgentSeed` runs after the on-chain spawn (`app/api/tenants/route.ts:64`). If `AGENT_KEY_SECRET` or Mongo is missing, the wallet is created and paid for (~2.6 XRP), but the tenant is never saved, and the message says "nothing to clean up." Check `envSeed("AGENT_KEY_SECRET")` (and `getDb()`) **before** `spawnRentWallet`. The `MAX_SPAWNED` count also isn't safe against parallel requests. It's bounded by the ops balance, so only minor.
+2. **An already-paid tenant shows as a Guardian refusal.** A second rent day returns `approved:false, rule:"once-per-month"`. P3 should render it as "already paid ✓", not red "blocked".
+
+Decisions for Arpey / Q&A:
+- **The demo controls are public.** `/api/demo/reset`, `/api/clock`, `/api/rent-day` and `/api/tenants` need no auth, so during expo judging any visitor to the deployed site can reset or move the clock mid-demo. If that worries you: a simple `x-demo-key` header checked against env for those four, sent only by the landlord console.
+- **`month` follows the demo date** (`clockOf`: `today.slice(0,7)`). Jumping to e.g. Sept 28 would make "rent day" pay for September. The demo script (Oct 1 → day 8) is fine; make "jump to rent day" go to the 1st.
+- **Spawned tenants get no backup key** (it's dropped rather than shown to the tenant). "The tenant can always withdraw" holds for the seed tenants (keys in `.secrets/tenant-backups.env`), not for tenants spawned live.
+
 ## 2026-09-26: FI / T01a frontend integration, PR #11 `frontend-integration` @ 7aa3979: ✅ approved
 **Ran from a clean scratch copy of 7aa3979:** `npm ci` · `next build` ✅ (`/` and `/demo` prerender) · `npm run typecheck` (strict `tsconfig.server.json`, TypeScript 5.9.3) ✅ · `npm run test:guardian` 18/18 ✅. The Builder's `/merge-check` (review, build/test, run-locally) also passed.
 - **Follows the plan.** It's cut from `main`, Kashish's `app/`, `public/` and configs are transplanted, and the commit credits Kashish (`Co-authored-by`). The app code is identical to `origin/frontend` apart from the 5 typed `useRef`s (`app/page.tsx`).
