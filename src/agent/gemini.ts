@@ -9,6 +9,9 @@ export type TenantChatFacts = {
   dueDate: string;
   daysLate: number;
   reason?: string;
+  // Only set when the tenant asked about their wallet and the ledger answered.
+  walletBalanceUsd?: number;
+  walletSummary?: string;
 };
 
 export type GenerateTenantReplyInput = {
@@ -46,6 +49,8 @@ TRUSTED FACTS:
 - Due date: ${facts.dueDate}
 - Days late: ${facts.daysLate}
 ${facts.reason ? `- Reason: ${facts.reason}` : ""}
+${facts.walletBalanceUsd !== undefined ? `- Rent wallet balance (live from the XRP Ledger): $${facts.walletBalanceUsd}` : ""}
+${facts.walletSummary ? `- Wallet vs. amount due: ${facts.walletSummary}` : ""}
 
 TENANT MESSAGE:
 "${userText}"

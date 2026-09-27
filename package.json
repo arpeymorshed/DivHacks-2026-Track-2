@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc -p tsconfig.server.json",
-    "test": "node src/agent/testTenantAgent.ts && node --experimental-test-module-mocks src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts && node src/agent/testPaymentNegotiation.ts && node src/agent/testUtilitySplit.ts && node src/agent/testReminderMessage.ts",
+    "test": "node src/agent/testTenantAgent.ts && node --experimental-test-module-mocks src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts && node src/agent/testPaymentNegotiation.ts && node src/agent/testUtilitySplit.ts && node src/agent/testReminderMessage.ts && node src/agent/testWalletReply.ts",
     "test:photon": "node src/services/testPhotonApi.ts",
     "test:outbox": "node --env-file-if-exists=.env.local src/services/testOutbox.ts",
     "setup:xrpl": "tsx scripts/setup-xrpl.ts",
