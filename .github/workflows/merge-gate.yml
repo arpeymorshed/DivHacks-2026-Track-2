@@ -240,6 +240,7 @@ jobs:
               error_text = json.dumps({
                   "result": result.get("result", ""),
                   "errors": result.get("errors", []),
+                  "api_errors": [m for m in messages if isinstance(m, dict) and m.get("type") == "assistant" and m.get("error")],
               }).lower()
           except (OSError, ValueError, TypeError):
               print("Claude diagnostic: execution result unavailable")
@@ -256,6 +257,21 @@ jobs:
           matched = [label for label, pattern in categories.items() if re.search(pattern, error_text)]
           print("Claude diagnostic categories: " + (", ".join(matched) or "unclassified"))
           print("Claude diagnostic result present: " + str(bool(results)))
+          # Fixed vocabulary gives clues for unfamiliar errors without echoing
+          # arbitrary words, identifiers, numeric values, or secrets.
+          vocabulary = {
+              "api", "error", "authentication", "oauth", "token", "expired",
+              "invalid", "unsupported", "login", "logged", "reauthenticate",
+              "organization", "account", "disabled", "billing", "credit",
+              "balance", "quota", "limit", "rate", "usage", "exceeded",
+              "model", "not", "found", "available", "permission", "denied",
+              "overloaded", "timeout", "connection", "network", "fetch",
+              "request", "bad", "malformed", "scope", "access", "forbidden",
+              "subscription", "plan", "upgrade", "resets", "capacity",
+              "prompt", "too", "long", "context", "length", "version",
+          }
+          signals = sorted(vocabulary.intersection(re.findall(r"[a-z]+", error_text)))
+          print("Claude diagnostic keywords: " + (", ".join(signals) or "none"))
           PY
 
       - name: Enforce verdict from review comment
