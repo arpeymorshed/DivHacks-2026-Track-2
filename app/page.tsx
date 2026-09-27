@@ -75,7 +75,7 @@ function St({s}){const m={paid:{c:"var(--ok)",l:"Paid"},due:{c:"var(--bl)",l:"Du
 function AN({value,p="$"}){const[d,sd]=useState(value);const r=useRef();useEffect(()=>{const fr=d,dur=600,t0=performance.now();function tick(n){const pr=Math.min((n-t0)/dur,1);sd(fr+(value-fr)*(1-Math.pow(1-pr,3)));if(pr<1)r.current=requestAnimationFrame(tick)}r.current=requestAnimationFrame(tick);return()=>cancelAnimationFrame(r.current)},[value]);return <span>{p}{f$(d)}</span>}
 
 /* ═══ TOASTS ═══ */
-function Toasts({ts}){return <div style={{position:"fixed",top:50,left:16,right:16,zIndex:9999,display:"flex",flexDirection:"column",gap:6}}>{ts.map(t=><div key={t.id} style={{background:"var(--sf)",borderRadius:12,padding:"12px 16px",boxShadow:"0 4px 20px rgba(0,0,0,0.12)",borderLeft:`3px solid ${t.c}`,fontSize:14,fontWeight:500}}>{t.m}</div>)}</div>}
+function Toasts({ts}){return <div style={{position:"fixed",top:50,left:16,right:16,zIndex:9999,display:"flex",flexDirection:"column",gap:6}}>{ts.map(t=><div key={t.id} style={{background:"var(--sf)",borderRadius:14,padding:"14px 18px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",borderLeft:`3px solid ${t.c}`,fontSize:14,fontWeight:500,animation:"toastSlide 0.4s cubic-bezier(0.34,1.56,0.64,1)"}}>{t.m}</div>)}</div>}
 
 /* ═══ 1-ON-1 CHAT ═══ */
 function Chat1({tid,open,close}){
@@ -264,15 +264,20 @@ function LandlordView({tenants,sT,nf,dd,sDD}){
   </div>
 }
 
+const AVATAR_GRAD={abhi:"linear-gradient(135deg,#667eea,#764ba2)",kashish:"linear-gradient(135deg,#f093fb,#f5576c)",musammat:"linear-gradient(135deg,#4facfe,#00f2fe)",landlord:"linear-gradient(135deg,#0d6e6e,#14b8a6)"};
+
 export default function App(){
   const[role,sRole]=useState("abhi");const[pk,sPk]=useState(false);
   const[tenants,sT]=useState(initT);const[nfO,sNfO]=useState(false);
   const[tab,sTab]=useState("dash");const[tu,sTU]=useState(false);const[c1,sC1]=useState(false);
   const[nfSel,sNfSel]=useState(null);const[dd,sDD]=useState(9);
-  const[dark,sDark]=useState(false);
+  const[dark,sDark]=useState(false);const[splash,sSplash]=useState(true);
+  const[bellShake,sBellShake]=useState(false);
   const nf=useNf();
 
   useEffect(()=>{document.documentElement.setAttribute("data-theme",dark?"dark":"light")},[dark]);
+  useEffect(()=>{setTimeout(()=>sSplash(false),1800)},[]);
+  useEffect(()=>{if(nf.ur>0){sBellShake(true);setTimeout(()=>sBellShake(false),800)}},[nf.ur]);
   const isLandlord=role==="landlord";
   const tid=isLandlord?"abhi":role;
   const t=tenants[tid];const acts=ACT[tid]||[];
@@ -287,34 +292,42 @@ export default function App(){
   const activeRole=roles.find(r=>r.id===role)||roles[0];
 
   return (
-    <div style={{background:"var(--bg)",fontFamily:"'DM Sans',system-ui,sans-serif"}}>
+    <div style={{background:"var(--bg)",fontFamily:"'DM Sans',system-ui,sans-serif",minHeight:"100vh"}}>
+
+      {/* ═══ SPLASH SCREEN ═══ */}
+      {splash&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"var(--bg)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",animation:"splashFade 1.8s ease forwards"}}>
+        <div style={{animation:"splashLogo 1s ease forwards"}}>
+          <div style={{width:80,height:80,borderRadius:20,background:"var(--grad)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16,boxShadow:"0 8px 30px rgba(13,110,110,0.3)"}}><span style={{fontSize:36,fontWeight:700,color:"#fff"}}>a</span></div>
+          <p style={{fontSize:28,fontWeight:700,fontStyle:"italic",color:"var(--tx)",letterSpacing:-1}}>aartee.</p>
+          <p style={{fontSize:13,color:"var(--txL)",marginTop:4}}>your rent, on autopilot</p>
+        </div>
+      </div>}
+
       <Toasts ts={nf.ts}/>
 
       {/* status bar cover */}
       <div style={{position:"fixed",top:-100,left:0,right:0,height:220,zIndex:101,background:"var(--sf)"}}/>
       {/* ═══ NAV ═══ */}
-      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:102,background:"var(--sf)",borderBottom:"1px solid var(--bd)",paddingTop:6}}>
+      <div style={{position:"fixed",top:0,left:0,right:0,zIndex:102,background:"var(--sf)",borderBottom:"1px solid var(--bd)",paddingTop:6,backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}>
         <div style={{padding:"0 20px",display:"flex",justifyContent:"space-between",alignItems:"center",height:50}}>
-          <span style={{fontSize:20,fontWeight:700,letterSpacing:-0.5}}>aartee.</span>
+          <span style={{fontSize:22,fontWeight:700,fontStyle:"italic",letterSpacing:-0.5,background:"var(--grad)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>aartee.</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {/* theme toggle */}
-            <button onClick={()=>sDark(!dark)} style={{background:"none",border:"none",cursor:"pointer",padding:4,fontSize:18}}>
+            <button onClick={()=>sDark(!dark)} style={{background:"none",border:"none",cursor:"pointer",padding:4,fontSize:16,width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}}>
               {dark?"☀️":"🌙"}
             </button>
-            <button onClick={()=>sNfO(!nfO)} style={{position:"relative",background:"none",border:"none",cursor:"pointer",padding:4}}>
+            <button onClick={()=>sNfO(!nfO)} style={{position:"relative",background:"none",border:"none",cursor:"pointer",padding:4,animation:bellShake?"bellShake 0.6s ease":"none"}}>
               <Bell size={22} color={nfO?"var(--ac)":"var(--txM)"}/>
-              {nf.ur>0&&<span style={{position:"absolute",top:-2,right:-2,width:18,height:18,borderRadius:"50%",background:"var(--no)",color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{nf.ur}</span>}
+              {nf.ur>0&&<span style={{position:"absolute",top:-2,right:-2,width:18,height:18,borderRadius:"50%",background:"var(--no)",color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",animation:"bounceIn 0.3s ease"}}>{nf.ur}</span>}
             </button>
-            <button onClick={()=>sPk(!pk)} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:10,border:"1px solid var(--bd)",background:isLandlord?"var(--acL)":"var(--sf)",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>
-              <div style={{width:26,height:26,borderRadius:8,background:isLandlord?"var(--ac)":"var(--acL)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isLandlord?10:12,fontWeight:700,color:isLandlord?"#fff":"var(--ac)"}}>{activeRole.ini}</div>
+            <button onClick={()=>sPk(!pk)} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:12,border:"1px solid var(--bd)",background:isLandlord?"var(--acL)":"var(--sf)",fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"inherit",boxShadow:"var(--sh)"}}>
+              <div style={{width:28,height:28,borderRadius:9,background:AVATAR_GRAD[role]||AVATAR_GRAD.abhi,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",boxShadow:"0 2px 6px rgba(0,0,0,0.15)"}}>{activeRole.ini}</div>
               {activeRole.name.split(" ")[0]}
               <ChevronDown size={14} color="var(--txL)"/>
             </button>
           </div>
         </div>
-        {/* tabs — different for landlord vs tenant */}
         {!isLandlord&&<div style={{display:"flex",borderTop:"1px solid var(--bdL)"}}>
-          {[{id:"dash",l:"Dashboard"},{id:"group",l:"Unit "+t.unit+" chat"}].map(tb=><button key={tb.id} onClick={()=>{sTab(tb.id);window.scrollTo(0,0)}} style={{flex:1,padding:"12px 0",border:"none",background:"none",fontFamily:"inherit",fontSize:14,fontWeight:tab===tb.id?700:400,color:tab===tb.id?"var(--tx)":"var(--txL)",cursor:"pointer",borderBottom:tab===tb.id?"2.5px solid var(--tx)":"2.5px solid transparent"}}>{tb.l}</button>)}
+          {[{id:"dash",l:"Dashboard",ic:Home},{id:"group",l:"Unit "+t.unit+" chat",ic:MessageCircle}].map(tb=><button key={tb.id} onClick={()=>{sTab(tb.id);window.scrollTo(0,0)}} style={{flex:1,padding:"11px 0",border:"none",background:"none",fontFamily:"inherit",fontSize:13,fontWeight:tab===tb.id?700:400,color:tab===tb.id?"var(--ac)":"var(--txL)",cursor:"pointer",borderBottom:tab===tb.id?"2.5px solid var(--ac)":"2.5px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",gap:6,transition:"all 0.2s"}}><tb.ic size={15}/>{tb.l}</button>)}
         </div>}
       </div>
       <div style={{height:isLandlord?65:105}}/>
@@ -326,22 +339,22 @@ export default function App(){
           <div style={{position:"fixed",top:110,right:16,zIndex:160,background:"var(--sf)",border:"1px solid var(--bd)",borderRadius:12,padding:4,minWidth:210,boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>
             <p style={{fontSize:11,fontWeight:600,color:"var(--txL)",padding:"8px 14px 4px"}}>Tenants</p>
             {roles.filter(r=>r.type==="tenant").map(r=>(
-              <button key={r.id} onClick={()=>{sRole(r.id);sPk(false);sTab("dash");window.scrollTo(0,0)}} style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",padding:"11px 14px",borderRadius:8,border:"none",background:role===r.id?"var(--bdL)":"transparent",cursor:"pointer",fontSize:15,fontFamily:"inherit"}}>
+              <button key={r.id} onClick={()=>{sRole(r.id);sPk(false);sTab("dash");window.scrollTo(0,0)}} style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",padding:"11px 14px",borderRadius:10,border:"none",background:role===r.id?"var(--acL)":"transparent",cursor:"pointer",fontSize:15,fontFamily:"inherit",transition:"all 0.15s"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:28,height:28,borderRadius:8,background:role===r.id?"var(--ac)":"var(--bdL)",color:role===r.id?"#fff":"var(--txL)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700}}>{r.ini}</div>
-                  <span style={{fontWeight:role===r.id?600:400}}>{r.name}</span>
+                  <div style={{width:30,height:30,borderRadius:9,background:AVATAR_GRAD[r.id],color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,boxShadow:"0 2px 6px rgba(0,0,0,0.12)"}}>{r.ini}</div>
+                  <span style={{fontWeight:role===r.id?600:400,color:"var(--tx)"}}>{r.name}</span>
                 </div>
-                <span style={{fontSize:13,color:"var(--txL)"}}>{r.sub}</span>
+                <span style={{fontSize:12,color:"var(--txL)",background:"var(--bdL)",padding:"2px 8px",borderRadius:6}}>{r.sub}</span>
               </button>
             ))}
             <div style={{height:1,background:"var(--bdL)",margin:"4px 0"}}/>
             <p style={{fontSize:11,fontWeight:600,color:"var(--txL)",padding:"4px 14px 4px"}}>Landlord</p>
-            <button onClick={()=>{sRole("landlord");sPk(false);window.scrollTo(0,0)}} style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",padding:"11px 14px",borderRadius:8,border:"none",background:role==="landlord"?"var(--bdL)":"transparent",cursor:"pointer",fontSize:15,fontFamily:"inherit"}}>
+            <button onClick={()=>{sRole("landlord");sPk(false);window.scrollTo(0,0)}} style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",padding:"11px 14px",borderRadius:10,border:"none",background:role==="landlord"?"var(--acL)":"transparent",cursor:"pointer",fontSize:15,fontFamily:"inherit",transition:"all 0.15s"}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:28,height:28,borderRadius:8,background:role==="landlord"?"var(--ac)":"var(--bdL)",color:role==="landlord"?"#fff":"var(--txL)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}}>AR</div>
-                <span style={{fontWeight:role==="landlord"?600:400}}>Arpey</span>
+                <div style={{width:30,height:30,borderRadius:9,background:AVATAR_GRAD.landlord,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,boxShadow:"0 2px 6px rgba(0,0,0,0.12)"}}>AR</div>
+                <span style={{fontWeight:role==="landlord"?600:400,color:"var(--tx)"}}>Arpey</span>
               </div>
-              <span style={{fontSize:13,color:"var(--txL)"}}>Landlord</span>
+              <span style={{fontSize:12,color:"var(--txL)",background:"var(--bdL)",padding:"2px 8px",borderRadius:6}}>Landlord</span>
             </button>
           </div>
         </>
@@ -379,11 +392,11 @@ export default function App(){
 
       {/* ═══ DASHBOARD ═══ */}
       {!isLandlord&&tab==="dash"&&(
-        <div style={{padding:"20px 20px 0"}}>
+        <div className="tab-content" style={{padding:"20px 20px 0"}}>
           <p style={{fontSize:15,color:"var(--txM)"}}>Unit {t.unit} · {t.sh*100}% share</p>
           <h1 style={{fontSize:28,fontWeight:700,letterSpacing:-0.5,marginTop:4,marginBottom:20}}>{t.name.split(" ")[0]}&apos;s rent</h1>
 
-          {t.str>0&&<div style={{padding:"12px 16px",marginBottom:16,background:"var(--amL)",borderRadius:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:15,fontWeight:600,color:"#92400E"}}>{t.str} months on time</span><span style={{fontSize:13,color:"#B45309"}}>Rental reference</span></div>}
+          {t.str>0&&<div style={{padding:"14px 18px",marginBottom:16,background:"var(--amL)",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"0 2px 8px rgba(184,134,11,0.1)"}}><span style={{fontSize:15,fontWeight:600,color:"var(--am)"}}>🔥 {t.str} months on time</span><span style={{fontSize:12,color:"var(--am)",background:"rgba(184,134,11,0.12)",padding:"3px 10px",borderRadius:8,fontWeight:600}}>Reference</span></div>}
 
           <div style={{marginBottom:20}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
@@ -400,12 +413,12 @@ export default function App(){
           </div>
 
           {/* wallet */}
-          <div style={{padding:"18px",border:"1px solid var(--bd)",borderRadius:12,marginBottom:18}}>
+          <div style={{padding:"18px",border:"1px solid var(--bd)",borderRadius:14,marginBottom:18,boxShadow:"var(--sh)",background:"var(--sf)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div><p style={{fontSize:13,color:"var(--txL)",marginBottom:4}}>Rent wallet</p><p style={{fontSize:26,fontWeight:700,letterSpacing:-0.5}}><AN value={t.bal}/><span style={{fontSize:14,fontWeight:400,color:"var(--txL)",marginLeft:4}}>RLUSD</span></p><p className="mono" style={{marginTop:4}}>{t.wa}</p></div>
-              <div style={{textAlign:"right"}}>{short&&<p style={{fontSize:14,fontWeight:600,color:"var(--no)",marginBottom:6}}>Short ${f$(tot-t.bal)}</p>}<button onClick={()=>sTU(true)} style={{padding:"10px 18px",borderRadius:10,border:"none",background:"var(--ac)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Top up</button></div>
+              <div style={{textAlign:"right"}}>{short&&<p style={{fontSize:14,fontWeight:600,color:"var(--no)",marginBottom:6}}>Short ${f$(tot-t.bal)}</p>}<button onClick={()=>sTU(true)} style={{padding:"10px 20px",borderRadius:12,border:"none",background:"var(--grad)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 10px rgba(13,110,110,0.3)"}}>Top up</button></div>
             </div>
-            <div style={{marginTop:14,height:5,background:"var(--bdL)",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",borderRadius:3,background:short?"var(--no)":"var(--ok)",width:`${Math.min((t.bal/tot)*100,100)}%`,transition:"width 0.6s ease"}}/></div>
+            <div style={{marginTop:14,height:6,background:"var(--bdL)",borderRadius:4,overflow:"hidden"}}><div className={short?"progress-short":"progress-grad"} style={{height:"100%",borderRadius:4,width:`${Math.min((t.bal/tot)*100,100)}%`,transition:"width 0.8s cubic-bezier(0.4,0,0.2,1)"}}/></div>
           </div>
 
           {/* rules */}
@@ -417,7 +430,7 @@ export default function App(){
           </div>
 
           {/* threat */}
-          <div style={{padding:"14px 16px",marginBottom:24,border:"1px solid var(--bd)",borderRadius:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><p style={{fontSize:15,fontWeight:600}}>1 threat blocked</p><p style={{fontSize:13,color:"var(--txM)"}}>Scam payment, Sep 3</p></div><ChevronRight size={18} color="var(--txL)"/></div>
+          <div style={{padding:"14px 18px",marginBottom:24,border:"1px solid var(--bd)",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"var(--sh)",background:"var(--sf)"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,background:"var(--noL)",display:"flex",alignItems:"center",justifyContent:"center"}}><Shield size={16} color="var(--no)"/></div><div><p style={{fontSize:15,fontWeight:600}}>1 threat blocked</p><p style={{fontSize:13,color:"var(--txM)"}}>Scam payment, Sep 3</p></div></div><ChevronRight size={18} color="var(--txL)"/></div>
 
           {/* activity */}
           <p style={{fontWeight:700,marginBottom:12,fontSize:15}}>Activity</p>
@@ -436,7 +449,7 @@ export default function App(){
       <div style={{height:100}}/>{/* bottom spacer */}
 
       {/* ═══ CHAT FAB (tenant dashboard only) ═══ */}
-      {!isLandlord&&tab==="dash"&&<div style={{display:"flex",justifyContent:"flex-end",padding:"0 20px 30px"}}><button onClick={()=>sC1(true)} style={{width:54,height:54,borderRadius:16,border:"none",background:"var(--ac)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(13,110,110,0.3)"}}><MessageCircle size={24} color="#fff"/></button></div>}
+      {!isLandlord&&tab==="dash"&&<div style={{display:"flex",justifyContent:"flex-end",padding:"0 20px 30px"}}><button onClick={()=>sC1(true)} style={{width:56,height:56,borderRadius:16,border:"none",background:"var(--grad)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(13,110,110,0.35)",transition:"transform 0.2s, box-shadow 0.2s"}}><MessageCircle size={24} color="#fff"/></button></div>}
 
       {!isLandlord&&<Chat1 tid={tid} open={c1} close={()=>sC1(false)}/>}
       {!isLandlord&&<TopUp tn={t} open={tu} close={()=>sTU(false)} go={a=>topUp(tid,a)}/>}
