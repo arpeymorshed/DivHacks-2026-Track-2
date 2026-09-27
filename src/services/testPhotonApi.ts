@@ -12,7 +12,7 @@ async function chat(body: unknown) {
 for (const [tenantId, total, rent, utilities] of [
   ["abhimanyu", 1488, 1450, 38],
   ["kashish", 1488, 1450, 38],
-  ["musammat", 1952, 1900, 52],
+  ["musammat", 1502, 1450, 52],
 ]) {
   const response = await chat({ tenantId, text: "What do I OWE?" });
   equal(response.status, 200);
@@ -27,7 +27,7 @@ deepStrictEqual(await greeting.json(), { reply: "Hi Musammat! How can I help wit
 
 const dueQuestion = await chat({ tenantId: "musammat", text: "What is DUE?" });
 equal(dueQuestion.status, 200);
-deepStrictEqual(await dueQuestion.json(), { reply: "You currently owe $1952: $1900 rent + $52 utilities." });
+deepStrictEqual(await dueQuestion.json(), { reply: "You currently owe $1502: $1450 rent + $52 utilities." });
 
 const unknown = await chat({ tenantId: "fake-person", text: "What do I owe?" });
 equal(unknown.status, 404);
@@ -69,7 +69,7 @@ for (const message of before) {
 for (const [tenantId, name, total] of [
   ["abhimanyu", "Abhimanyu", 1488],
   ["kashish", "Kashish", 1488],
-  ["musammat", "Musammat", 1952],
+  ["musammat", "Musammat", 1502],
 ]) {
   const reminders = after.filter((message) =>
     message.tenantId === tenantId && message.text === `${name}, your 2026-10 total is $${total}.`

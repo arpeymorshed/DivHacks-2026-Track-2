@@ -7,6 +7,15 @@ This guide covers what **P2 (agents + backend)** needs to build on top of it: wh
 numbers the Guardian enforces, and the security rules. Working examples: `scripts/test-payment.ts` (rent,
 attacks, double charge) and `scripts/spawn-tenant.ts` (spawn a tenant live).
 
+> **Update 2026-09-26 (branch `p1-real-payments`):** the money layer is now wired into P2's backend.
+> `POST /api/rent-day` pays for real through the Guardian (`src/services/xrplPayments.ts`), and these routes exist:
+> `GET/POST /api/clock`, `POST /api/demo/reset` (bumps `run` + recycles RLUSD), `POST /api/topup`,
+> `POST /api/attacks/:name`, `POST /api/tenants` (spawn, NDJSON stream). Extra env for the app (values sent privately):
+> `GUARDIAN_ADDRESS`, `AGENT_KEY_SECRET` (any long random string; encrypts spawned agents' keys), and optionally
+> `RENT_PAYMENTS=mock|real` (default: real when `GUARDIAN_URL` + the 3 agent seeds are set). Team names are display-only:
+> Abhimanyu → `XRPL_*_MAYA_*` wallet, Kashish → `JORDAN`, Musammat → `PRIYA`, Arpey → landlord.
+> Live check without MongoDB: `npm run guardian` + `npx tsx scripts/check-real-rent-day.ts`.
+
 ---
 
 ## 1. How a rent payment flows
@@ -148,9 +157,36 @@ for (const t of tenants) {
 The bank float is 10 RLUSD ≈ $10,000 of demo money, so keep seed balances to a few thousand dollars in total.
 Suggested seed: Maya $1,500 (covered), Jordan $1,000 (short, for the "pay on the 5th" story), Priya $1,500.
 
-### T18: balances for `/api/state`
+### T18: `GET /api/state` (for the UI, built)
 
-`getBalances(client, address)` → `{ xrp, rlusd, usd }`. Show `usd` in the UI.
+One read-only, public call with everything the console and tenant views need (no seeds, no auth):
+
+```jsonc
+{
+  "clock": { "today": "2026-10-01", "month": "2026-10", "run": 6 },
+  "paymentsMode": "real",                 // "mock" when the XRPL env isn't set
+  "building": { "name", "landlordName", "landlordWallet", "landlordExplorerUrl", "landlordBalanceUsd", "units": [{ "id", "name", "tenantIds" }] },
+  "bankBalanceUsd": 5900,
+  "tenants": [{
+    "id": "kashish", "name": "Kashish", "unitId", "share", "capUsd",
+    "walletAddress", "walletExplorerUrl", "balanceUsd": 1000,          // null if the ledger didn't answer
+    "agent": { "id", "status", "credential" },
+    "due": { "month", "dueDate", "rentUsd", "utilitiesUsd", "lateFeeUsd", "daysLate", "totalUsd",
+             "stage": "upcoming|due|grace|late|paid",
+             "payment": { "txHash", "explorerUrl", "amountUsd", "time" } | null }
+  }],
+  "activity": [{ "time", "run", "kind": "rent|attack|topup|spawn|reset", "tenantId", "title",
+                 "status": "paid|blocked|refused|failed|done", "amountUsd", "rule", "reason",
+                 "blockedBy": "guardian|ledger", "txHash", "explorerUrl" }],   // newest first, last 50
+  "warnings": []
+}
+```
+
+- `due.lateFeeUsd` is what the Guardian accepts **today** (day 8 → $15); once paid, it's what was paid.
+- `stage` "paid" and `payment` count only for the current month **and run**, so after a reset everyone is unpaid again.
+- The UI: fetch `/api/state` on load and after every action (rent day, clock, reset, top-up, attack, spawn done).
+  Poll every ~5s at most; each call reads balances from the ledger.
+- Show `activity[].explorerUrl` as the "View on ledger" link; `reason` is safe to show as-is.
 
 ### T35: `POST /api/tenants` (spawn live)
 
@@ -254,12 +290,14 @@ try {
 | `landlord-only` | destination isn't the verified landlord | "Blocked: scam address" |
 | `legal-late-fee` | fee in grace period, over the legal max, or more than accrued | "Blocked: illegal late fee" |
 | `cap` | rent ≠ share, utilities over max, or total over cap | "Blocked: overcharge" |
-| `once-per-month` | already paid this month and run | "Blocked: double charge" |
+| `once-per-month` | already paid this month and run | on **rent day**: "Already paid ✓" (not an error); from an **attack**: "Blocked: double charge" |
 | `window` | outside the payment window | "Blocked: wrong date" |
 | `intent-mismatch` | the agent's description doesn't match the real tx | "Blocked: agent lied" |
 | `tx-shape` | not a plain RLUSD payment from a known rent wallet with the right tag/signer | "Blocked: invalid payment" |
 | `ledger-quorum` | (attacks only) agent-only signature rejected by the XRP Ledger | "Blocked by the ledger: stolen key" |
 | `guardian-unreachable` | Guardian asleep or down; nothing was paid | "Guardian waking up, retry" |
+| `insufficient-funds` | (rent day only) wallet short; nothing was sent, the Guardian wasn't asked | "Short $X, top up" |
+| `error` | (rent day only) unexpected failure for that tenant; nothing was paid | "Couldn't pay, retry" |
 
 `decision.reason` is a plain-English sentence, safe to show as-is.
 

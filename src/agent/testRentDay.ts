@@ -28,7 +28,7 @@ const intents = results.map((result) => result.intent);
 deepStrictEqual(outbox.map(({ tenantId, text }) => ({ tenantId, text })), [
   { tenantId: "abhimanyu", text: "Abhimanyu, your 2026-10 total is $1488." },
   { tenantId: "kashish", text: "Kashish, your 2026-10 total is $1488." },
-  { tenantId: "musammat", text: "Musammat, your 2026-10 total is $1952." },
+  { tenantId: "musammat", text: "Musammat, your 2026-10 total is $1502." },
 ]);
 deepStrictEqual(outbox.map((message) => message.dedupeKey), [
   "rent-due:2026-10:abhimanyu",
@@ -40,7 +40,7 @@ deepStrictEqual(intents, [
   {
     tenantId: "abhimanyu",
     agentId: "agent-abhimanyu",
-    destination: "rARPEY_DEMO",
+    destination: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",
     amountUsd: 1488,
     currency: "RLUSD",
     month: "2026-10",
@@ -49,7 +49,7 @@ deepStrictEqual(intents, [
   {
     tenantId: "kashish",
     agentId: "agent-kashish",
-    destination: "rARPEY_DEMO",
+    destination: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",
     amountUsd: 1488,
     currency: "RLUSD",
     month: "2026-10",
@@ -58,8 +58,8 @@ deepStrictEqual(intents, [
   {
     tenantId: "musammat",
     agentId: "agent-musammat",
-    destination: "rARPEY_DEMO",
-    amountUsd: 1952,
+    destination: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",
+    amountUsd: 1502,
     currency: "RLUSD",
     month: "2026-10",
     reason: "October rent + ConEd share",
@@ -79,7 +79,7 @@ for (const result of results) {
     status: "mock-paid",
     tenantId: result.tenantId,
     amountUsd: result.intent.amountUsd,
-    destination: "rARPEY_DEMO",
+    destination: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",
     txHash: result.payment.txHash,
   });
 }
