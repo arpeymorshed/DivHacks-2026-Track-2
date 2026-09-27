@@ -91,9 +91,11 @@ const tone: Record<string, string> = {
 const label: Record<string, string> = {
   paid: "Paid", due: "Due", late: "Late", blocked: "Blocked", failed: "Failed",
   ok: "Paid", block: "Blocked", fail: "Failed", processing: "Processing",
+  note: "", warn: "", alert: "",
 };
 function St({ s }: { s: string }) {
-  return <span className={`text-[12px] font-medium ${tone[s] || "text-info"}`}>{label[s] || "Due"}</span>;
+  if (!(s in label) || label[s] === "") return null;
+  return <span className={`text-[12px] font-medium ${tone[s] || "text-info"}`}>{label[s]}</span>;
 }
 function AN({ value, p = "$" }: { value: number; p?: string }) {
   const [d, sd] = useState(value);

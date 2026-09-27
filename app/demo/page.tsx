@@ -43,7 +43,8 @@ const statusLabel: Record<string, string> = {
   ok: "Paid", block: "Blocked", fail: "Failed", processing: "Processing",
 };
 function St({ s }: { s: string }) {
-  return <span className={`text-[12px] font-medium ${statusTone[s] || "text-info"}`}>{statusLabel[s] || "Due"}</span>;
+  if (!(s in statusLabel)) return null;
+  return <span className={`text-[12px] font-medium ${statusTone[s] || "text-info"}`}>{statusLabel[s]}</span>;
 }
 function Toasts({ ts }: { ts: { id: string; m: string; c: string }[] }) {
   return (
