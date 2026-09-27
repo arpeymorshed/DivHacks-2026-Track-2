@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantById, getDueForTenant } from "@/services/rentRepository";
-import type { ChatRequest, ChatResponse } from "@/types/rent";
+import type { ChatRequest, ChatResponse, Due, Tenant } from "@/types/rent";
 import {
   asksWhenDue,
   formatMoneyReply,
@@ -11,7 +11,7 @@ import {
   isWalletBalanceIntent,
   normalizeChatText,
 } from "@/lib/chatIntent";
-import { buildState } from "@/services/stateService";
+import { dues as demoDues, tenants as demoTenants } from "@/data/demoBuilding";
 
 /** Demo UI balances used when the ledger isn't reachable (mock mode). */
 const DEMO_BALANCES: Record<string, number> = {
@@ -24,6 +24,26 @@ function isChatRequest(value: unknown): value is ChatRequest {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     && "tenantId" in value && typeof value.tenantId === "string" && value.tenantId.trim().length > 0
     && "text" in value && typeof value.text === "string" && value.text.trim().length > 0;
+}
+
+async function resolveTenant(tenantId: string): Promise<Tenant | null> {
+  try {
+    const t = await getTenantById(tenantId);
+    if (t) return t;
+  } catch {
+    // Mongo unavailable — fall through to demo seed
+  }
+  return demoTenants.find((t) => t.id === tenantId) ?? null;
+}
+
+async function resolveDue(tenantId: string): Promise<Due | null> {
+  try {
+    const d = await getDueForTenant(tenantId);
+    if (d) return d;
+  } catch {
+    // Mongo unavailable
+  }
+  return demoDues.find((d) => d.tenantId === tenantId) ?? null;
 }
 
 export async function POST(request: Request) {
@@ -43,13 +63,13 @@ export async function POST(request: Request) {
 
   try {
     const { tenantId, text } = body;
-    const tenant = await getTenantById(tenantId);
+    const tenant = await resolveTenant(tenantId);
 
     if (!tenant) {
       return NextResponse.json({ error: "Unknown tenant" }, { status: 404 });
     }
 
-    const due = await getDueForTenant(tenantId);
+    const due = await resolveDue(tenantId);
     const message = normalizeChatText(text);
     const greetingOnly = /^(hi|hello|hey|yo|sup)$/.test(message);
 
@@ -60,15 +80,9 @@ export async function POST(request: Request) {
       message.includes("add to my wallet") ||
       message.includes("add money");
 
+    const balanceUsd = DEMO_BALANCES[tenantId] ?? null;
+
     if (!greetingOnly && isWalletBalanceIntent(text)) {
-      let balanceUsd: number | null = DEMO_BALANCES[tenantId] ?? null;
-      try {
-        const state = await buildState();
-        const live = state.tenants.find((t) => t.id === tenantId);
-        if (live?.balanceUsd != null) balanceUsd = live.balanceUsd;
-      } catch {
-        // keep demo fallback
-      }
       const dueTotal = due
         ? due.rentUsd + due.utilitiesUsd + due.lateFeeUsd
         : undefined;
@@ -79,14 +93,6 @@ export async function POST(request: Request) {
         dueTotalUsd: dueTotal,
       });
     } else if (!greetingOnly && isCapIntent(text)) {
-      let balanceUsd: number | null = DEMO_BALANCES[tenantId] ?? null;
-      try {
-        const state = await buildState();
-        const live = state.tenants.find((t) => t.id === tenantId);
-        if (live?.balanceUsd != null) balanceUsd = live.balanceUsd;
-      } catch {
-        // keep demo fallback
-      }
       const bal = balanceUsd ?? 0;
       const room = Math.max(0, Math.round((tenant.capUsd - bal) * 100) / 100);
       reply = balanceUsd == null
@@ -113,7 +119,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ reply } satisfies ChatResponse);
   } catch (error) {
-    console.error("Chat failed:", error instanceof Error ? error.name : "UnknownError");
+    console.error("Chat failed:", error instanceof Error ? error.message : "UnknownError");
     return NextResponse.json({ error: "Chat failed" }, { status: 500 });
   }
 }
