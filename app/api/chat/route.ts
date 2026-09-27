@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getTenantById, getDueForTenant } from "@/services/rentRepository";
 import type { ChatRequest, ChatResponse } from "@/types/rent";
+import {
+  asksWhenDue,
+  formatMoneyReply,
+  isMoneyIntent,
+  normalizeChatText,
+} from "@/lib/chatIntent";
 
 function isChatRequest(value: unknown): value is ChatRequest {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -32,25 +38,23 @@ export async function POST(request: Request) {
     }
 
     const due = await getDueForTenant(tenantId);
-    const message = text.toLowerCase();
+    const message = normalizeChatText(text);
+    const greetingOnly = /^(hi|hello|hey|yo|sup)$/.test(message);
+
     let reply = `Hi ${tenant.name}! How can I help with your rent?`;
 
-    const asksTotal =
-      message.includes("total") ||
-      message.includes("owe") ||
-      message.includes("due") ||
-      message.includes("balance") ||
-      message.includes("how much") ||
-      /\bpay(ment|ing)?\b/.test(message);
-
-    if (asksTotal) {
+    if (!greetingOnly && (isMoneyIntent(text) || asksWhenDue(text))) {
       if (!due) {
         reply = `I couldn't find a current balance for ${tenant.name}.`;
       } else {
-        const total = due.rentUsd + due.utilitiesUsd + due.lateFeeUsd;
-        reply = `You currently owe $${total}: `
-          + `$${due.rentUsd} rent + $${due.utilitiesUsd} utilities`
-          + (due.lateFeeUsd > 0 ? ` + $${due.lateFeeUsd} late fee.` : ".");
+        reply = formatMoneyReply({
+          name: tenant.name,
+          rentUsd: due.rentUsd,
+          utilitiesUsd: due.utilitiesUsd,
+          lateFeeUsd: due.lateFeeUsd,
+          dueDate: due.dueDate,
+          includeWhen: asksWhenDue(text),
+        });
       }
     }
 

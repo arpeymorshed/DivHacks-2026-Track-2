@@ -63,8 +63,8 @@ function replyFor(tenantId: string, text: string): string {
   if (/\b(hi|hello|hey)\b/.test(q)) {
     return `Hi ${t.name}! I'm your Aartee agent. Ask me about rent, utilities, your wallet, or when rent is due.`;
   }
-  if (q.includes("due") || q.includes("when")) {
-    return `Your next payment of ${usd(total)} is due ${t.dueDate}.`;
+  if (/\bwhen\b/.test(q) || q.includes("due date") || q.includes("deadline") || q.includes("by when")) {
+    return `Your next payment of ${usd(total)} is due ${t.dueDate}. Breakdown: rent ${usd(t.rent)} + utilities ${usd(t.utilities)} = ${usd(total)}.`;
   }
   if (q.includes("util")) {
     return `${t.utilityNote}, so your share is ${usd(t.utilities)}.`;
@@ -73,7 +73,18 @@ function replyFor(tenantId: string, text: string): string {
     if (diff < 0) return `Your rent wallet has ${usd(t.walletBalance)}. You're ${usd(-diff)} short of the ${usd(total)} due ${t.dueDate}.`;
     return `Your rent wallet has ${usd(t.walletBalance)}, enough to cover the ${usd(total)} due ${t.dueDate}.`;
   }
-  if (q.includes("total") || q.includes("rent") || q.includes("owe") || q.includes("pay") || q.includes("how much")) {
+  if (
+    q.includes("total") ||
+    q.includes("rent") ||
+    q.includes("owe") ||
+    q.includes("owed") ||
+    q.includes("pay") ||
+    q.includes("due") ||
+    q.includes("how much") ||
+    q.includes("amount") ||
+    q.includes("bill") ||
+    q.includes("fee")
+  ) {
     return `You owe rent ${usd(t.rent)} + utilities ${usd(t.utilities)} = ${usd(total)}, due ${t.dueDate}.`;
   }
   return `Got it, ${t.name}. I can help with rent, utilities, your wallet balance, or due dates.`;

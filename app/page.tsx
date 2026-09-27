@@ -142,21 +142,50 @@ function Chat1({ tid, tn, open, close }: { tid: string; tn: ReturnType<typeof in
   function answer(text: string) {
     const exact = d.an[text as keyof typeof d.an];
     if (exact) return exact;
-    const q = text.toLowerCase().replace(/[?.!]/g, "").trim();
+
+    const q = text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
+    const asksWhen =
+      /\bwhen\b/.test(q) ||
+      q.includes("due date") ||
+      q.includes("deadline") ||
+      q.includes("by when") ||
+      q.includes("what day");
+    const asksMoney =
+      /\b(total|owe|owed|owing|due|balance|wallet|short|amount|bill|fee|cost|charge|payment|rent|pay|paying|utilit)\b/.test(q) ||
+      q.includes("how much") ||
+      q.includes("what do i") ||
+      q.includes("whats my") ||
+      q.includes("what is my") ||
+      q.includes("left to pay") ||
+      q.includes("still need");
+
+    if (asksMoney || asksWhen) {
+      const total = tn.rS + tn.ut + tn.lf;
+      const parts = [`$${f$(tn.rS)} rent`, `$${f$(tn.ut)} ConEd`];
+      if (tn.lf > 0) parts.push(`$${f$(tn.lf)} late fee`);
+      const breakdown = `${parts.join(" + ")} = $${f$(total)}`;
+      const short = Math.max(0, total - tn.bal);
+      const wallet = `Wallet has $${f$(tn.bal)}.`;
+      const topUp = short > 0 ? ` Top up $${f$(short)} to cover it.` : "";
+
+      if (asksWhen) {
+        if (tn.st === "late") {
+          return `You're ${tn.dl} days overdue. You owe ${breakdown}. ${wallet}${topUp}`;
+        }
+        if (tn.st === "paid") {
+          return `September is settled. Next payment of $${f$(total)} is due Oct 1 (${breakdown}). ${wallet}`;
+        }
+        return `Your next payment of $${f$(total)} is due Oct 1. Breakdown: ${breakdown}. ${wallet}${topUp}`;
+      }
+      return `You currently owe ${breakdown}. ${wallet}${topUp}`;
+    }
+
     const fuzzy = Object.keys(d.an).find((k) => {
-      const key = k.toLowerCase().replace(/[?.!]/g, "").trim();
+      const key = k.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
       return q.includes(key) || key.includes(q);
     });
     if (fuzzy) return d.an[fuzzy as keyof typeof d.an];
-    if (/\b(total|owe|due|balance|how much|pay)\b/.test(q)) {
-      const parts = [`Rent $${f$(tn.rS)}`, `ConEd $${f$(tn.ut)}`];
-      if (tn.lf > 0) parts.push(`fee $${f$(tn.lf)}`);
-      const total = tn.rS + tn.ut + tn.lf;
-      const short = Math.max(0, total - tn.bal);
-      return `${parts.join(" + ")} = $${f$(total)}. Wallet has $${f$(tn.bal)}.`
-        + (short > 0 ? ` Top up $${f$(short)} and I'll pay immediately.` : "");
-    }
-    return "Let me check on that.";
+    return "I can help with what you owe, your wallet balance, or when rent is due.";
   }
   function send(t: string) {
     sM((m) => [...m, { id: Date.now(), r: "u", t }]); sS([]); sI(""); sT(true);
@@ -216,19 +245,32 @@ function GroupChat() {
   const answers: Record<string, string> = {
     "what do i owe": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
     "total": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
-    "how much": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
     "how much left": "Groceries budget: $76 remaining this week.",
     "did rent go through": "Yes — paid Oct 1. Tx: E4F8A2...9C1D.",
     "is everyone paid": "Abhimanyu: paid. Kashish: overdue (8 days, $15 fee). Musammat: paid.",
-    "when is rent due": "Oct 1. Autopay handles it if your wallet is funded.",
+    "when is rent due": "Next payment of $1,488 is due Oct 1 ($1,450 rent + $38 ConEd). Your wallet covers it.",
   };
   function send(text: string) {
     sMsgs((m) => [...m, { id: Date.now(), f: "abhi", n: "Abhimanyu", m: text, t: "now", tp: "u" }]);
     sInp(""); sTyp(true);
-    const q = text.toLowerCase();
-    // Prefer longer keys first so "how much left" wins over "how much"
+    const q = text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
     const key = Object.keys(answers).sort((a, b) => b.length - a.length).find((k) => q.includes(k));
-    const reply = key ? answers[key] : "Let me check on that and get back to you.";
+    const asksWhen =
+      /\bwhen\b/.test(q) || q.includes("due date") || q.includes("deadline") || q.includes("by when");
+    const asksMoney =
+      /\b(total|owe|owed|owing|due|balance|wallet|short|amount|bill|fee|rent|pay|paying|payment)\b/.test(q) ||
+      q.includes("how much") ||
+      q.includes("what do i");
+    let reply: string;
+    if (key) {
+      reply = answers[key];
+    } else if (asksMoney || asksWhen) {
+      reply = asksWhen
+        ? "Your next payment of $1,488 is due Oct 1 ($1,450 rent + $38 ConEd). Your wallet covers it."
+        : "You currently owe $1,488: $1,450 rent + $38 ConEd. Your wallet covers it.";
+    } else {
+      reply = "I can help with what you owe, your wallet balance, or when rent is due.";
+    }
     setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "Polo", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
   }
   return (
