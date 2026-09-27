@@ -525,6 +525,9 @@ export default function App() {
 
       {state && !isLandlord && tab === "dash" && (
         <main key={tid} className="mx-auto max-w-2xl animate-fade-in px-4 pb-32 pt-7">
+          {state.warnings?.length > 0 && (
+            <p className="mb-4 rounded-md border border-line bg-surface px-3.5 py-2.5 text-[12px] text-warn">{state.warnings[0]}</p>
+          )}
           <p className="text-[12px] text-ink-faint">Unit {t.unit} · {t.sh * 100}% share</p>
           <h1 className="mt-1 text-display text-ink">Welcome, {t.name.split(" ")[0]}!</h1>
 

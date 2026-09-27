@@ -9,6 +9,14 @@ npm run dev
 
 Open **http://localhost:3000** (or whatever port Next prints).
 
+### Seeing the UI without Mongo / Atlas
+
+You do **not** need MongoDB just to browse the tenant shell and landlord console.
+
+- If `MONGODB_URI` is missing (or Mongo is unreachable), `GET /api/state` returns **offline demo mode**: seed building, three tenants, mock wallet balances, and a warning banner.
+- Top-up, rent day, seed, and other write routes still need a real `MONGODB_URI` (copy `.env.example` → `.env.local` and fill Atlas values, then `POST /api/seed`).
+- RT chat works for local intent helpers; Gemini-backed replies need `GEMINI_API_KEY`.
+
 ## What's Inside
 
 ### Pages
