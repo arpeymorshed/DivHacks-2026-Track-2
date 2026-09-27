@@ -14,14 +14,34 @@ import { agentSign, buildPayment, getBalances, hashAuditRecord, multisignSubmit 
 import type { Due, GuardianDecision, LedgerPaymentResult, PaymentIntent, Tenant } from "../../types/rent";
 import type { DemoClock } from "./demoState.ts";
 
-// The late fee the Guardian will accept on the demo date: none on days 1–5, then $5/day from day 6,
-// capped at min($50, 5% of the unit's rent). Day 8 → $15. Only applied once the due date has passed.
-export function withLateFee(due: Due, tenant: Tenant, clock: DemoClock): Due {
+// The late fee the Guardian will accept on the demo date (T30): none on days 1–5, then $5/day from day 6,
+// capped at min($50, 5% of the unit's rent). Day 8 → $15.
+// - A tenant who has already paid this month owes no fee (and none is shown).
+// - Only late roommates pay. If several roommates in the unit are late (unpaid), the unit's cap is split
+//   by share, so together they never pay more than the legal maximum for the unit.
+export function withLateFee(
+  due: Due,
+  tenant: Tenant,
+  clock: DemoClock,
+  opts: { paid?: boolean; lateRoommates?: number } = {},
+): Due {
   if (due.month !== clock.month) return due;
+  if (opts.paid) return { ...due, daysLate: 0, lateFeeUsd: 0 };
   const day = cycleDay(clock.today, clock.month);
   const unitRentUsd = tenant.share > 0 ? due.rentUsd / tenant.share : due.rentUsd;
-  const fee = Math.min(legalFeeCapUsd(unitRentUsd), FEE_PER_DAY_USD * Math.max(0, day - GRACE_DAYS));
+  const unitCap = legalFeeCapUsd(unitRentUsd);
+  const cap = (opts.lateRoommates ?? 1) > 1 ? Math.floor(unitCap * tenant.share * 100) / 100 : unitCap;
+  const fee = Math.min(cap, FEE_PER_DAY_USD * Math.max(0, day - GRACE_DAYS));
   return { ...due, daysLate: Math.max(0, day - 1), lateFeeUsd: fee };
+}
+
+// Which of these tenants have already paid this month + run, from the ledger (the source of truth).
+export async function paidTenantIds(tenants: Tenant[], landlord: string, clock: DemoClock): Promise<Set<string>> {
+  const period = periodKey(clock.month, clock.run);
+  return withClient(async (client) => {
+    const paid = await Promise.all(tenants.map((t) => paidOnLedger(client, t.walletAddress, landlord, period)));
+    return new Set(tenants.filter((_, i) => paid[i]).map((t) => t.id));
+  });
 }
 
 export type RealPaymentOutcome = { guardianDecision: GuardianDecision; payment: LedgerPaymentResult | null };

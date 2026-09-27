@@ -22,6 +22,14 @@ test("late fee shown matches what the Guardian accepts (day 8 = $15, day 5 = $0)
   assert.equal(withLateFee(due, kashish, clock("2026-10-05")).lateFeeUsd, 0);
 });
 
+test("T30: a paid tenant owes no fee; late roommates split the unit's cap by share", () => {
+  // Unit 4B: $2,900 → legal cap min($50, 5%) = $50; Kashish's share is 50%.
+  assert.equal(withLateFee(due, kashish, clock("2026-10-08"), { paid: true }).lateFeeUsd, 0);
+  assert.equal(withLateFee(due, kashish, clock("2026-10-20"), { lateRoommates: 1 }).lateFeeUsd, 50); // alone: full cap
+  assert.equal(withLateFee(due, kashish, clock("2026-10-20"), { lateRoommates: 2 }).lateFeeUsd, 25); // both late: $25 each
+  assert.equal(withLateFee(due, kashish, clock("2026-10-08"), { lateRoommates: 2 }).lateFeeUsd, 15); // under the split cap anyway
+});
+
 test("paid only counts for this month AND this run (a reset makes it unpaid again)", () => {
   const paid: ActivityEntry = { id: "1", time: "t", run: 7, month: "2026-10", kind: "rent", tenantId: "kashish", title: "Rent", status: "paid",
     amountUsd: 1503, txHash: "ABC", explorerUrl: "https://testnet.xrpl.org/transactions/ABC" };

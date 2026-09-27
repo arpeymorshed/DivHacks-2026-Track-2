@@ -50,13 +50,16 @@ export async function buildState(): Promise<StateResponse> {
     }
   }
 
+  const paidIds = new Set(tenants.filter((t) => paymentFor(paidRent, t.id, clock)).map((t) => t.id));
+  const unpaidInUnit = (unitId: string) => tenants.filter((x) => x.unitId === unitId && !paidIds.has(x.id)).length;
+
   const tenantStates: TenantState[] = tenants.map((t) => {
     const agent = agents.find((a) => a.tenantId === t.id);
     const due = dues.find((d) => d.tenantId === t.id);
     let dueState: TenantState["due"] = null;
     if (due) {
       const payment = paymentFor(paidRent, t.id, clock);
-      const today = payment ? due : withLateFee(due, t, clock); // a paid due keeps what was paid
+      const today = payment ? due : withLateFee(due, t, clock, { lateRoommates: unpaidInUnit(t.unitId) }); // a paid due keeps what was paid
       const total = payment ? payment.amountUsd : today.rentUsd + today.utilitiesUsd + today.lateFeeUsd;
       dueState = {
         month: due.month, dueDate: due.dueDate, rentUsd: due.rentUsd, utilitiesUsd: due.utilitiesUsd,
