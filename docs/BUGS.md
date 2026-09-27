@@ -3,6 +3,8 @@
 _Owned by the Debugger chat. Anyone may add a bug. Format: `- [ ] YYYY-MM-DD: symptom, steps to reproduce, (fixed: cause + fix)`._
 
 ## Open
+- [ ] 2026-09-27: `GET /api/state` on the Vercel deploy (`aartee.tech`) returns a bare HTML 500 (`x-matched-path: /500`), while `/api/clock` and `/api/db-test` are fine. Cause: `stateService` statically imported `withLateFee` from `xrplPayments.ts`, which top-level-imports `xrpl` — same class of serverless crash as the #18 hang (docs/BUGS.md fixed entry). Fix (Builder, `cursor/demo-key-5063`): move `withLateFee` to `src/services/lateFee.ts` (no xrpl); state imports that. Also: Mongo may have no seeded building/tenants yet (chat returns "Unknown tenant") — after the code fix, seed Atlas and redeploy. Owner: Builder / P4.
+
 - [ ] 2026-09-26: `/demo` toasts are unreadable in dark mode: light text on a white box. Steps: open /demo, switch to dark mode, trigger any toast (e.g. "+1 day" or an attack). Cause: `app/demo/page.tsx:39` sets `background:"#fff"` with no text colour (the `/` toasts use `var(--sf)` and are fine). Fix: use `var(--sf)` like `/`. Found by merge-check run-locally on `frontend-integration` (non-blocking). Owner: Kashish / Debugger.
 
 ## Fixed

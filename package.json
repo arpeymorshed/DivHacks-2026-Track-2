@@ -19,7 +19,8 @@
     "spawn:tenant": "tsx scripts/spawn-tenant.ts",
     "test:attacks": "tsx scripts/test-attacks.ts",
     "test:topup": "tsx scripts/test-topup.ts",
-    "test:state": "tsx --test src/services/*.test.ts"
+    "test:state": "tsx --test src/services/*.test.ts",
+    "preflight": "tsx scripts/preflight.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
