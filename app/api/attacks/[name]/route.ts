@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireDemoKey } from "@/lib/demoKey";
 import { ATTACKS, type AttackName, runAttack } from "@/lib/xrpl/attacks";
 import { withClient } from "@/lib/xrpl/client";
 import { getAgentSeed } from "@/services/agentKeys";
@@ -13,6 +14,8 @@ export const maxDuration = 30;
 // blocked it (Guardian or the ledger itself). Never submits an approved payment; costs no RLUSD.
 // The target is built here on the server; only the tenant id may come from the request.
 export async function POST(req: Request, { params }: { params: { name: string } }) {
+  const denied = requireDemoKey(req);
+  if (denied) return denied;
   if (!(params.name in ATTACKS)) {
     return NextResponse.json({ success: false, error: `Unknown attack. Try: ${Object.keys(ATTACKS).join(", ")}` }, { status: 404 });
   }

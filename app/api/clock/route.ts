@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireDemoKey } from "@/lib/demoKey";
 import { advanceDemoDays, clockOf, getDemoState, setDemoToday } from "@/services/demoState";
 
 export const runtime = "nodejs";
 
 // The demo clock. GET: current {today, month, run}. POST {advanceDays: 1} or {jumpTo: "2026-10-08"}.
 // Minimal version so rent day can run on any demo date; P2 owns the full T15 clock/tick.
+// GET stays public; POST requires x-demo-key (T18a).
 export async function GET() {
   try {
     return NextResponse.json({ success: true, clock: clockOf(await getDemoState()) });
@@ -15,6 +17,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const denied = requireDemoKey(req);
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as { advanceDays?: unknown; jumpTo?: unknown } | null;
   try {
     let state;

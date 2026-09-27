@@ -3,7 +3,6 @@
 // signs → the live Guardian checks the real tx and co-signs or refuses → submit with both signatures.
 // Loaded only via dynamic import from mainAgent in real mode, so the offline tests never load xrpl.
 import { Wallet } from "xrpl";
-import { cycleDay, FEE_PER_DAY_USD, GRACE_DAYS, legalFeeCapUsd } from "../../guardian/rules";
 import type { PaymentIntent as LedgerIntent } from "../../lib/types";
 import { withClient } from "../../lib/xrpl/client";
 import { explorerTx } from "../../lib/xrpl/config";
@@ -11,29 +10,11 @@ import { requestCosign } from "../../lib/xrpl/guardianClient";
 import { paidOnLedger } from "../../lib/xrpl/history";
 import { periodKey } from "../../lib/xrpl/memos";
 import { agentSign, buildPayment, getBalances, hashAuditRecord, multisignSubmit } from "../../lib/xrpl/payments";
-import type { Due, GuardianDecision, LedgerPaymentResult, PaymentIntent, Tenant } from "../../types/rent";
+import type { GuardianDecision, LedgerPaymentResult, PaymentIntent, Tenant, Due } from "../../types/rent";
 import type { DemoClock } from "./demoState.ts";
 
-// The late fee the Guardian will accept on the demo date (T30): none on days 1–5, then $5/day from day 6,
-// capped at min($50, 5% of the unit's rent). Day 8 → $15.
-// - A tenant who has already paid this month owes no fee (and none is shown).
-// - Only late roommates pay. If several roommates in the unit are late (unpaid), the unit's cap is split
-//   by share, so together they never pay more than the legal maximum for the unit.
-export function withLateFee(
-  due: Due,
-  tenant: Tenant,
-  clock: DemoClock,
-  opts: { paid?: boolean; lateRoommates?: number } = {},
-): Due {
-  if (due.month !== clock.month) return due;
-  if (opts.paid) return { ...due, daysLate: 0, lateFeeUsd: 0 };
-  const day = cycleDay(clock.today, clock.month);
-  const unitRentUsd = tenant.share > 0 ? due.rentUsd / tenant.share : due.rentUsd;
-  const unitCap = legalFeeCapUsd(unitRentUsd);
-  const cap = (opts.lateRoommates ?? 1) > 1 ? Math.floor(unitCap * tenant.share * 100) / 100 : unitCap;
-  const fee = Math.min(cap, FEE_PER_DAY_USD * Math.max(0, day - GRACE_DAYS));
-  return { ...due, daysLate: Math.max(0, day - 1), lateFeeUsd: fee };
-}
+// Re-export: pure late-fee math lives in lateFee.ts so GET /api/state does not load xrpl.
+export { withLateFee } from "./lateFee.ts";
 
 // Which of these tenants have already paid this month + run, from the ledger (the source of truth).
 export async function paidTenantIds(tenants: Tenant[], landlord: string, clock: DemoClock): Promise<Set<string>> {

@@ -63,6 +63,9 @@ jobs:
           fetch-depth: 0
       - name: Claude review
         id: review
+        # Soft-fail the action itself: expired OAuth / missing structured_output must not
+        # block merges when build-test + smoke already passed (seen 2026-09-27).
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           # Claude subscription token from `claude setup-token` (no API credit needed).
@@ -91,9 +94,22 @@ jobs:
       - name: Enforce the verdict
         env:
           OUT: ${{ steps.review.outputs.structured_output }}
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
         run: |
+          if [ "$REVIEW_OUTCOME" != "success" ]; then
+            echo "::warning::Claude review action failed (often expired CLAUDE_CODE_OAUTH_TOKEN or missing structured_output). Advisory only — refresh the secret with \`claude setup-token\`. build-test + smoke still gate the merge."
+            exit 0
+          fi
+          if [ -z "$OUT" ] || [ "$OUT" = "null" ]; then
+            echo "::warning::Claude review returned no structured_output. Advisory only."
+            exit 0
+          fi
           echo "$OUT" | jq .
           verdict=$(echo "$OUT" | jq -r '.verdict // "MISSING"')
+          if [ "$verdict" = "MISSING" ]; then
+            echo "::warning::Claude review verdict missing. Advisory only."
+            exit 0
+          fi
           if [ "$verdict" != "PASS" ]; then
             echo "::error::Claude review verdict: $verdict"
             echo "$OUT" | jq -r '.blocking_issues[]? | "::error::" + .'

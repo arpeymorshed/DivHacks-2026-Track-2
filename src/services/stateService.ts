@@ -8,7 +8,7 @@ import type { ActivityEntry, Due, DueStage, StateResponse, TenantState } from ".
 import { listActivity, listPaidRent } from "./activityLog.ts";
 import { clockOf, getDemoState, type DemoClock } from "./demoState.ts";
 import { getBuilding, getDues, getTenantAgents, getTenants } from "./rentRepository.ts";
-import { withLateFee } from "./xrplPayments.ts";
+import { withLateFee } from "./lateFee.ts";
 import { realPaymentsEnabled } from "./xrplConfig.ts";
 
 export function stageOf(due: Due, clock: DemoClock, paid: boolean): DueStage {

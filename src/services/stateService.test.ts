@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { ActivityEntry, Due } from "../../types/rent";
 import { paymentFor, stageOf } from "./stateService.ts";
-import { withLateFee } from "./xrplPayments.ts";
+import { withLateFee } from "./lateFee.ts";
 
 const due: Due = { tenantId: "kashish", month: "2026-10", rentUsd: 1450, utilitiesUsd: 38, dueDate: "2026-10-01", daysLate: 0, lateFeeUsd: 0, reason: "rent" };
 const clock = (today: string, run = 7) => ({ today, month: "2026-10", run });
