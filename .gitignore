@@ -11,3 +11,4 @@ npm-debug.log*
 
 .secrets/
 __pycache__/
+*.tsbuildinfo

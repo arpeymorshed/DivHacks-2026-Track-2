@@ -3,19 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=24.0.0"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "next typegen && tsc --noEmit",
-
+    "typecheck": "tsc -p tsconfig.server.json",
     "test": "node src/agent/testTenantAgent.ts && node --experimental-test-module-mocks src/agent/testRentDay.ts && node src/services/testMockGuardian.ts && node src/services/testTenantLookup.ts",
     "test:photon": "node src/services/testPhotonApi.ts",
     "test:outbox": "node --env-file-if-exists=.env.local src/services/testOutbox.ts",
-
     "setup:xrpl": "tsx scripts/setup-xrpl.ts",
     "test:payment": "tsx scripts/test-payment.ts",
     "guardian": "tsx guardian/server.ts",
@@ -29,18 +24,25 @@
     "@google/genai": "^2.24.0",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
+    "lucide-react": "^0.383.0",
     "mongodb": "^7.6.0",
-    "next": "16.3.6",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
     "tsx": "^4.23.15",
     "xrpl": "^4.6.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "@types/node": "^24.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "typescript": "~5.9.3"
+    "@types/node": "^26.6.3",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

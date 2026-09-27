@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head><title>RentRelay Icon</title></head>
+<body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#eee;font-family:sans-serif">
+<canvas id="c" width="1024" height="1024" style="width:256px;height:256px;border-radius:48px"></canvas>
+<br>
+<a id="dl" download="AppIcon.png" style="padding:12px 24px;background:#0d6e6e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;cursor:pointer">Download Icon (1024x1024)</a>
+<p style="margin-top:12px;color:#888;font-size:14px">Then drag AppIcon.png into Xcode → Assets → AppIcon</p>
+<script>
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const s = 1024;
+
+// rounded rect background
+ctx.fillStyle = "#0d6e6e";
+ctx.beginPath();
+const r = s * 0.22;
+ctx.moveTo(r, 0);
+ctx.lineTo(s - r, 0);
+ctx.quadraticCurveTo(s, 0, s, r);
+ctx.lineTo(s, s - r);
+ctx.quadraticCurveTo(s, s, s - r, s);
+ctx.lineTo(r, s);
+ctx.quadraticCurveTo(0, s, 0, s - r);
+ctx.lineTo(0, r);
+ctx.quadraticCurveTo(0, 0, r, 0);
+ctx.closePath();
+ctx.fill();
+
+// shield
+const cx = s / 2, cy = s * 0.42, sh = s * 0.32;
+ctx.fillStyle = "rgba(255,255,255,0.95)";
+ctx.beginPath();
+ctx.moveTo(cx, cy - sh);
+ctx.lineTo(cx + sh * 0.88, cy - sh * 0.5);
+ctx.lineTo(cx + sh * 0.88, cy + sh * 0.2);
+ctx.quadraticCurveTo(cx + sh * 0.88, cy + sh * 0.95, cx, cy + sh * 1.15);
+ctx.quadraticCurveTo(cx - sh * 0.88, cy + sh * 0.95, cx - sh * 0.88, cy + sh * 0.2);
+ctx.lineTo(cx - sh * 0.88, cy - sh * 0.5);
+ctx.closePath();
+ctx.fill();
+
+// R letter
+ctx.fillStyle = "#0d6e6e";
+ctx.font = "bold " + (s * 0.24) + "px -apple-system, sans-serif";
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+ctx.fillText("R", cx, cy + s * 0.04);
+
+// download link
+document.getElementById("dl").href = c.toDataURL("image/png");
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@
 _Owned by the Debugger chat. Anyone may add a bug. Format: `- [ ] YYYY-MM-DD: symptom, steps to reproduce, (fixed: cause + fix)`._
 
 ## Open
+- [ ] 2026-09-26: `/demo` toasts are unreadable in dark mode: light text on a white box. Steps: open /demo, switch to dark mode, trigger any toast (e.g. "+1 day" or an attack). Cause: `app/demo/page.tsx:39` sets `background:"#fff"` with no text colour (the `/` toasts use `var(--sf)` and are fine). Fix: use `var(--sf)` like `/`. Found by merge-check run-locally on `frontend-integration` (non-blocking). Owner: Kashish / Debugger.
 
 ## Fixed
 

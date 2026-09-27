@@ -2,6 +2,20 @@
 
 > ✅ **Build plan: v3 adopted (2026-09-26).** Tasks: [BOARD.md](BOARD.md). Earlier drafts: [PROPOSAL-v3.md](PROPOSAL-v3.md), [PROPOSAL-v2.md](PROPOSAL-v2.md).
 
+## Run it
+
+```bash
+npm install
+npm run dev              # web app: http://localhost:3000 (tenant view) and /demo (landlord console)
+npm run guardian         # Guardian co-signing service on :4001 (needs .secrets/, see docs/MONEY-LAYER.md)
+npm run build            # production build of the web app (what Vercel runs)
+npm run typecheck        # strict typecheck of lib/, guardian/, scripts/ (tsconfig.server.json)
+npm run test:guardian    # Guardian unit tests
+```
+
+The web UI (`app/`, by Kashish) currently runs on mock data; wiring it to `/api/*` comes next. Money-layer
+integration guide: [docs/MONEY-LAYER.md](docs/MONEY-LAYER.md).
+
 ## Hackathon context
 - **DivHacks 2026 @ Columbia**, theme **"Concrete Jungle"** (NYC: food, housing, transportation).
 - **Submit on Devpost by Sun Sep 27, 10:30 AM EST** (target 9:30). Needs a source code link and **a way for judges to test it** (the deployed web app must work without iMessage).
