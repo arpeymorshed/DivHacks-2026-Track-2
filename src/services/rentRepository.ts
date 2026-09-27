@@ -39,3 +39,22 @@ export async function getDueForTenant(
   const db = await getDb();
   return db.collection<Due>("dues").findOne({ tenantId, month });
 }
+
+export async function setPayLaterUntil(
+  tenantId: string,
+  payLaterUntil: string,
+  month = "2026-10"
+): Promise<Due | null> {
+  const db = await getDb();
+
+  const result = await db.collection<Due>("dues").updateOne(
+    { tenantId, month },
+    { $set: { payLaterUntil } }
+  );
+
+  if (result.matchedCount === 0) {
+    return null;
+  }
+
+  return db.collection<Due>("dues").findOne({ tenantId, month });
+}

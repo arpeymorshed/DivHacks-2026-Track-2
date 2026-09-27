@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
-import { getTenantById, getDueForTenant } from "@/services/rentRepository";
-import { generateTenantReply } from "@/agent/gemini";
-import type { ChatRequest, ChatResponse } from "@/types/rent";
+
+import {
+  getTenantById,
+  getDueForTenant,
+  setPayLaterUntil,
+} from "@/services/rentRepository";
+
+import {
+  generateTenantReply,
+  parseTenantRequest,
+} from "@/agent/gemini";
+
+import { evaluatePayLaterRequest } from "@/agent/paymentNegotiation";
+
+import type {
+  ChatRequest,
+  ChatResponse,
+} from "@/types/rent";
 
 function isChatRequest(value: unknown): value is ChatRequest {
   return typeof value === "object"
@@ -54,11 +69,73 @@ export async function POST(request: Request) {
       } satisfies ChatResponse);
     }
 
-    // Financial values are calculated by RentRelay, not Gemini.
+    /*
+     * Step 1:
+     * Let Gemini understand what the tenant is asking.
+     *
+     * If Gemini is temporarily unavailable, we fail safely:
+     * no payment-date change is made.
+     */
+    let intent:
+      | Awaited<ReturnType<typeof parseTenantRequest>>
+      | null = null;
+
+    try {
+      intent = await parseTenantRequest(text);
+    } catch (error) {
+      console.error(
+        "Gemini intent parsing failed:",
+        error instanceof Error ? error.name : "UnknownError"
+      );
+    }
+
+    /*
+     * Step 2:
+     * RentRelay—not Gemini—decides whether a delayed payment
+     * request is allowed.
+     */
+    if (intent?.intent === "pay_later") {
+      const decision = evaluatePayLaterRequest(
+        due,
+        intent.requestedDay
+      );
+
+      if (!decision.approved || !decision.payLaterUntil) {
+        return NextResponse.json({
+          reply: decision.reason,
+        } satisfies ChatResponse);
+      }
+
+      const updatedDue = await setPayLaterUntil(
+        tenantId,
+        decision.payLaterUntil,
+        due.month
+      );
+
+      if (!updatedDue) {
+        return NextResponse.json(
+          { error: "Unable to update payment arrangement" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        reply:
+          `Yes — I can schedule your payment for `
+          + `${decision.payLaterUntil}. `
+          + `That date is within the grace period, so no late fee applies.`,
+      } satisfies ChatResponse);
+    }
+
+    /*
+     * Step 3:
+     * Normal rent questions go through Gemini using trusted
+     * MongoDB values.
+     */
     const totalUsd =
-      due.rentUsd +
-      due.utilitiesUsd +
-      due.lateFeeUsd;
+      due.rentUsd
+      + due.utilitiesUsd
+      + due.lateFeeUsd;
 
     let reply: string;
 
@@ -76,15 +153,12 @@ export async function POST(request: Request) {
           reason: due.reason,
         },
       });
-    } catch (geminiError) {
+    } catch (error) {
       console.error(
         "Gemini reply failed:",
-        geminiError instanceof Error
-          ? geminiError.name
-          : "UnknownError"
+        error instanceof Error ? error.name : "UnknownError"
       );
 
-      // Safe fallback so chat still works if Gemini is unavailable.
       reply =
         `Hi ${tenant.name}. You currently owe $${totalUsd}: `
         + `$${due.rentUsd} rent + $${due.utilitiesUsd} utilities`
@@ -95,7 +169,9 @@ export async function POST(request: Request) {
         );
     }
 
-    return NextResponse.json({ reply } satisfies ChatResponse);
+    return NextResponse.json(
+      { reply } satisfies ChatResponse
+    );
   } catch (error) {
     console.error(
       "Chat failed:",
