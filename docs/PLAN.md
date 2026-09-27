@@ -1,6 +1,6 @@
-# Plan: RentRelay
+# Plan: Aartee
 
-_Owned by the Planner chat. **Status 2026-09-26: v3 ADOPTED as the build plan**, with all judge-review fixes. Earlier ideas: [PROPOSAL-v2.md](PROPOSAL-v2.md) (SplitSafe), [PROPOSAL-v3.md](PROPOSAL-v3.md) (v3 draft). Tasks are in [BOARD.md](BOARD.md)._
+_Owned by the Planner chat. **Name decision 2026-09-27 (Arpey): the product is "Aartee" (live at aartee.tech); the tenant assistant is "RT". Code identifiers such as `RentRelayTenantAgent` and `rentrelay/*` memo types stay as they are.** **Status 2026-09-26: v3 ADOPTED as the build plan**, with all judge-review fixes. Earlier ideas: [PROPOSAL-v2.md](PROPOSAL-v2.md) (SplitSafe), [PROPOSAL-v3.md](PROPOSAL-v3.md) (v3 draft). Tasks are in [BOARD.md](BOARD.md)._
 
 ## Hackathon context
 - **DivHacks 2026 @ Columbia**, theme **"Concrete Jungle"** (NYC: food, housing, transportation).
@@ -17,11 +17,11 @@ _Owned by the Planner chat. **Status 2026-09-26: v3 ADOPTED as the build plan**,
 | **Ripple (XRPL)** | A **main agent that spawns, funds and governs one sub-agent per tenant**. Autonomous RLUSD rent payments. Two-key wallets. On-chain agent credentials (KYA). A legal late-fee cap enforced before settlement. Attacks visibly blocked. |
 | **Photon** | Tenant agents **hold real two-way conversations** in iMessage: explain charges, negotiate "can I pay on the 5th?", adapt their tone. Roommates share a unit group chat with their agents. |
 | **MLH Gemini** | The brain of every agent: reads the building's ConEd bill and splits it, writes messages, answers questions, negotiates within the landlord's policy. |
-| **MLH .Tech** | App at a `.tech` domain (e.g. `rentrelay.tech`). |
+| **MLH .Tech** | App at a `.tech` domain (e.g. `aartee.tech`). |
 | **MLH MongoDB Atlas** | All app data. |
 
 ## Idea (tenant first)
-**RentRelay gives every NYC tenant a personal rent agent that lives in their texts.** It tells you exactly what you owe this month (rent plus your share of the building ConEd bill) and why. It pays on time automatically from your rent wallet, splits fairly with roommates so nobody fronts rent, and it **can't be scammed, can't overcharge you, and can't break the law.**
+**Aartee gives every NYC tenant a personal rent agent that lives in their texts.** It tells you exactly what you owe this month (rent plus your share of the building ConEd bill) and why. It pays on time automatically from your rent wallet, splits fairly with roommates so nobody fronts rent, and it **can't be scammed, can't overcharge you, and can't break the law.**
 
 Behind the scenes, the **landlord's main agent** runs the building: it spawns one agent per tenant, tells each one what's due, and reconciles payments. But **tenant agents work for the tenant.** They hold the tenant's money under the tenant's rules, and the landlord's agent has no key to any tenant wallet.
 
