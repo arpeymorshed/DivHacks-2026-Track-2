@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-cd rentrelay-project
+cd DivHacks-2026-Track-2   # repo root (the web app lives in app/)
 npm install
 npm run dev
 ```
@@ -109,7 +109,7 @@ struct ContentView: View {
 ## Project Structure
 
 ```
-rentrelay-project/
+DivHacks-2026-Track-2/
 ├── app/
 │   ├── page.tsx          # Tenant app (all views)
 │   ├── demo/
