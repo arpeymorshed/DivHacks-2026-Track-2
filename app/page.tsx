@@ -610,9 +610,8 @@ export default function App() {
 
       {!isLandlord && tab === "dash" && (
         <main key={tid} className="mx-auto max-w-2xl animate-fade-in px-4 pb-24 pt-7">
-          <p className="text-[13px] text-ink-muted">Welcome, {t.name.split(" ")[0]}!</p>
-          <h1 className="mt-1 text-display text-ink">{t.name.split(" ")[0]}</h1>
-          <p className="mt-2 text-[12px] text-ink-faint">Unit {t.unit} · {t.sh * 100}% share</p>
+          <p className="text-[12px] text-ink-faint">Unit {t.unit} · {t.sh * 100}% share</p>
+          <h1 className="mt-1 text-display text-ink">Welcome, {t.name.split(" ")[0]}!</h1>
           {t.str > 0 && (
             <p className="mt-2 text-[13px] text-ink-muted"><span className="text-ink">{t.str} months</span> on time</p>
           )}
