@@ -49,6 +49,8 @@ Switch between users using the dropdown in the top right:
 
 ## Running on iPhone Simulator
 
+> Optional. This wraps the running web app in a small SwiftUI WebView app that you create as a **separate Xcode project outside this repo**; nothing here is part of the repo's build. Start the web app first with `npm run dev`.
+
 ### Prerequisites
 - Xcode installed
 - The web app running (`npm run dev`)
