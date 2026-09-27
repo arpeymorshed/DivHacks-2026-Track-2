@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Shield, RotateCcw, Zap, RefreshCw, Home, CheckCircle2 } from "lucide-react";
+import { RotateCcw, RefreshCw, CheckCircle2 } from "lucide-react";
 
 const LA = "rLndQ7v...4kDf";
 const initT = () => ({
@@ -30,7 +30,7 @@ function useNf() {
   const push = useCallback((m: string, c = "accent") => {
     const id = "" + Date.now();
     sTs((t) => [...t, { id, m, c }]);
-    setTimeout(() => sTs((t) => t.filter((x) => x.id !== id)), 3200);
+    setTimeout(() => sTs((t) => t.filter((x) => x.id !== id)), 2800);
   }, []);
   return { ts, push };
 }
@@ -40,17 +40,16 @@ const statusTone: Record<string, string> = {
 };
 const statusLabel: Record<string, string> = {
   paid: "Paid", due: "Due", late: "Late", blocked: "Blocked", failed: "Failed",
-  ok: "Paid", block: "Blocked", fail: "Failed", processing: "Processing…",
+  ok: "Paid", block: "Blocked", fail: "Failed", processing: "Processing",
 };
 function St({ s }: { s: string }) {
-  return <span className={`text-xs font-semibold ${statusTone[s] || "text-info"}`}>{statusLabel[s] || "Due"}</span>;
+  return <span className={`text-[11px] font-medium uppercase tracking-[0.08em] ${statusTone[s] || "text-info"}`}>{statusLabel[s] || "Due"}</span>;
 }
 function Toasts({ ts }: { ts: { id: string; m: string; c: string }[] }) {
-  const border: Record<string, string> = { ok: "border-ok", danger: "border-danger", warn: "border-warn", accent: "border-accent" };
   return (
-    <div className="fixed right-4 top-4 z-[999] flex flex-col gap-1.5">
+    <div className="fixed inset-x-4 top-3 z-[9999] mx-auto flex max-w-sm flex-col gap-2 md:inset-x-auto md:right-4">
       {ts.map((t) => (
-        <div key={t.id} className={`max-w-[300px] animate-toast-in rounded-lg border-l-[3px] bg-surface px-3.5 py-2.5 text-[13px] font-medium text-ink shadow-pop ${border[t.c] || "border-accent"}`}>
+        <div key={t.id} className="animate-toast-in rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink shadow-float">
           {t.m}
         </div>
       ))}
@@ -88,10 +87,10 @@ export default function DemoPage() {
     let d = 0;
     o.forEach((id) => {
       d += 600;
-      setTimeout(() => { sP(id); nf.push("Processing " + tenants[id].name + "..."); }, d);
+      setTimeout(() => { sP(id); nf.push("Processing " + tenants[id as keyof typeof tenants].name + "..."); }, d);
       d += 1e3;
       setTimeout(() => {
-        const t = tenants[id];
+        const t = tenants[id as keyof typeof tenants];
         const tot = t.rS + t.ut + t.lf;
         if (t.bal >= tot) { sT((p) => ({ ...p, [id]: { ...p[id as keyof typeof p], st: "paid", bal: p[id as keyof typeof p].bal - tot } })); nf.push(t.name.split(" ")[0] + ": paid", "ok"); }
         else { sT((p) => ({ ...p, [id]: { ...p[id as keyof typeof p], st: "failed" } })); nf.push(t.name.split(" ")[0] + ": failed", "danger"); }
@@ -110,176 +109,175 @@ export default function DemoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg font-sans text-ink">
+    <div className="min-h-screen bg-bg text-ink">
       <Toasts ts={nf.ts} />
 
-      <header className="flex items-center justify-between border-b border-line px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent">
-            <Shield size={14} className="text-white" />
+      <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/85 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-5">
+          <div className="flex items-baseline gap-3">
+            <span className="text-[15px] font-semibold tracking-tight">RentRelay</span>
+            <span className="text-xs text-ink-faint">Demo</span>
           </div>
-          <span className="text-lg font-bold tracking-tight">RentRelay</span>
-          <span className="ml-2 text-[13px] text-ink-faint">Demo · Landlord + Guardian</span>
+          <button
+            onClick={() => { sDD(9); sT(initT()); sR({}); sRn(null); sSS([]); }}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-ink-muted ring-1 ring-line hover:bg-surface"
+          >
+            <RotateCcw size={12} />Reset
+          </button>
         </div>
-        <button
-          onClick={() => { sDD(9); sT(initT()); sR({}); sRn(null); sSS([]); }}
-          className="flex items-center gap-1 rounded-md border border-line px-3.5 py-1.5 text-xs font-medium text-ink-faint"
-        >
-          <RotateCcw size={12} />Reset all
-        </button>
+        <div className="mx-auto flex max-w-3xl gap-6 px-5">
+          {[{ id: "building", l: "Building" }, { id: "guardian", l: "Guardian" }].map((tb) => (
+            <button
+              key={tb.id}
+              onClick={() => sTab(tb.id)}
+              className={`-mb-px border-b pb-3 text-sm ${tab === tb.id ? "border-ink font-semibold text-ink" : "border-transparent text-ink-faint"}`}
+            >
+              {tb.l}
+            </button>
+          ))}
+        </div>
       </header>
 
-      <div className="flex gap-0.5 px-6 pt-4">
-        {[{ id: "building", l: "Building Console" }, { id: "guardian", l: "Guardian Demo" }].map((tb) => (
-          <button
-            key={tb.id}
-            onClick={() => sTab(tb.id)}
-            className={`rounded-lg px-5 py-2.5 text-sm ${tab === tb.id ? "border border-line bg-surface font-semibold text-ink" : "border border-transparent font-normal text-ink-faint"}`}
-          >
-            {tb.l}
-          </button>
-        ))}
-      </div>
-
-      <div className="px-6 py-5">
+      <div className="mx-auto max-w-3xl px-5 pb-24 pt-8">
         {tab === "building" && (
-          <div>
-            <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div className="animate-fade-up space-y-8">
+            <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold">123 W 112th St</h1>
-                <p className="mt-0.5 text-[13px] text-ink-faint">Landlord: Arpey · 2 units · 3 tenants</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-ink-faint">Property</p>
+                <h1 className="mt-1 text-hero text-ink">123 W 112th St</h1>
+                <p className="mt-1 text-sm text-ink-muted">Landlord: Arpey · 2 units · 3 tenants</p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted">Sep {dd}</span>
-                <button onClick={() => sDD((d) => Math.min(d + 1, 30))} className="rounded-md border border-line px-2.5 py-1 text-xs text-ink-muted">+1 day</button>
-                <button onClick={runRD} className="flex items-center gap-1 rounded-md bg-accent px-3 py-1 text-xs font-semibold text-white"><Zap size={12} />Rent day</button>
-                <button onClick={() => { sDD(9); sT(initT()); }} className="rounded-md border border-line px-2 py-1"><RotateCcw size={12} className="text-ink-faint" /></button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-ink-muted">Sep {dd}</span>
+                <button onClick={() => sDD((d) => Math.min(d + 1, 30))} className="rounded-full px-3 py-1.5 text-xs text-ink-muted ring-1 ring-line hover:bg-surface">+1 day</button>
+                <button onClick={runRD} className="rounded-full bg-ink px-3.5 py-1.5 text-xs font-medium text-bg">Rent day</button>
+                <button onClick={() => { sDD(9); sT(initT()); }} className="rounded-full p-1.5 text-ink-faint hover:bg-surface"><RotateCcw size={14} /></button>
               </div>
             </div>
 
-            <div className="mb-4 flex items-center justify-between rounded-lg border border-line px-4 py-3">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold">Add a tenant</p>
-                <p className="text-xs text-ink-faint">Spawn wallet + keys on-chain</p>
+                <p className="text-sm font-medium">Add tenant</p>
+                <p className="text-xs text-ink-faint">Spawn wallet on-chain</p>
               </div>
-              <button onClick={spawn} className="rounded-md border border-line px-3.5 py-1.5 text-xs font-semibold text-ink-muted">Spawn</button>
+              <button onClick={spawn} className="rounded-full px-3.5 py-1.5 text-xs font-medium ring-1 ring-line hover:bg-surface">Spawn</button>
             </div>
             {spSt.length > 0 && (
-              <div className="mb-4 rounded-lg border border-line px-4 py-2.5">
+              <div className="space-y-2 rounded-2xl bg-surface p-4 ring-1 ring-line">
                 {spSt.map((s, i) => (
-                  <p key={i} className={`flex items-center gap-1.5 py-1 text-[13px] ${s === "Live" ? "font-bold text-ok" : "text-ink-muted"}`}>
-                    {s === "Live" ? <CheckCircle2 size={14} className="text-ok" /> : <RefreshCw size={12} className={`text-accent ${i === spSt.length - 1 && s !== "Live" ? "animate-spin" : ""}`} />}
+                  <p key={i} className={`flex items-center gap-2 text-sm ${s === "Live" ? "font-medium text-ok" : "text-ink-muted"}`}>
+                    {s === "Live" ? <CheckCircle2 size={14} /> : <RefreshCw size={12} className={i === spSt.length - 1 && s !== "Live" ? "animate-spin" : ""} />}
                     {s === "Live" ? "Agent live" : s}
                   </p>
                 ))}
               </div>
             )}
 
-            {UNITS.map((u) => {
-              const allP = u.ts.every((id) => tenants[id as keyof typeof tenants].st === "paid");
-              const anyL = u.ts.some((id) => tenants[id as keyof typeof tenants].st === "late");
-              return (
-                <div key={u.id} className="mb-3 overflow-hidden rounded-lg border border-line">
-                  <div className="flex items-center justify-between border-b border-line bg-surface px-4 py-2.5">
-                    <span className="flex items-center text-sm font-bold">
-                      <Home size={14} className="mr-1.5 inline text-ink-faint" />
-                      Unit {u.id}
-                      <span className="ml-1.5 font-normal text-ink-faint">${u.rent.toLocaleString()}/mo</span>
-                    </span>
-                    <St s={allP ? "paid" : anyL ? "late" : "due"} />
-                  </div>
-                  {u.ts.map((tid) => {
-                    const tn = tenants[tid as keyof typeof tenants];
-                    const tot = tn.rS + tn.ut + tn.lf;
-                    const isP = proc === tid;
-                    return (
-                      <div key={tid} className={`flex items-center justify-between border-b border-line-soft px-4 py-3 transition-colors ${isP ? "bg-accent-soft" : ""}`}>
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-line-soft text-xs font-bold text-ink-muted">{tn.ini}</div>
-                          <div>
-                            <p className="text-sm font-semibold">{tn.name}</p>
-                            <p className="font-mono text-[11px] text-ink-faint">{tn.ag}</p>
+            <div className="space-y-4">
+              {UNITS.map((u) => {
+                const allP = u.ts.every((id) => tenants[id as keyof typeof tenants].st === "paid");
+                const anyL = u.ts.some((id) => tenants[id as keyof typeof tenants].st === "late");
+                return (
+                  <section key={u.id}>
+                    <div className="mb-3 flex items-baseline justify-between">
+                      <h3 className="text-sm font-semibold">Unit {u.id} <span className="font-normal text-ink-faint">${u.rent.toLocaleString()}/mo</span></h3>
+                      <St s={allP ? "paid" : anyL ? "late" : "due"} />
+                    </div>
+                    <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+                      {u.ts.map((tid) => {
+                        const tn = tenants[tid as keyof typeof tenants];
+                        const tot = tn.rS + tn.ut + tn.lf;
+                        const isP = proc === tid;
+                        return (
+                          <div key={tid} className={`flex items-center justify-between px-4 py-3.5 ${isP ? "bg-accent-soft/60" : ""}`}>
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-bg text-xs font-semibold">{tn.ini}</div>
+                              <div>
+                                <p className="text-sm font-medium">{tn.name}</p>
+                                <p className="mono">{tn.ag}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="tabular-nums">${f$(tot)}</span>
+                              <span className={`tabular-nums ${tn.bal >= tot ? "text-ok" : "text-danger"}`}>${f$(tn.bal)}</span>
+                              <St s={isP ? "processing" : tn.st} />
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-[13px]">
-                          <span className="font-semibold">${f$(tot)}</span>
-                          <span className={`font-medium ${tn.bal >= tot ? "text-ok" : "text-danger"}`}>${f$(tn.bal)}</span>
-                          <St s={isP ? "processing" : tn.st} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-
-            <p className="mb-2.5 mt-5 text-sm font-bold">Audit log</p>
-            <div className="overflow-hidden rounded-lg border border-line">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="border-b border-line">
-                    {["Time", "Tenant", "Type", "Amount", "Status", "Rule", "Tx"].map((h) => (
-                      <th key={h} className="px-3 py-2.5 text-left text-[11px] font-semibold text-ink-faint">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {AUD.map((r) => (
-                    <tr key={r.id} className="border-b border-line-soft">
-                      <td className="px-3 py-2.5 text-ink-faint">{r.t}</td>
-                      <td className="px-3 py-2.5 font-medium">{r.w}</td>
-                      <td className="px-3 py-2.5 text-ink-muted">{r.wh}</td>
-                      <td className="px-3 py-2.5 font-medium">${f$(r.a)}</td>
-                      <td className="px-3 py-2.5"><St s={r.s} /></td>
-                      <td className="px-3 py-2.5 text-ink-muted">{r.r}</td>
-                      <td className="px-3 py-2.5">{r.tx ? <span className="font-mono text-[11px] text-accent">{r.tx}</span> : <span className="text-ink-faint">—</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
+
+            <section>
+              <h3 className="mb-3 text-sm font-semibold">Audit</h3>
+              <div className="overflow-x-auto rounded-2xl bg-surface ring-1 ring-line">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] uppercase tracking-wider text-ink-faint">
+                      {["Time", "Who", "Type", "Amt", "Status", "Rule", "Tx"].map((h) => (
+                        <th key={h} className="px-4 py-3 font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {AUD.map((r) => (
+                      <tr key={r.id} className="border-b border-line-soft last:border-0">
+                        <td className="px-4 py-3 text-ink-faint">{r.t}</td>
+                        <td className="px-4 py-3 font-medium">{r.w}</td>
+                        <td className="px-4 py-3 text-ink-muted">{r.wh}</td>
+                        <td className="px-4 py-3 tabular-nums">${f$(r.a)}</td>
+                        <td className="px-4 py-3"><St s={r.s} /></td>
+                        <td className="px-4 py-3 text-ink-muted">{r.r}</td>
+                        <td className="px-4 py-3">{r.tx ? <span className="mono text-accent">{r.tx}</span> : <span className="text-ink-faint">—</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
         )}
 
         {tab === "guardian" && (
-          <div>
-            <div className="mb-5 flex items-center justify-between">
+          <div className="animate-fade-up">
+            <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold">What could go wrong?</h1>
-                <p className="mt-1 text-sm text-ink-faint">Five threats, each stopped by a different layer.</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-ink-faint">Threats</p>
+                <h1 className="mt-1 text-hero">What could go wrong?</h1>
+                <p className="mt-2 text-sm text-ink-muted">Five attacks. Each one blocked.</p>
               </div>
-              <button onClick={() => { sR({}); sRn(null); }} className="flex items-center gap-1 rounded-md border border-line px-3.5 py-1.5 text-xs text-ink-faint">
+              <button onClick={() => { sR({}); sRn(null); }} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-ink-muted ring-1 ring-line hover:bg-surface">
                 <RotateCcw size={12} />Reset
               </button>
             </div>
-            <div className="mb-5 flex gap-3.5 text-xs text-ink-faint">
-              <span className="flex items-center gap-1.5"><span className="h-0.5 w-2.5 rounded-sm bg-danger" />Guardian</span>
-              <span className="flex items-center gap-1.5"><span className="h-0.5 w-2.5 rounded-sm bg-accent" />XRPL ledger</span>
+            <div className="mt-6 flex gap-5 text-xs text-ink-faint">
+              <span className="flex items-center gap-2"><span className="h-px w-3 bg-danger" />Guardian</span>
+              <span className="flex items-center gap-2"><span className="h-px w-3 bg-accent" />XRPL ledger</span>
             </div>
-            <div className="flex flex-col gap-2.5">
+            <div className="mt-8 space-y-3">
               {ATK.map((a, i) => {
                 const show = vis.includes(i);
                 const isR = run === a.id;
                 const bl = res[a.id];
-                const edge = a.ly === "l" ? "border-l-accent" : "border-l-danger";
-                const soft = a.ly === "l" ? "bg-accent-soft" : "bg-danger-soft";
-                const tone = a.ly === "l" ? "text-accent" : "text-danger";
                 return (
-                  <div key={a.id} className={`rounded-lg border-l-[3px] bg-surface px-[18px] py-4 transition-all duration-300 ${bl ? edge : "border-l-line"} ${show ? "translate-y-0 opacity-100" : "translate-y-2.5 opacity-0"}`}>
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={a.id} className={`rounded-2xl bg-surface p-5 ring-1 ring-line transition duration-300 ${show ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}>
+                    <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="mb-1 text-[15px] font-semibold">{a.t}</p>
-                        <p className="text-[13px] leading-snug text-ink-faint">{a.d}</p>
+                        <p className="font-medium tracking-tight">{a.t}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-ink-muted">{a.d}</p>
                       </div>
-                      <button onClick={() => fire(a)} disabled={!!isR} className={`shrink-0 rounded-md px-3.5 py-1.5 text-xs font-semibold ${bl ? "border border-line text-ink-faint" : "bg-danger text-white"} ${isR ? "cursor-wait" : ""}`}>
-                        {isR ? <span className="flex items-center gap-1"><RefreshCw size={12} className="animate-spin" />Testing</span> : bl ? "Again" : "Run"}
+                      <button onClick={() => fire(a)} disabled={!!isR} className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium ${bl ? "text-ink-muted ring-1 ring-line" : "bg-ink text-bg"}`}>
+                        {isR ? <span className="flex items-center gap-1"><RefreshCw size={12} className="animate-spin" />Test</span> : bl ? "Again" : "Run"}
                       </button>
                     </div>
                     {bl && (
-                      <div className={`mt-3 rounded-md px-3.5 py-3 ${soft}`}>
-                        <p className={`mb-1 text-[13px] font-bold ${tone}`}>Blocked by {a.bk}</p>
-                        <p className="mb-1 text-[13px] font-medium text-ink">{a.v}</p>
-                        <p className="text-xs text-ink-faint">{a.x}</p>
+                      <div className="mt-4 border-t border-line pt-4">
+                        <p className={`text-xs font-medium uppercase tracking-wider ${a.ly === "l" ? "text-accent" : "text-danger"}`}>Blocked by {a.bk}</p>
+                        <p className="mt-1.5 text-sm font-medium">{a.v}</p>
+                        <p className="mt-1 text-sm text-ink-muted">{a.x}</p>
                       </div>
                     )}
                   </div>

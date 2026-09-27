@@ -4,46 +4,43 @@
 
 :root,
 [data-theme="light"] {
-  --bg: #f4f7f6;
+  --bg: #f7f8f7;
   --sf: #ffffff;
-  --bd: #d9e2df;
-  --bdL: #eef3f1;
-  --tx: #12201e;
-  --txM: #4a5c59;
-  --txL: #8a9a96;
-  --ac: #0d6e6e;
-  --acL: #e4f4f3;
-  --ok: #1a7f4b;
-  --okL: #e9f5ee;
-  --no: #c0392b;
-  --noL: #fbeae8;
-  --am: #b8860b;
-  --amL: #fdf6e3;
-  --bl: #2563eb;
-  --blL: #eff6ff;
-  --rd: 10px;
-  --sh: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --bd: #e6e9e7;
+  --bdL: #f0f2f1;
+  --tx: #101412;
+  --txM: #5c6561;
+  --txL: #9aa39f;
+  --ac: #0f6b63;
+  --acL: #e7f3f1;
+  --ok: #1f7a4d;
+  --okL: #eaf6ef;
+  --no: #b91c1c;
+  --noL: #fdecec;
+  --am: #9a6700;
+  --amL: #fbf3df;
+  --bl: #1d4ed8;
+  --blL: #eef3ff;
 }
 
 [data-theme="dark"] {
-  --bg: #0e1211;
-  --sf: #171c1b;
-  --bd: #2a3331;
-  --bdL: #1f2625;
-  --tx: #eef3f1;
-  --txM: #a8b5b2;
-  --txL: #6b7a77;
-  --ac: #2bb3b0;
-  --acL: rgba(13, 110, 110, 0.22);
-  --ok: #34d399;
-  --okL: rgba(5, 150, 105, 0.18);
-  --no: #f87171;
-  --noL: rgba(220, 38, 38, 0.18);
-  --am: #fbbf24;
-  --amL: rgba(217, 119, 6, 0.18);
-  --bl: #60a5fa;
-  --blL: rgba(37, 99, 235, 0.18);
-  --sh: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --bg: #0b0d0c;
+  --sf: #121514;
+  --bd: #232826;
+  --bdL: #1a1e1c;
+  --tx: #f2f4f3;
+  --txM: #9aa39f;
+  --txL: #6b746f;
+  --ac: #3d9e95;
+  --acL: rgba(15, 107, 99, 0.2);
+  --ok: #3ecf8e;
+  --okL: rgba(31, 122, 77, 0.2);
+  --no: #f07171;
+  --noL: rgba(185, 28, 28, 0.2);
+  --am: #e3b341;
+  --amL: rgba(154, 103, 0, 0.2);
+  --bl: #7aa2ff;
+  --blL: rgba(29, 78, 216, 0.2);
 }
 
 @layer base {
@@ -54,12 +51,24 @@
   html,
   body {
     @apply min-h-full bg-bg font-sans text-ink antialiased;
-    -webkit-overflow-scrolling: touch;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    @apply outline-none transition-colors duration-150;
+  }
+
+  input {
+    @apply outline-none transition-colors duration-150;
   }
 }
 
 @layer components {
   .mono {
-    @apply font-mono text-xs text-ink-faint;
+    @apply font-mono text-[11px] tracking-wide text-ink-faint;
+  }
+
+  .hairline {
+    @apply border-line/80;
   }
 }

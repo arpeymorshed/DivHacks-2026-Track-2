@@ -20,7 +20,6 @@ const config: Config = {
         accent: {
           DEFAULT: "var(--ac)",
           soft: "var(--acL)",
-          deep: "#0a5555",
         },
         ok: {
           DEFAULT: "var(--ok)",
@@ -29,7 +28,6 @@ const config: Config = {
         danger: {
           DEFAULT: "var(--no)",
           soft: "var(--noL)",
-          deep: "#a02e22",
         },
         warn: {
           DEFAULT: "var(--am)",
@@ -41,49 +39,40 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-dm-sans)", "DM Sans", "system-ui", "sans-serif"],
-        mono: ["var(--font-dm-mono)", "DM Mono", "ui-monospace", "monospace"],
+        sans: ["var(--font-jakarta)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
-      borderRadius: {
-        card: "10px",
+      fontSize: {
+        display: ["2.75rem", { lineHeight: "1.05", letterSpacing: "-0.04em", fontWeight: "600" }],
+        hero: ["2rem", { lineHeight: "1.15", letterSpacing: "-0.03em", fontWeight: "600" }],
       },
       boxShadow: {
-        card: "var(--sh)",
-        lift: "0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06)",
-        pop: "0 8px 30px rgba(0,0,0,0.12)",
-        fab: "0 4px 16px rgba(13,110,110,0.3)",
-        bubble: "0 2px 8px rgba(13,110,110,0.2)",
+        soft: "0 1px 2px rgba(10,15,14,0.04)",
+        float: "0 12px 40px rgba(10,15,14,0.08)",
       },
       keyframes: {
-        fadeIn: {
-          from: { opacity: "0", transform: "translateY(10px)" },
+        fadeUp: {
+          from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
         msgPop: {
-          from: { opacity: "0", transform: "scale(0.95) translateY(6px)" },
+          from: { opacity: "0", transform: "scale(0.98) translateY(4px)" },
           to: { opacity: "1", transform: "scale(1) translateY(0)" },
         },
-        toastSlide: {
-          from: { opacity: "0", transform: "translateX(30px)" },
-          to: { opacity: "1", transform: "translateX(0)" },
+        toastIn: {
+          from: { opacity: "0", transform: "translateY(-6px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
-        spin: { to: { transform: "rotate(360deg)" } },
         pulseDot: {
           "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.3" },
-        },
-        stepIn: {
-          from: { opacity: "0", transform: "translateX(-6px)" },
-          to: { opacity: "1", transform: "translateX(0)" },
+          "50%": { opacity: "0.35" },
         },
       },
       animation: {
-        "fade-in": "fadeIn 0.3s ease",
+        "fade-up": "fadeUp 0.35s ease",
         "msg-pop": "msgPop 0.2s ease",
-        "toast-in": "toastSlide 0.25s ease",
-        spin: "spin 1s linear infinite",
+        "toast-in": "toastIn 0.25s ease",
         "pulse-dot": "pulseDot 1.2s ease-in-out infinite",
-        "step-in": "stepIn 0.25s ease",
       },
     },
   },
