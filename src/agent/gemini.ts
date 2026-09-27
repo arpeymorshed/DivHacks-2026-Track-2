@@ -29,6 +29,8 @@ export async function generateTenantReply({
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
+    // Current GA Gemini model:
+    // https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash/
     model: "gemini-3.8-flash",
     contents: `
 You are RentRelay, a personal rent assistant for a tenant.
@@ -91,6 +93,8 @@ export async function parseTenantRequest(
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
+    // Current stable low-latency Gemini model:
+    // https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite
     model: "gemini-3.5-flash-lite",
     contents: `
 Classify this message sent to a rent assistant:

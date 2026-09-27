@@ -8,7 +8,8 @@ export type PayLaterDecision = {
 
 export function evaluatePayLaterRequest(
   due: Due,
-  requestedDay: number | null
+  requestedDay: number | null,
+  now: Date = new Date()
 ): PayLaterDecision {
   if (requestedDay === null) {
     return {
@@ -24,15 +25,59 @@ export function evaluatePayLaterRequest(
     };
   }
 
-  // Rent is due on the 1st. Days 1-5 are the no-fee grace period.
-  if (requestedDay > 5) {
+  const requestedIso =
+    `${due.month}-${String(requestedDay).padStart(2, "0")}`;
+
+  const requestedDate = new Date(`${requestedIso}T00:00:00Z`);
+
+  // Reject impossible dates such as February 31.
+  if (
+    Number.isNaN(requestedDate.getTime()) ||
+    requestedDate.toISOString().slice(0, 10) !== requestedIso
+  ) {
     return {
       approved: false,
-      reason: "The requested date is outside the grace period, which ends on the 5th.",
+      reason: "The requested payment date is invalid.",
     };
   }
 
-  // If the account is already beyond the grace period, don't create a new arrangement.
+  const dueDate = new Date(`${due.dueDate}T00:00:00Z`);
+
+  if (Number.isNaN(dueDate.getTime())) {
+    return {
+      approved: false,
+      reason: "The rent due date is invalid.",
+    };
+  }
+
+  // RentRelay gives a 5-day grace window beginning on the due date.
+  const graceEnd = new Date(dueDate);
+  graceEnd.setUTCDate(graceEnd.getUTCDate() + 4);
+
+  if (requestedDate < dueDate || requestedDate > graceEnd) {
+    return {
+      approved: false,
+      reason:
+        `The requested date is outside the grace period, which ends on `
+        + `${graceEnd.toISOString().slice(0, 10)}.`,
+    };
+  }
+
+  const today = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate()
+    )
+  );
+
+  if (requestedDate < today) {
+    return {
+      approved: false,
+      reason: "That requested payment date has already passed.",
+    };
+  }
+
   if (due.daysLate > 5 || due.lateFeeUsd > 0) {
     return {
       approved: false,
@@ -40,12 +85,11 @@ export function evaluatePayLaterRequest(
     };
   }
 
-  const payLaterUntil =
-    `${due.month}-${String(requestedDay).padStart(2, "0")}`;
-
   return {
     approved: true,
-    payLaterUntil,
-    reason: `Payment can be scheduled for ${payLaterUntil} within the grace period.`,
+    payLaterUntil: requestedIso,
+    reason:
+      `Payment can be scheduled for ${requestedIso} `
+      + `within the grace period.`,
   };
 }
