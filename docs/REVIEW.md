@@ -2,6 +2,25 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-26: `origin/frontend` @ 819665e (Kashish; tenant app, group chat, landlord view, dark mode): ⚠️ not mergeable yet (no PR open)
+Looked at because the user asked. It isn't on the board as In review.
+**Ran (in a scratch copy, not this checkout):** `npm ci` OK · `next build` **fails** · `tsc` 5 errors · `next dev` renders the tenant dashboard with no console errors.
+- **What it is:** a standalone Next.js 14 + Tailwind app (18 files): tenant dashboard, unit group chat, 1-on-1 agent chat, notifications, top-up, dark mode, landlord console (`/demo`: building grid, rent day, spawn animation, 5-attack panel). It covers the UI side of T19, T20, T32, T36 and T38.
+
+Blocking for merge/deploy:
+1. **Unrelated history.** The branch is one commit with **no common ancestor** with `main` (`git merge-base` is empty), so a normal PR/merge won't work, and it collides with `main` on `package.json`, `package-lock.json`, `tsconfig.json`, `README.md` and `.gitignore`. Fix: move its `app/`, `public/`, `tailwind`/`postcss`/`next` configs onto a branch cut from `main`, and combine the two `package.json`s (Next/React/Tailwind + xrpl/express/dotenv/tsx). That also delivers T01's scaffold. ⚠ `main` pins `typescript ^7`; Next 14's build type-check may need TypeScript 5.x. Test `next build` after combining.
+2. **`next build` fails** (so Vercel would too): 5 type errors, all from untyped `useRef()` (`app/page.tsx:75` ×2, `:86`, `:87`, `:118`). Fix: `useRef<number>()` / `useRef<HTMLInputElement>(null)` and `?.`. About 5 minutes.
+
+Must fix before the demo (PLAN fit):
+3. **Everything is simulated in the browser.** There are no `fetch`/`/api` calls. Rent day, spawn and attacks are `setTimeout` animations, **every attack shows "Blocked" after 1.2s regardless**, and chat replies are canned (`app/page.tsx:88, 187-189`). Fine as a mock, but PLAN says it should render from the `/api/state` shape (T19: `mocks/state.json`) and never-cut items (autonomous rent day, Guardian refusals, audit links) must be real on stage. Ripple judges will open the explorer links. Wire to `/api/state`, `/api/clock`, `/api/attacks/:name` (P1 already returns `title`/`reason`/`rule` for the panel) and `/api/topup`.
+4. **Names don't match the plan.** The code uses team members (Abhimanyu, Kashish, Musammat, Arpey), while PLAN, the Guardian policy (`maya`/`jordan`/`priya`), the demo script and the branch's own README use Maya/Jordan/Priya. Pick one set before P2 seeds the DB (T14). The tenant IDs must match the Guardian policy.
+
+**Update 2026-09-26, decisions by Arpey:**
+- **#4 names: use the team's names.** It's display-only. The Guardian keys rent wallets by **address** and never checks `tenantId` (it's used only in logs, `guardian/server.ts:67,128`), so the existing wallets, keys, Render env and on-chain credentials all stay. Mapping by role: **Abhimanyu → Maya's wallet** (4B, 50%, pays on time) · **Kashish → Jordan's wallet** (4B, 50%, late, $15 fee) · **Musammat → Priya's wallet** (2A, 100%) · **Arpey → landlord**. P2's DB seed (T14) uses these names with the existing wallet addresses. The Planner should update PLAN's demo script. Optional: rename the `tenantId`s in `guardian-policy.json` / Render `GUARDIAN_POLICY` for nicer logs.
+- **#1 integration: Reviewer recommends a transplant onto a branch from `main`** (for the Builder). Cut `frontend-integration` from `main`, check out Kashish's `app/`, `public/`, `next.config.mjs`, `postcss.config.mjs`, `tailwind.config.ts`, `next-env.d.ts` from `origin/frontend`, and merge the two `package.json`s into one. Pin `typescript` to 5.x (Next 14 builds with the TS 5 API; the money layer's `tsx` and `tsc --noEmit` work on 5.x). Use Next's tsconfig at the root, and keep the current strict one as `tsconfig.server.json` for `lib`/`guardian`/`scripts`. Fix the 5 `useRef`s. Done when `next build`, `tsc -p tsconfig.server.json` and `npm run test:guardian` all pass. Open a PR through `/merge-check` and credit Kashish with `Co-authored-by`. **Kashish then works on `frontend-integration`, not the orphan branch.**
+
+Notes: the code is minified-style (one-line components, 2-letter state names like `sT`, `sM`), which will slow down wiring it to the API. No secrets or unsafe HTML found. `.gitignore` covers `.env`.
+
 ## 2026-09-26: T33 review fix, `money-topup` @ 408d1cd (wallet balance cap): ✅ approved
 **Ran:** `tsc --noEmit` clean · `npm run test:guardian` 18/18 pass.
 - **Must-fix #1: fixed.** `topUpRentWallet` refuses with `wallet-full` (HTTP 409 in the recipe) if the wallet would hold more than `MAX_WALLET_USD` ($1,600), or the tenant's `capUsd` passed from the DB (`lib/xrpl/topup.ts:43-50`). The message says how much still fits. `test:topup` gained two `wallet-full` cases (empty wallet + $1,700; $1,503 + $200).
