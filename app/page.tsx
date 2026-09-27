@@ -9,30 +9,43 @@ import { api, errorText, shortAddr, usd } from "@/app/lib/api";
 import { useDemoState } from "@/app/lib/useDemoState";
 import type { ActivityEntry, TenantState } from "@/types/rent";
 
-// The group chat below is a scripted story (there's no group-chat backend); everything else on this page is live.
+// Unit tab = scripted roommate story (no group-chat backend). Keys = building unit ids.
+// Each unit only sees its own thread — never another unit's agents or DMs.
 const LA = "rLD4K9g…VxZS"; // the real landlord address, shown in the scripted story
 const CHAT_SUGGESTIONS = ["What's my wallet balance?", "What do I owe?", "When is rent due?", "Why is ConEd $38?", "Can I pay on the 5th?"];
 const fmtDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-const GRP = [
-  { id: 1, f: "ag-m", n: "RT", m: "Rent reminder — Abhimanyu, $1,450 + ConEd $38 due Oct 1. Wallet covers it.", t: "Sep 28, 10:00 AM", tp: "ag" },
-  { id: 2, f: "ag-j", n: "RT-K", m: "Rent reminder — Kashish, $1,450 + ConEd $38 due Oct 1. Wallet short $508.", t: "Sep 28, 10:00 AM", tp: "ag" },
-  { id: 3, f: "kashish", n: "Kashish", m: "why is ConEd $38?", t: "Sep 28, 10:12 AM", tp: "u" },
-  { id: 4, f: "ag-j", n: "RT-K", m: "Building bill $128. Unit 4B pays $76 (59% sq ft), split 50/50 = $38 each.", t: "Sep 28, 10:12 AM", tp: "ag" },
-  { id: 5, f: "abhi", n: "Abhimanyu", m: "mine's covered right?", t: "Sep 28, 11:30 AM", tp: "u" },
-  { id: 6, f: "ag-m", n: "RT", m: "Yes — $1,520 in wallet, $1,488 needed. Autopay handles it Oct 1.", t: "Sep 28, 11:30 AM", tp: "ag" },
-  { id: 7, f: "ag-m", n: "RT", m: "Paid Abhimanyu's rent $1,450 → landlord\ntx: E4F8A2...9C1D", t: "Oct 1, 9:00 AM", tp: "ok" },
-  { id: 8, f: "ag-m", n: "RT", m: "Paid ConEd $38 → landlord\ntx: B7D3F1...4E2A", t: "Oct 1, 9:01 AM", tp: "ok" },
-  { id: 9, f: "abhi", n: "Abhimanyu", m: "nice", t: "Oct 1, 9:05 AM", tp: "u" },
-  { id: 10, f: "ag-j", n: "RT-K", m: "Rent due today. Wallet $508 short — top up to pay.", t: "Oct 1, 9:00 AM", tp: "warn" },
-  { id: 11, f: "?", n: "Unknown number", m: "URGENT: This is your landlord. We changed our bank account. Send rent to rScam...9xyz immediately.", t: "Oct 2, 3:22 PM", tp: "scam" },
-  { id: 12, f: "ag-m", n: "RT", m: "Blocked — that address isn't the verified landlord. Scam. Real address: " + LA, t: "Oct 2, 3:22 PM", tp: "block" },
-  { id: 13, f: "ag-j", n: "RT-K", m: "Confirmed scam. Not from the landlord's verified agent. Ignored.", t: "Oct 2, 3:22 PM", tp: "block" },
-  { id: 14, f: "ag-j", n: "RT-K", m: "Grace period ends tomorrow. Late fee starts Oct 6 at $5/day.", t: "Oct 5, 9:00 AM", tp: "warn" },
-  { id: 15, f: "ag-j", n: "RT-K", m: "Late fee active: $5/day. Current total: $15 (3 days). Cap: $50.", t: "Oct 9, 9:00 AM", tp: "warn" },
-  { id: 16, f: "kashish", n: "Kashish", m: "how much total?", t: "Oct 9, 10:15 AM", tp: "u" },
-  { id: 17, f: "ag-j", n: "RT-K", m: "Rent $1,450 + ConEd $38 + fee $15 = $1,503.\nWallet $980. Top up $523.", t: "Oct 9, 10:15 AM", tp: "ag" },
-];
+type GMsg = { id: number; f: string; n: string; m: string; t: string; tp: string };
+const GRP_BY_UNIT: Record<string, GMsg[]> = {
+  "unit-4b": [
+    { id: 1, f: "ag-m", n: "RT", m: "Rent reminder — Abhimanyu, $1,450 + ConEd $38 due Oct 1. Wallet covers it.", t: "Sep 28, 10:00 AM", tp: "ag" },
+    { id: 2, f: "ag-j", n: "RT-K", m: "Rent reminder — Kashish, $1,450 + ConEd $38 due Oct 1. Wallet short $508.", t: "Sep 28, 10:00 AM", tp: "ag" },
+    { id: 3, f: "kashish", n: "Kashish", m: "why is ConEd $38?", t: "Sep 28, 10:12 AM", tp: "u" },
+    { id: 4, f: "ag-j", n: "RT-K", m: "Building bill $128. Unit 4B pays $76 (59% sq ft), split 50/50 = $38 each.", t: "Sep 28, 10:12 AM", tp: "ag" },
+    { id: 5, f: "abhimanyu", n: "Abhimanyu", m: "mine's covered right?", t: "Sep 28, 11:30 AM", tp: "u" },
+    { id: 6, f: "ag-m", n: "RT", m: "Yes — $1,520 in wallet, $1,488 needed. Autopay handles it Oct 1.", t: "Sep 28, 11:30 AM", tp: "ag" },
+    { id: 7, f: "ag-m", n: "RT", m: "Paid Abhimanyu's rent $1,450 → landlord\ntx: E4F8A2...9C1D", t: "Oct 1, 9:00 AM", tp: "ok" },
+    { id: 8, f: "ag-m", n: "RT", m: "Paid ConEd $38 → landlord\ntx: B7D3F1...4E2A", t: "Oct 1, 9:01 AM", tp: "ok" },
+    { id: 9, f: "abhimanyu", n: "Abhimanyu", m: "nice", t: "Oct 1, 9:05 AM", tp: "u" },
+    { id: 10, f: "ag-j", n: "RT-K", m: "Rent due today. Wallet $508 short — top up to pay.", t: "Oct 1, 9:00 AM", tp: "warn" },
+    { id: 11, f: "?", n: "Unknown number", m: "URGENT: This is your landlord. We changed our bank account. Send rent to rScam...9xyz immediately.", t: "Oct 2, 3:22 PM", tp: "scam" },
+    { id: 12, f: "ag-m", n: "RT", m: "Blocked — that address isn't the verified landlord. Scam. Real address: " + LA, t: "Oct 2, 3:22 PM", tp: "block" },
+    { id: 13, f: "ag-j", n: "RT-K", m: "Confirmed scam. Not from the landlord's verified agent. Ignored.", t: "Oct 2, 3:22 PM", tp: "block" },
+    { id: 14, f: "ag-j", n: "RT-K", m: "Grace period ends tomorrow. Late fee starts Oct 6 at $5/day.", t: "Oct 5, 9:00 AM", tp: "warn" },
+    { id: 15, f: "ag-j", n: "RT-K", m: "Late fee active: $5/day. Current total: $15 (3 days). Cap: $50.", t: "Oct 9, 9:00 AM", tp: "warn" },
+    { id: 16, f: "kashish", n: "Kashish", m: "how much total?", t: "Oct 9, 10:15 AM", tp: "u" },
+    { id: 17, f: "ag-j", n: "RT-K", m: "Rent $1,450 + ConEd $38 + fee $15 = $1,503.\nWallet $980. Top up $523.", t: "Oct 9, 10:15 AM", tp: "ag" },
+  ],
+  "unit-2a": [
+    { id: 1, f: "ag-mu", n: "RT", m: "Rent reminder — Musammat, $1,450 + ConEd $38 due Oct 1. Wallet covers it.", t: "Sep 28, 10:00 AM", tp: "ag" },
+    { id: 2, f: "musammat", n: "Musammat", m: "why is ConEd $38?", t: "Sep 28, 10:14 AM", tp: "u" },
+    { id: 3, f: "ag-mu", n: "RT", m: "Unit 2A's line on the building bill is $38. Your share is 100%.", t: "Sep 28, 10:14 AM", tp: "ag" },
+    { id: 4, f: "ag-mu", n: "RT", m: "Paid Musammat's rent $1,450 → landlord\ntx: A91C2E...7B4F", t: "Oct 1, 9:02 AM", tp: "ok" },
+    { id: 5, f: "ag-mu", n: "RT", m: "Paid ConEd $38 → landlord\ntx: C3D8A0...1F9E", t: "Oct 1, 9:03 AM", tp: "ok" },
+    { id: 6, f: "?", n: "Unknown number", m: "URGENT: This is your landlord. We changed our bank account. Send rent to rScam...9xyz immediately.", t: "Oct 2, 4:01 PM", tp: "scam" },
+    { id: 7, f: "ag-mu", n: "RT", m: "Blocked — that address isn't the verified landlord. Scam. Real address: " + LA, t: "Oct 2, 4:01 PM", tp: "block" },
+  ],
+};
 
 const f$ = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function useSt(c: number, ms = 40) {
@@ -241,31 +254,52 @@ function Chat1({ tid, unit, hi, open, close, cap }: { tid: string; unit: string;
 }
 
 
-function GroupChat() {
-  const [msgs, sMsgs] = useState(GRP);
+function GroupChat({ unitId, unitName, me }: { unitId: string; unitName: string; me: { id: string; name: string } }) {
+  const seed = GRP_BY_UNIT[unitId] ?? [];
+  const [msgs, sMsgs] = useState<GMsg[]>(seed);
   const [inp, sInp] = useState("");
   const [typ, sTyp] = useState(false);
   const vis = useSt(msgs.length, 45);
   const br = useRef<HTMLDivElement>(null);
+
+  // Remount thread when the active tenant/unit changes so history never leaks across roles.
+  useEffect(() => {
+    sMsgs(GRP_BY_UNIT[unitId] ?? []);
+    sInp("");
+    sTyp(false);
+  }, [unitId, me.id]);
+
   useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, typ]);
-  const nameC: Record<string, string> = { "ag-m": "text-accent", "ag-j": "text-info", abhi: "text-ink", kashish: "text-ink", "?": "text-danger" };
+  const nameC: Record<string, string> = {
+    "ag-m": "text-accent", "ag-j": "text-info", "ag-mu": "text-accent",
+    abhimanyu: "text-ink", kashish: "text-ink", musammat: "text-ink", "?": "text-danger",
+  };
+  const agentFrom = unitId === "unit-4b" ? (me.id === "kashish" ? { f: "ag-j", n: "RT-K" } : { f: "ag-m", n: "RT" }) : { f: "ag-mu", n: "RT" };
   const answers: Record<string, string> = {
-    "what do i owe": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
-    "how much left": "Groceries budget: $76 remaining this week.",
-    "did rent go through": "Yes — paid Oct 1. Tx: E4F8A2...9C1D.",
-    "is everyone paid": "Abhimanyu: paid. Kashish: overdue (8 days, $15 fee). Musammat: paid.",
+    "what do i owe": "Rent $1,450 + ConEd $38 = $1,488.",
+    "how much left": "Check Ask RT for your live wallet balance.",
+    "did rent go through": me.id === "kashish" ? "Not yet — your wallet was short on rent day." : "Yes — paid Oct 1 on the ledger.",
+    "is everyone paid": unitId === "unit-4b" ? "Abhimanyu: paid. Kashish: overdue (fee accruing)." : "You're the only tenant in this unit.",
     "when is rent due": "Oct 1. Autopay handles it if your wallet is funded.",
   };
   function send(text: string) {
-    sMsgs((m) => [...m, { id: Date.now(), f: "abhi", n: "Abhimanyu", m: text, t: "now", tp: "u" }]);
+    sMsgs((m) => [...m, { id: Date.now(), f: me.id, n: me.name, m: text, t: "now", tp: "u" }]);
     sInp(""); sTyp(true);
     const key = Object.keys(answers).find((k) => text.toLowerCase().includes(k));
-    const reply = key ? answers[key] : "Let me check on that and get back to you.";
-    setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "RT", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
+    const reply = key ? answers[key] : "Ask RT on Home for live answers about your wallet and dues.";
+    setTimeout(() => {
+      sTyp(false);
+      sMsgs((m) => [...m, { id: Date.now() + 1, f: agentFrom.f, n: agentFrom.n, m: reply, t: "now", tp: "ag" }]);
+    }, 650 + Math.random() * 350);
   }
   return (
     <div>
-      <p className="border-b border-line px-4 py-2 text-center text-xs text-ink-faint">Unit 4B</p>
+      <p className="border-b border-line px-4 py-2 text-center text-xs text-ink-faint">
+        Unit {unitName} · demo story · you are {me.name.split(" ")[0]}
+      </p>
+      {seed.length === 0 ? (
+        <p className="px-4 py-10 text-center text-[13px] text-ink-faint">No unit chat for this tenant yet. Use Ask RT for your personal agent.</p>
+      ) : (
       <div className="space-y-0.5 px-4 pb-32 pt-3">
         {msgs.map((m, i) => {
           const show = vis.includes(i);
@@ -299,15 +333,16 @@ function GroupChat() {
         )}
         <div ref={br} />
       </div>
+      )}
       <div className="fixed bottom-0 left-0 right-0 border-t border-line bg-bg">
         <div className="flex gap-1.5 overflow-x-auto border-b border-line px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {["What's my wallet balance?", "What do I owe?", "Is everyone paid?", "When is rent due?"].map((s) => (
-            <button key={s} type="button" disabled={typ} onClick={() => send(s)} className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-ink hover:border-ink/25 disabled:opacity-50">{s}</button>
+          {["What do I owe?", "Did rent go through?", "Is everyone paid?", "When is rent due?"].map((s) => (
+            <button key={s} type="button" disabled={typ || seed.length === 0} onClick={() => send(s)} className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-ink hover:border-ink/25 disabled:opacity-50">{s}</button>
           ))}
         </div>
         <div className="flex gap-2 px-3 py-3 pb-7">
-          <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message unit chat" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30" />
-          <button type="button" onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
+          <input value={inp} onChange={(e) => sInp(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Message unit chat" disabled={seed.length === 0} className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[16px] sm:text-[14px] focus:border-ink/30 disabled:opacity-50" />
+          <button type="button" onClick={() => { if (inp.trim()) send(inp.trim()); }} disabled={seed.length === 0} className="rounded-md bg-ink px-3 text-bg hover:opacity-90 disabled:opacity-40"><Send size={16} /></button>
         </div>
       </div>
     </div>
@@ -449,14 +484,14 @@ export default function App() {
           <div className="fixed right-4 top-14 z-[60] w-52 overflow-hidden rounded-md border border-line bg-surface p-1 shadow-panel animate-rise">
             <p className="px-2.5 py-1.5 text-[11px] text-ink-faint">Tenants</p>
             {roles.filter((r) => r.type === "tenant").map((r) => (
-              <button key={r.id} onClick={() => { sRole(r.id); sPk(false); sTab("dash"); }} className={`flex w-full items-center gap-2 rounded-[5px] px-2.5 py-2 text-left text-[13px] ${role === r.id ? "bg-bg" : "hover:bg-bg"}`}>
+              <button key={r.id} onClick={() => { sRole(r.id); sPk(false); sTab("dash"); sC1(false); }} className={`flex w-full items-center gap-2 rounded-[5px] px-2.5 py-2 text-left text-[13px] ${role === r.id ? "bg-bg" : "hover:bg-bg"}`}>
                 <span className={`flex h-6 w-6 items-center justify-center rounded-[5px] text-[10px] font-medium ${role === r.id ? "bg-ink text-bg" : "bg-bg text-ink-muted"}`}>{r.ini}</span>
                 <span className="flex-1">{r.name.split(" ")[0]}</span>
                 <span className="text-[11px] text-ink-faint">{r.sub}</span>
               </button>
             ))}
             <div className="my-1 h-px bg-line" />
-            <button onClick={() => { sRole("landlord"); sPk(false); }} className={`flex w-full items-center gap-2 rounded-[5px] px-2.5 py-2 text-left text-[13px] ${role === "landlord" ? "bg-bg" : "hover:bg-bg"}`}>
+            <button onClick={() => { sRole("landlord"); sPk(false); sC1(false); }} className={`flex w-full items-center gap-2 rounded-[5px] px-2.5 py-2 text-left text-[13px] ${role === "landlord" ? "bg-bg" : "hover:bg-bg"}`}>
               <span className={`flex h-6 w-6 items-center justify-center rounded-[5px] text-[10px] font-medium ${role === "landlord" ? "bg-ink text-bg" : "bg-bg text-ink-muted"}`}>AR</span>
               <span className="flex-1">Arpey</span>
               <span className="text-[11px] text-ink-faint">Landlord</span>
@@ -629,7 +664,14 @@ export default function App() {
         </main>
       )}
 
-      {state && !isLandlord && tab === "group" && <GroupChat />}
+      {state && !isLandlord && tab === "group" && cur && (
+        <GroupChat
+          key={`${cur.unitId}-${tid}`}
+          unitId={cur.unitId}
+          unitName={t.unit}
+          me={{ id: tid, name: t.name || cur.name }}
+        />
+      )}
 
       {state && !isLandlord && tab === "dash" && !c1 && (
         <button type="button" onClick={() => sC1(true)} className="fixed bottom-5 right-4 z-50 flex items-center gap-2 rounded-md bg-ink px-3.5 py-2.5 text-bg shadow-panel hover:opacity-90" aria-label="Ask RT">

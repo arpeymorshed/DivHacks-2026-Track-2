@@ -45,7 +45,7 @@ Switch users with the top-right role menu:
 
 - **Dashboard** — Welcome headline, dues breakdown, wallet, shortfall callout when underfunded, rules, activity
 - **Ask RT** — full-screen agent chat with suggestion chips; asks hit `POST /api/chat`
-- **Unit chat** — scripted roommate + agent story with suggestion chips
+- **Unit chat** — scripted roommate + agent story scoped **per unit** (4B vs 2A). Switching tenants resets the thread and posts as the active tenant. Personal **Ask RT** is separate and resets per tenant.
 - **Top up** — funds the rent wallet via `POST /api/topup` (demo key required in prod)
 - **Dark mode** — moon/sun toggle
 - **Notifications** — bell menu
