@@ -2,6 +2,16 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-27: Integration check of everything on `main` @ 4bc4256 (after #24 late fees, #25 UI wiring, #26 Cursor restyle 2, #27 Gemini): ⚠️ code is consistent; the live deploy is broken
+No PRs are open; all work is merged. #24, #25 and #26 were merged without a Reviewer pass; this checks how they combine.
+- **Clean copy of `main`, `ci/build-test.sh`:** `next build` ✅, typecheck ✅, `npm test` ✅ (incl. per-unit bill split $38/$38/$38), `test:guardian` 18/18 ✅, `test:state` 5/5 ✅. Extra: `test:polo` ✅. `test:photon` needs a running server on :3000, so it's an integration script, not a failure. `bot/` needs Bun (not on this Mac), but the CI gate on #27's head built it OK.
+- **Nobody tested the merged combination:** `main`'s tree ≠ #27's head (#26 landed first), and CI never ran on the final combo. My local run above covers it, and it passes.
+- **#25 → #26:** the Cursor restyle was branched on top of the UI wiring (#26 contains #25), and the API calls live in `app/lib/api.ts`, so the wiring survived.
+- **Live site `aartee.tech`: BROKEN.** Every route that imports `xrpl` at load time returns an HTML 500 (`/api/state`, `/api/clock`, `/api/topup`, `/api/tick`, `/api/tenants`, `/api/attacks`), while the same build works locally. The details and a mitigation are in `docs/BUGS.md` (top Open entry). **This is the #1 thing to fix before judging**, because the UI's data comes from `/api/state`.
+- Guardian on Render: `/health` 200, 3 rent wallets.
+- **Stranded work:** `origin/frontend` (Kashish) has 2 new commits after the integration ("Rename to aartee. with RT Bot agent", "UX polish: splash screen, gradients, animations"). They're on the old orphan branch against the pre-wiring mock `page.tsx`, so they can't be merged, only hand-ported. They also commit `.DS_Store`. Arpey decides whether to port them.
+- Branding: code and title still say "RentRelay"; bot/domain say "Aartee". Still undecided.
+
 ## 2026-09-27: PR #19 re-review, `p2-gemini` @ facdba1 (Builder's fixes) + Musammat's 9edc641/2ab7815: ✅ approved; needs `main` merged in first
 **Ran on the trial merge of `origin/main` + `p2-gemini`** (`git merge-tree`, tree d7eff6b): `next build` ✅ · `typecheck` ✅ · `test:guardian` 18/18 ✅ · `npm test` exit 0 ✅, including "Per-unit bill split checks passed: 4B $38/$38, 2A $38, missing unit → null, over-limit detected". So the fixes work together with T30's late-fee changes on `main`.
 - **#1 bill split: fixed.** `billVision` extracts validated `units[{unit, chargeUsd}]`. `unitChargeFor` uses the selected unit's line and falls back to `totalUsd` only when the bill has no unit lines (`src/agent/utilitySplit.ts`). The route returns 400 when the bill lists units but not this one, and 400 with **nothing written** if any share is over `MAX_UTILITIES_USD` $100 (the Guardian limit). The seed has Musammat's utilities at 52 → 38, matching the fixture's 2A line, with tests updated.

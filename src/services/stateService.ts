@@ -1,9 +1,7 @@
 // GET /api/state (T18): everything the console and tenant views need in one read-only call.
 // Public by design (judges can open it): display names and public addresses only, never seeds.
 import { cycleDay, GRACE_DAYS } from "../../guardian/rules";
-import { withClient } from "../../lib/xrpl/client";
 import { explorerAccount } from "../../lib/xrpl/config";
-import { getBalances } from "../../lib/xrpl/payments";
 import type { ActivityEntry, Due, DueStage, StateResponse, TenantState } from "../../types/rent";
 import { listActivity, listPaidRent } from "./activityLog.ts";
 import { clockOf, getDemoState, type DemoClock } from "./demoState.ts";
@@ -39,6 +37,10 @@ export async function buildState(): Promise<StateResponse> {
   const bankAddress = process.env.XRPL_BANK_ADDRESS;
   if (real) {
     try {
+      // Loaded here, not at the top: if xrpl can't load (it crashed every importing route on Vercel,
+      // docs/BUGS.md 2026-09-27), only the balances go missing instead of the whole route 500ing.
+      const { withClient } = await import("../../lib/xrpl/client");
+      const { getBalances } = await import("../../lib/xrpl/payments");
       const addresses = [building.landlordWallet, ...tenants.map((t) => t.walletAddress), ...(bankAddress ? [bankAddress] : [])];
       await withClient(async (client) => {
         const results = await Promise.all(addresses.map((a) => getBalances(client, a).then((b) => [a, b.usd] as const)));
@@ -46,7 +48,7 @@ export async function buildState(): Promise<StateResponse> {
       });
     } catch (error) {
       warnings.push("Balances unavailable: the XRP Ledger didn't answer. Everything else is current.");
-      console.error("State balances failed:", error instanceof Error ? error.name : "UnknownError");
+      console.error("State balances failed:", error instanceof Error ? `${error.name}: ${error.message}` : "UnknownError");
     }
   }
 
