@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Wallet } from "xrpl";
+import { requireDemoKey } from "@/lib/demoKey";
 import { getTenantById } from "@/services/rentRepository";
 import { envSeed } from "@/services/xrplConfig";
 import { recordActivitySafe } from "@/services/activityLog";
@@ -11,6 +12,8 @@ export const maxDuration = 30;
 // T33: the tenant's "Top up" button. The simulated bank sends RLUSD to the tenant's own rent wallet.
 // Only the amount comes from the request; the wallet comes from the DB (docs/MONEY-LAYER.md §5).
 export async function POST(req: Request) {
+  const denied = requireDemoKey(req);
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as { tenantId?: unknown; usd?: unknown } | null;
   if (typeof body?.tenantId !== "string" || typeof body?.usd !== "number") {
     return NextResponse.json({ success: false, error: 'Send {"tenantId": "...", "usd": 100}' }, { status: 400 });

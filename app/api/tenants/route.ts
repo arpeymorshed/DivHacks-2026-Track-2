@@ -1,4 +1,5 @@
 import { Wallet } from "xrpl";
+import { requireDemoKey } from "@/lib/demoKey";
 import { withClient } from "@/lib/xrpl/client";
 import { spawnRentWallet } from "@/lib/xrpl/spawn";
 import { getDb } from "@/lib/mongodb";
@@ -12,7 +13,7 @@ import type { Building, Due, Tenant, TenantAgent } from "@/types/rent";
 export const runtime = "nodejs";
 export const maxDuration = 60; // ~28s: 6 ledger transactions
 
-const MAX_SPAWNED = 5; // each spawn costs the ops account ~2.6 test XRP; the route is public in the demo
+const MAX_SPAWNED = 5; // each spawn costs the ops account ~2.6 test XRP; gated by x-demo-key (T18a)
 const SEED_TENANTS = 3;
 
 // T35: the landlord adds a tenant → the main agent spawns a two-key rent wallet with an on-chain agent
@@ -20,6 +21,8 @@ const SEED_TENANTS = 3;
 // Security: the stream carries only step labels, explorer links and public addresses. The tenant's backup
 // key is never sent, logged or stored here; the agent key is stored encrypted (src/services/agentKeys.ts).
 export async function POST(req: Request) {
+  const denied = requireDemoKey(req);
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as { name?: unknown } | null;
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   if (!/^[A-Za-z][A-Za-z '-]{0,29}$/.test(name)) {

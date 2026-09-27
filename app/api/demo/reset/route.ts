@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireDemoKey } from "@/lib/demoKey";
 import { resetDemoOutbox } from "@/services/outboxService";
 import { resetDemoState } from "@/services/demoState";
 import { getTenants } from "@/services/rentRepository";
@@ -10,7 +11,9 @@ export const maxDuration = 60; // recycling RLUSD is a few ledger transactions
 
 // Demo reset: clear rent-day messages, move the clock back to rent day with a NEW run number (so the
 // Guardian treats the month as unpaid again), and recycle RLUSD: landlord → bank → each tenant.
-export async function POST() {
+export async function POST(req: Request) {
+  const denied = requireDemoKey(req);
+  if (denied) return denied;
   try {
     const result = await resetDemoOutbox();
     const state = await resetDemoState();
