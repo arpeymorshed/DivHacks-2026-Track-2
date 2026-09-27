@@ -900,8 +900,14 @@ export default function App() {
       {!isLandlord && tab === "group" && <GroupChat />}
 
       {!isLandlord && tab === "dash" && (
-        <button onClick={() => sC1(true)} className="fixed bottom-5 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-md bg-ink text-bg shadow-panel hover:opacity-90" aria-label="Chat">
+        <button
+          type="button"
+          onClick={() => sC1(true)}
+          className="fixed bottom-5 right-4 z-50 flex items-center gap-2 rounded-md bg-ink px-3.5 py-2.5 text-bg shadow-panel hover:opacity-90"
+          aria-label="Ask Polo"
+        >
           <MessageCircle size={18} />
+          <span className="text-[13px] font-medium">Ask Polo</span>
         </button>
       )}
 
