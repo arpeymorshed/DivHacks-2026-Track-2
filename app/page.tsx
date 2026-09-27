@@ -355,6 +355,12 @@ export default function App() {
   const nf = useNf();
 
   useEffect(() => { document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); }, [dark]);
+  useEffect(() => {
+    if (!state?.tenants?.length) return;
+    if (role !== "landlord" && !state.tenants.some((x) => x.id === role)) {
+      sRole(state.tenants[0].id);
+    }
+  }, [state, role]);
   const isLandlord = role === "landlord";
   const tenantsS: TenantState[] = state?.tenants ?? [];
   const unitName = (unitId: string) => state?.building.units.find((u) => u.id === unitId)?.name ?? "";
@@ -401,7 +407,7 @@ export default function App() {
     ...tenantsS.map((tn) => ({ id: tn.id, name: tn.name, ini: tn.name[0], sub: "Unit " + unitName(tn.unitId), type: "tenant" as const })),
     { id: "landlord", name: state?.building.landlordName ?? "Arpey", ini: "AR", sub: "Landlord", type: "landlord" as const },
   ];
-  const activeRole = roles.find((r) => r.id === role) || roles[0];
+  const activeRole = roles.find((r) => r.id === role) || roles[0] || { id: "loading", name: "Loading", ini: "·", sub: "", type: "tenant" as const };
   const dot: Record<string, string> = { ok: "bg-ok", danger: "bg-danger", warn: "bg-warn", accent: "bg-accent" };
 
   return (
@@ -426,7 +432,7 @@ export default function App() {
             </button>
           </div>
         </div>
-        {!isLandlord && (
+        {state && !isLandlord && (
           <div className="mx-auto flex max-w-2xl gap-4 px-4">
             {[{ id: "dash", l: "Home" }, { id: "group", l: `Unit ${t.unit}` }].map((tb) => (
               <button key={tb.id} onClick={() => { sTab(tb.id); window.scrollTo(0, 0); }} className={`-mb-px border-b pb-2.5 text-[13px] ${tab === tb.id ? "border-ink font-medium" : "border-transparent text-ink-faint hover:text-ink-muted"}`}>
@@ -497,7 +503,13 @@ export default function App() {
       )}
 
       {!state && (
-        <main className="mx-auto max-w-2xl px-4 pt-10 text-[13px] text-ink-faint">{error ? <span className="text-danger">Can&apos;t reach the app: {error}</span> : "Loading your rent wallet from the ledger…"}</main>
+        <main className="mx-auto max-w-2xl px-4 pt-10 text-[13px] text-ink-muted">
+          {error ? (
+            <p className="text-danger">Can&apos;t reach the app: {error}. Seed Mongo / set env, or open <Link className="underline" href="/demo">/demo</Link>.</p>
+          ) : (
+            <p>Loading your rent wallet from the ledger…</p>
+          )}
+        </main>
       )}
 
       {state && isLandlord && (
