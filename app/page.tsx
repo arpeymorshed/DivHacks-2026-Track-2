@@ -73,8 +73,9 @@ function useNf() {
     { id: "n1", m: "Scam payment blocked", t: "Sep 3", r: false, c: "danger", detail: "Unknown address rScam...9xyz rejected by Guardian.", tag: "Blocked" },
     { id: "n2", m: "Kashish overdue — day 8", t: "Sep 9", r: false, c: "warn", detail: "Wallet short. Late fee $15 accruing. Cap: $50.", tag: "Overdue" },
   ]);
+  const seq = useRef(0);
   const push = useCallback((m: string, c = "accent") => {
-    const id = "" + Date.now();
+    const id = `t-${Date.now()}-${++seq.current}`;
     const n = { id, m, t: "now", r: false, c, detail: m, tag: "Update" };
     sTs((t) => [...t, n]);
     sH((x) => [n, ...x]);
