@@ -97,3 +97,18 @@ export async function resetDemoOutbox() {
     modified,
   };
 }
+
+export async function hasOutboxMessage(
+  dedupeKey: string
+): Promise<boolean> {
+  const db = await getDb();
+
+  const message = await db
+    .collection<OutboxMessage>("outbox")
+    .findOne(
+      { dedupeKey },
+      { projection: { _id: 1 } }
+    );
+
+  return message !== null;
+}
