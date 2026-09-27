@@ -157,9 +157,36 @@ for (const t of tenants) {
 The bank float is 10 RLUSD ≈ $10,000 of demo money, so keep seed balances to a few thousand dollars in total.
 Suggested seed: Maya $1,500 (covered), Jordan $1,000 (short, for the "pay on the 5th" story), Priya $1,500.
 
-### T18: balances for `/api/state`
+### T18: `GET /api/state` (for the UI, built)
 
-`getBalances(client, address)` → `{ xrp, rlusd, usd }`. Show `usd` in the UI.
+One read-only, public call with everything the console and tenant views need (no seeds, no auth):
+
+```jsonc
+{
+  "clock": { "today": "2026-10-01", "month": "2026-10", "run": 6 },
+  "paymentsMode": "real",                 // "mock" when the XRPL env isn't set
+  "building": { "name", "landlordName", "landlordWallet", "landlordExplorerUrl", "landlordBalanceUsd", "units": [{ "id", "name", "tenantIds" }] },
+  "bankBalanceUsd": 5900,
+  "tenants": [{
+    "id": "kashish", "name": "Kashish", "unitId", "share", "capUsd",
+    "walletAddress", "walletExplorerUrl", "balanceUsd": 1000,          // null if the ledger didn't answer
+    "agent": { "id", "status", "credential" },
+    "due": { "month", "dueDate", "rentUsd", "utilitiesUsd", "lateFeeUsd", "daysLate", "totalUsd",
+             "stage": "upcoming|due|grace|late|paid",
+             "payment": { "txHash", "explorerUrl", "amountUsd", "time" } | null }
+  }],
+  "activity": [{ "time", "run", "kind": "rent|attack|topup|spawn|reset", "tenantId", "title",
+                 "status": "paid|blocked|refused|failed|done", "amountUsd", "rule", "reason",
+                 "blockedBy": "guardian|ledger", "txHash", "explorerUrl" }],   // newest first, last 50
+  "warnings": []
+}
+```
+
+- `due.lateFeeUsd` is what the Guardian accepts **today** (day 8 → $15); once paid, it's what was paid.
+- `stage` "paid" and `payment` count only for the current month **and run**, so after a reset everyone is unpaid again.
+- The UI: fetch `/api/state` on load and after every action (rent day, clock, reset, top-up, attack, spawn done).
+  Poll every ~5s at most; each call reads balances from the ledger.
+- Show `activity[].explorerUrl` as the "View on ledger" link; `reason` is safe to show as-is.
 
 ### T35: `POST /api/tenants` (spawn live)
 

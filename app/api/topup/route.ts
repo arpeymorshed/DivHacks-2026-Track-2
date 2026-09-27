@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { Wallet } from "xrpl";
 import { getTenantById } from "@/services/rentRepository";
 import { envSeed } from "@/services/xrplConfig";
+import { recordActivitySafe } from "@/services/activityLog";
+import { clockOf, getDemoState } from "@/services/demoState";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -14,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Send {"tenantId": "...", "usd": 100}' }, { status: 400 });
   }
   try {
-    const tenant = await getTenantById(body.tenantId);
+    const [tenant, clock] = await Promise.all([getTenantById(body.tenantId), getDemoState().then(clockOf)]);
     if (!tenant) return NextResponse.json({ success: false, error: "Unknown tenant" }, { status: 404 });
 
     const { withClient } = await import("@/lib/xrpl/client");
@@ -22,6 +24,11 @@ export async function POST(req: Request) {
     try {
       const result = await withClient((client) =>
         topUpRentWallet(client, Wallet.fromSeed(envSeed("XRPL_BANK_SEED")), tenant.walletAddress, body.usd as number, tenant.capUsd));
+      await recordActivitySafe({
+        run: clock.run, month: clock.month, kind: "topup", tenantId: tenant.id, title: `Top-up $${result.usd.toLocaleString("en-US")}`,
+        status: "done", amountUsd: result.usd, txHash: result.txHash, explorerUrl: result.explorer,
+        reason: `Wallet now $${result.walletBalanceUsd.toLocaleString("en-US")}`,
+      });
       return NextResponse.json({ success: true, ...result });
     } catch (e) {
       if (e instanceof TopUpError) {
