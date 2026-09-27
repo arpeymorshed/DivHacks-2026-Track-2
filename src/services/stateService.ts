@@ -5,7 +5,7 @@ import { withClient } from "../../lib/xrpl/client";
 import { explorerAccount } from "../../lib/xrpl/config";
 import { getBalances } from "../../lib/xrpl/payments";
 import type { ActivityEntry, Due, DueStage, StateResponse, TenantState } from "../../types/rent";
-import { listActivity } from "./activityLog.ts";
+import { listActivity, listPaidRent } from "./activityLog.ts";
 import { clockOf, getDemoState, type DemoClock } from "./demoState.ts";
 import { getBuilding, getDues, getTenantAgents, getTenants } from "./rentRepository.ts";
 import { withLateFee } from "./xrplPayments.ts";
@@ -28,8 +28,8 @@ export function paymentFor(activity: ActivityEntry[], tenantId: string, clock: D
 
 export async function buildState(): Promise<StateResponse> {
   const clock = clockOf(await getDemoState());
-  const [building, tenants, agents, dues, activity] = await Promise.all([
-    getBuilding(), getTenants(), getTenantAgents(), getDues(clock.month), listActivity(50),
+  const [building, tenants, agents, dues, activity, paidRent] = await Promise.all([
+    getBuilding(), getTenants(), getTenantAgents(), getDues(clock.month), listActivity(50), listPaidRent(clock.month, clock.run),
   ]);
   const warnings: string[] = [];
   const real = realPaymentsEnabled();
@@ -55,7 +55,7 @@ export async function buildState(): Promise<StateResponse> {
     const due = dues.find((d) => d.tenantId === t.id);
     let dueState: TenantState["due"] = null;
     if (due) {
-      const payment = paymentFor(activity, t.id, clock);
+      const payment = paymentFor(paidRent, t.id, clock);
       const today = payment ? due : withLateFee(due, t, clock); // a paid due keeps what was paid
       const total = payment ? payment.amountUsd : today.rentUsd + today.utilitiesUsd + today.lateFeeUsd;
       dueState = {

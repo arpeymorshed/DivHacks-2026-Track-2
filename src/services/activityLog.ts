@@ -23,6 +23,11 @@ export async function recordActivitySafe(...entries: Omit<ActivityEntry, "id" | 
   }
 }
 
+// This month + run's paid rent entries, looked up directly so they never scroll out of the recent-activity list.
+export async function listPaidRent(month: string, run: number): Promise<ActivityEntry[]> {
+  return (await collection()).find({ kind: "rent", status: "paid", month, run }, { projection: { _id: 0 } }).sort({ time: -1 }).toArray();
+}
+
 export async function listActivity(limit = 50): Promise<ActivityEntry[]> {
   return (await collection()).find({}, { projection: { _id: 0 } }).sort({ time: -1 }).limit(limit).toArray();
 }
@@ -40,7 +45,7 @@ export function rentActivity(r: RentDayResult, clock: { month: string; run: numb
     kind: "rent",
     tenantId: r.tenantId,
     title: `Rent $${r.intent.amountUsd.toLocaleString("en-US")}`,
-    status: paid ? "paid" : p ? "failed" : rule === "once-per-month" || rule === "insufficient-funds" ? "refused" : "blocked",
+    status: paid ? "paid" : p || rule === "error" ? "failed" : rule === "once-per-month" || rule === "insufficient-funds" ? "refused" : "blocked",
     amountUsd: r.intent.amountUsd,
     rule,
     reason: r.guardianDecision.reason,
