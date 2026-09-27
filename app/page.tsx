@@ -125,9 +125,8 @@ function Toasts({ ts }: { ts: any[] }) {
   );
 }
 
-function Chat1({ tid, open, close }: { tid: string; open: boolean; close: () => void }) {
+function Chat1({ tid, tn, open, close }: { tid: string; tn: ReturnType<typeof initT>[keyof ReturnType<typeof initT>]; open: boolean; close: () => void }) {
   const d = CHAT1[tid as keyof typeof CHAT1];
-  const tn = initT()[tid as keyof ReturnType<typeof initT>];
   const [ms, sM] = useState<any[]>([]);
   const [inp, sI] = useState("");
   const [typ, sT] = useState(false);
@@ -140,9 +139,28 @@ function Chat1({ tid, open, close }: { tid: string; open: boolean; close: () => 
   }, [open, tid]);
   useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [ms, typ]);
   useEffect(() => { if (open) setTimeout(() => ir.current?.focus(), 180); }, [open]);
+  function answer(text: string) {
+    const exact = d.an[text as keyof typeof d.an];
+    if (exact) return exact;
+    const q = text.toLowerCase().replace(/[?.!]/g, "").trim();
+    const fuzzy = Object.keys(d.an).find((k) => {
+      const key = k.toLowerCase().replace(/[?.!]/g, "").trim();
+      return q.includes(key) || key.includes(q);
+    });
+    if (fuzzy) return d.an[fuzzy as keyof typeof d.an];
+    if (/\b(total|owe|due|balance|how much|pay)\b/.test(q)) {
+      const parts = [`Rent $${f$(tn.rS)}`, `ConEd $${f$(tn.ut)}`];
+      if (tn.lf > 0) parts.push(`fee $${f$(tn.lf)}`);
+      const total = tn.rS + tn.ut + tn.lf;
+      const short = Math.max(0, total - tn.bal);
+      return `${parts.join(" + ")} = $${f$(total)}. Wallet has $${f$(tn.bal)}.`
+        + (short > 0 ? ` Top up $${f$(short)} and I'll pay immediately.` : "");
+    }
+    return "Let me check on that.";
+  }
   function send(t: string) {
     sM((m) => [...m, { id: Date.now(), r: "u", t }]); sS([]); sI(""); sT(true);
-    const a = d.an[t as keyof typeof d.an] || "Let me check on that.";
+    const a = answer(t);
     setTimeout(() => { sT(false); sM((m) => [...m, { id: Date.now() + 1, r: "a", t: a }]); setTimeout(() => sS(d.sg.filter((s) => s !== t)), 250); }, 650 + Math.random() * 350);
   }
   if (!open) return null;
@@ -197,6 +215,8 @@ function GroupChat() {
   const nameC: Record<string, string> = { "ag-m": "text-accent", "ag-j": "text-info", abhi: "text-ink", kashish: "text-ink", "?": "text-danger" };
   const answers: Record<string, string> = {
     "what do i owe": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
+    "total": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
+    "how much": "Rent $1,450 + ConEd $38 = $1,488. Your wallet covers it.",
     "how much left": "Groceries budget: $76 remaining this week.",
     "did rent go through": "Yes — paid Oct 1. Tx: E4F8A2...9C1D.",
     "is everyone paid": "Abhimanyu: paid. Kashish: overdue (8 days, $15 fee). Musammat: paid.",
@@ -205,7 +225,9 @@ function GroupChat() {
   function send(text: string) {
     sMsgs((m) => [...m, { id: Date.now(), f: "abhi", n: "Abhimanyu", m: text, t: "now", tp: "u" }]);
     sInp(""); sTyp(true);
-    const key = Object.keys(answers).find((k) => text.toLowerCase().includes(k));
+    const q = text.toLowerCase();
+    // Prefer longer keys first so "how much left" wins over "how much"
+    const key = Object.keys(answers).sort((a, b) => b.length - a.length).find((k) => q.includes(k));
     const reply = key ? answers[key] : "Let me check on that and get back to you.";
     setTimeout(() => { sTyp(false); sMsgs((m) => [...m, { id: Date.now() + 1, f: "ag-m", n: "Polo", m: reply, t: "now", tp: "ag" }]); }, 650 + Math.random() * 350);
   }
@@ -588,8 +610,9 @@ export default function App() {
 
       {!isLandlord && tab === "dash" && (
         <main key={tid} className="mx-auto max-w-2xl animate-fade-in px-4 pb-24 pt-7">
-          <p className="text-[12px] text-ink-faint">Unit {t.unit} · {t.sh * 100}% share</p>
+          <p className="text-[13px] text-ink-muted">Welcome, {t.name.split(" ")[0]}!</p>
           <h1 className="mt-1 text-display text-ink">{t.name.split(" ")[0]}</h1>
+          <p className="mt-2 text-[12px] text-ink-faint">Unit {t.unit} · {t.sh * 100}% share</p>
           {t.str > 0 && (
             <p className="mt-2 text-[13px] text-ink-muted"><span className="text-ink">{t.str} months</span> on time</p>
           )}
@@ -684,7 +707,7 @@ export default function App() {
         </button>
       )}
 
-      {!isLandlord && <Chat1 tid={tid} open={c1} close={() => sC1(false)} />}
+      {!isLandlord && <Chat1 tid={tid} tn={t} open={c1} close={() => sC1(false)} />}
       {!isLandlord && <TopUp tn={t} open={tu} close={() => sTU(false)} go={(a) => topUp(tid, a)} />}
     </div>
   );

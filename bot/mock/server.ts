@@ -73,7 +73,7 @@ function replyFor(tenantId: string, text: string): string {
     if (diff < 0) return `Your rent wallet has ${usd(t.walletBalance)}. You're ${usd(-diff)} short of the ${usd(total)} due ${t.dueDate}.`;
     return `Your rent wallet has ${usd(t.walletBalance)}, enough to cover the ${usd(total)} due ${t.dueDate}.`;
   }
-  if (q.includes("rent") || q.includes("owe") || q.includes("pay")) {
+  if (q.includes("total") || q.includes("rent") || q.includes("owe") || q.includes("pay") || q.includes("how much")) {
     return `You owe rent ${usd(t.rent)} + utilities ${usd(t.utilities)} = ${usd(total)}, due ${t.dueDate}.`;
   }
   return `Got it, ${t.name}. I can help with rent, utilities, your wallet balance, or due dates.`;

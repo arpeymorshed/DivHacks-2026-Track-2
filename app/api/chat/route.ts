@@ -35,7 +35,15 @@ export async function POST(request: Request) {
     const message = text.toLowerCase();
     let reply = `Hi ${tenant.name}! How can I help with your rent?`;
 
-    if (message.includes("owe") || message.includes("due")) {
+    const asksTotal =
+      message.includes("total") ||
+      message.includes("owe") ||
+      message.includes("due") ||
+      message.includes("balance") ||
+      message.includes("how much") ||
+      /\bpay(ment|ing)?\b/.test(message);
+
+    if (asksTotal) {
       if (!due) {
         reply = `I couldn't find a current balance for ${tenant.name}.`;
       } else {
