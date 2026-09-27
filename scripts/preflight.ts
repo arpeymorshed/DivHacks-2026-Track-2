@@ -92,6 +92,7 @@ await withClient(async (client) => {
   });
 
   await check("Rent wallets (2-of-3, master key off)", async () => {
+    if (tenants.length === 0) return ["fail", "no tenants to check (see the MongoDB line)"];
     const bad: string[] = [];
     for (const t of tenants) {
       const s = await getRentWalletStatus(client, t.walletAddress);
@@ -102,7 +103,8 @@ await withClient(async (client) => {
   });
 
   await check("Guardian rules (live scam refusal, nothing submitted)", async () => {
-    const tenant = tenants.find((t) => t.id === "abhimanyu") ?? tenants[0];
+    const tenant = tenants.find((t) => t.id === "abhimanyu");
+    if (!tenant) return ["fail", "tenant abhimanyu not found (see the MongoDB line)"];
     const month = today.slice(0, 7);
     const scam = Wallet.generate().address;
     const tx = await buildPayment(client, { from: tenant.walletAddress, to: scam, usd: 1488, memoHash: "00".repeat(32), period: periodKey(month, run) });
