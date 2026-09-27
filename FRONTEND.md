@@ -1,4 +1,4 @@
-# RentRelay Frontend
+# aartee. Frontend
 
 ## Quick Start
 
@@ -33,7 +33,7 @@ Switch between users using the dropdown in the top right:
 ### Features
 
 - **Dashboard** — rent dues, wallet balance, rules, activity feed
-- **Unit 4B Chat** — group chat with roommates and agents (Polo, Polo-K). Type messages like "what do I owe" or "is everyone paid"
+- **Unit 4B Chat** — group chat with roommates and agents (RT Bot, RT Bot-K). Type messages like "what do I owe" or "is everyone paid"
 - **1-on-1 Chat** — tap the teal chat bubble. Ask "Why is ConEd $38?" or "Total owed?"
 - **Notifications** — tap the bell. Click any notification for full details
 - **Top up** — tap "Top up" on the wallet to simulate adding RLUSD
@@ -56,7 +56,7 @@ Switch between users using the dropdown in the top right:
 ### Setup (5 min)
 
 1. Open Xcode → File → New → Project → iOS → App
-2. Product Name: `RentRelay`, Interface: SwiftUI, Language: Swift
+2. Product Name: `aartee.`, Interface: SwiftUI, Language: Swift
 3. Select all code in `ContentView.swift`, delete, paste:
 
 ```swift

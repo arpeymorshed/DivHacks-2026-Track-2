@@ -37,23 +37,23 @@ const CHAT1={
 };
 
 const GRP=[
-  {id:1,f:"ag-m",n:"Polo",m:"Rent reminder — Abhimanyu, $1,450 + ConEd $38 due Oct 1. Wallet covers it.",t:"Sep 28, 10:00 AM",tp:"ag"},
-  {id:2,f:"ag-j",n:"Polo-K",m:"Rent reminder — Kashish, $1,450 + ConEd $38 due Oct 1. Wallet short $508.",t:"Sep 28, 10:00 AM",tp:"ag"},
+  {id:1,f:"ag-m",n:"RT Bot",m:"Rent reminder — Abhimanyu, $1,450 + ConEd $38 due Oct 1. Wallet covers it.",t:"Sep 28, 10:00 AM",tp:"ag"},
+  {id:2,f:"ag-j",n:"RT Bot-K",m:"Rent reminder — Kashish, $1,450 + ConEd $38 due Oct 1. Wallet short $508.",t:"Sep 28, 10:00 AM",tp:"ag"},
   {id:3,f:"kashish",n:"Kashish",m:"why is ConEd $38?",t:"Sep 28, 10:12 AM",tp:"u"},
-  {id:4,f:"ag-j",n:"Polo-K",m:"Building bill $128. Unit 4B pays $76 (59% sq ft), split 50/50 = $38 each.",t:"Sep 28, 10:12 AM",tp:"ag"},
+  {id:4,f:"ag-j",n:"RT Bot-K",m:"Building bill $128. Unit 4B pays $76 (59% sq ft), split 50/50 = $38 each.",t:"Sep 28, 10:12 AM",tp:"ag"},
   {id:5,f:"abhi",n:"Abhimanyu",m:"mine's covered right?",t:"Sep 28, 11:30 AM",tp:"u"},
-  {id:6,f:"ag-m",n:"Polo",m:"Yes — $1,520 in wallet, $1,488 needed. Autopay handles it Oct 1.",t:"Sep 28, 11:30 AM",tp:"ag"},
-  {id:7,f:"ag-m",n:"Polo",m:"Paid Abhimanyu's rent $1,450 → landlord\ntx: E4F8A2...9C1D",t:"Oct 1, 9:00 AM",tp:"ok"},
-  {id:8,f:"ag-m",n:"Polo",m:"Paid ConEd $38 → landlord\ntx: B7D3F1...4E2A",t:"Oct 1, 9:01 AM",tp:"ok"},
+  {id:6,f:"ag-m",n:"RT Bot",m:"Yes — $1,520 in wallet, $1,488 needed. Autopay handles it Oct 1.",t:"Sep 28, 11:30 AM",tp:"ag"},
+  {id:7,f:"ag-m",n:"RT Bot",m:"Paid Abhimanyu's rent $1,450 → landlord\ntx: E4F8A2...9C1D",t:"Oct 1, 9:00 AM",tp:"ok"},
+  {id:8,f:"ag-m",n:"RT Bot",m:"Paid ConEd $38 → landlord\ntx: B7D3F1...4E2A",t:"Oct 1, 9:01 AM",tp:"ok"},
   {id:9,f:"abhi",n:"Abhimanyu",m:"nice",t:"Oct 1, 9:05 AM",tp:"u"},
-  {id:10,f:"ag-j",n:"Polo-K",m:"Rent due today. Wallet $508 short — top up to pay.",t:"Oct 1, 9:00 AM",tp:"warn"},
+  {id:10,f:"ag-j",n:"RT Bot-K",m:"Rent due today. Wallet $508 short — top up to pay.",t:"Oct 1, 9:00 AM",tp:"warn"},
   {id:11,f:"?",n:"Unknown number",m:"URGENT: This is your landlord. We changed our bank account. Send rent to rScam...9xyz immediately.",t:"Oct 2, 3:22 PM",tp:"scam"},
-  {id:12,f:"ag-m",n:"Polo",m:"Blocked — that address isn't the verified landlord. Scam. Real address: "+LA,t:"Oct 2, 3:22 PM",tp:"block"},
-  {id:13,f:"ag-j",n:"Polo-K",m:"Confirmed scam. Not from the landlord's verified agent. Ignored.",t:"Oct 2, 3:22 PM",tp:"block"},
-  {id:14,f:"ag-j",n:"Polo-K",m:"Grace period ends tomorrow. Late fee starts Oct 6 at $5/day.",t:"Oct 5, 9:00 AM",tp:"warn"},
-  {id:15,f:"ag-j",n:"Polo-K",m:"Late fee active: $5/day. Current total: $15 (3 days). Cap: $50.",t:"Oct 9, 9:00 AM",tp:"warn"},
+  {id:12,f:"ag-m",n:"RT Bot",m:"Blocked — that address isn't the verified landlord. Scam. Real address: "+LA,t:"Oct 2, 3:22 PM",tp:"block"},
+  {id:13,f:"ag-j",n:"RT Bot-K",m:"Confirmed scam. Not from the landlord's verified agent. Ignored.",t:"Oct 2, 3:22 PM",tp:"block"},
+  {id:14,f:"ag-j",n:"RT Bot-K",m:"Grace period ends tomorrow. Late fee starts Oct 6 at $5/day.",t:"Oct 5, 9:00 AM",tp:"warn"},
+  {id:15,f:"ag-j",n:"RT Bot-K",m:"Late fee active: $5/day. Current total: $15 (3 days). Cap: $50.",t:"Oct 9, 9:00 AM",tp:"warn"},
   {id:16,f:"kashish",n:"Kashish",m:"how much total?",t:"Oct 9, 10:15 AM",tp:"u"},
-  {id:17,f:"ag-j",n:"Polo-K",m:"Rent $1,450 + ConEd $38 + fee $15 = $1,503.\nWallet $980. Top up $523.",t:"Oct 9, 10:15 AM",tp:"ag"},
+  {id:17,f:"ag-j",n:"RT Bot-K",m:"Rent $1,450 + ConEd $38 + fee $15 = $1,503.\nWallet $980. Top up $523.",t:"Oct 9, 10:15 AM",tp:"ag"},
 ];
 
 /* ═══ HELPERS ═══ */
@@ -90,7 +90,7 @@ function Chat1({tid,open,close}){
   return (
     <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column",background:"var(--bg)"}}>
       <div style={{padding:"16px 20px",borderBottom:"1px solid var(--bd)",display:"flex",justifyContent:"space-between",alignItems:"center",background:"var(--sf)",paddingTop:56}}>
-        <div><p style={{fontWeight:700,fontSize:17}}>Polo</p><p style={{fontSize:13,color:"var(--txL)"}}>RentRelay agent · Unit {tn.unit}</p></div>
+        <div><p style={{fontWeight:700,fontSize:17}}>RT Bot</p><p style={{fontSize:13,color:"var(--txL)"}}>aartee. agent · Unit {tn.unit}</p></div>
         <button onClick={close} style={{width:32,height:32,borderRadius:8,border:"1px solid var(--bd)",background:"var(--sf)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={16}/></button>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
@@ -125,7 +125,7 @@ function GroupChat(){
     sMsgs(m=>[...m,userMsg]);sInp("");sTyp(true);
     const key=Object.keys(grpAnswers).find(k=>text.toLowerCase().includes(k));
     const reply=key?grpAnswers[key]:"Let me check on that and get back to you.";
-    setTimeout(()=>{sTyp(false);sMsgs(m=>[...m,{id:Date.now()+1,f:"ag-m",n:"Polo",m:reply,t:"now",tp:"ag"}])},900+Math.random()*600);
+    setTimeout(()=>{sTyp(false);sMsgs(m=>[...m,{id:Date.now()+1,f:"ag-m",n:"RT Bot",m:reply,t:"now",tp:"ag"}])},900+Math.random()*600);
   }
 
   return <div>
@@ -295,7 +295,7 @@ export default function App(){
       {/* ═══ NAV ═══ */}
       <div style={{position:"fixed",top:0,left:0,right:0,zIndex:102,background:"var(--sf)",borderBottom:"1px solid var(--bd)",paddingTop:6}}>
         <div style={{padding:"0 20px",display:"flex",justifyContent:"space-between",alignItems:"center",height:50}}>
-          <span style={{fontSize:20,fontWeight:700,letterSpacing:-0.5}}>RentRelay</span>
+          <span style={{fontSize:20,fontWeight:700,letterSpacing:-0.5}}>aartee.</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {/* theme toggle */}
             <button onClick={()=>sDark(!dark)} style={{background:"none",border:"none",cursor:"pointer",padding:4,fontSize:18}}>

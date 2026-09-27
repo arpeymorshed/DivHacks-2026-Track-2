@@ -1,4 +1,4 @@
-# RentRelay
+# aartee.
 
 Your personal rent agent. Built for DivHacks 2026.
 

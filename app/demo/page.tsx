@@ -76,7 +76,7 @@ export default function DemoPage(){
       <div style={{padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #222"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:28,height:28,borderRadius:7,background:"#0d6e6e",display:"flex",alignItems:"center",justifyContent:"center"}}><Shield size={14} color="#fff"/></div>
-          <span style={{fontSize:18,fontWeight:700}}>RentRelay</span>
+          <span style={{fontSize:18,fontWeight:700}}>aartee.</span>
           <span style={{fontSize:13,color:"#666",marginLeft:8}}>Demo · Landlord + Guardian</span>
         </div>
         <button onClick={()=>{sDD(9);sT(initT());sR({});sRn(null);sSS([])}} style={{padding:"6px 14px",borderRadius:7,border:"1px solid #333",background:"transparent",fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:"inherit",color:"#888",display:"flex",alignItems:"center",gap:4}}><RotateCcw size={12}/>Reset all</button>
