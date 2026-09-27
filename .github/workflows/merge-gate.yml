@@ -216,6 +216,48 @@ jobs:
           claude_args: |
             --allowedTools "Read,Glob,Grep,WebSearch,WebFetch,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(git diff:*),Bash(git log:*)"
 
+      - name: Diagnose failed Claude execution safely
+        if: steps.review1.outcome == 'failure' && steps.review2.outcome == 'failure' && steps.review3.outcome == 'failure'
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.review3.outputs.execution_file }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          # Never print the transcript, result text, or exception details: they
+          # may contain credentials or repository data. Emit fixed labels only.
+          path = os.environ.get("EXECUTION_FILE") or str(
+              Path(os.environ["RUNNER_TEMP"]) / "claude-execution-output.json"
+          )
+          try:
+              messages = json.loads(Path(path).read_text())
+              results = [m for m in messages if isinstance(m, dict) and m.get("type") == "result"]
+              result = results[-1] if results else {}
+              error_text = json.dumps({
+                  "result": result.get("result", ""),
+                  "errors": result.get("errors", []),
+              }).lower()
+          except (OSError, ValueError, TypeError):
+              print("Claude diagnostic: execution result unavailable")
+              raise SystemExit(0)
+
+          categories = {
+              "authentication": r"authentication_error|invalid.{0,20}(oauth|token|api.key)|token.{0,20}(expired|invalid)|not logged in|\\b401\\b",
+              "permission": r"permission_error|access denied|\\b403\\b",
+              "usage-limit": r"rate_limit|rate limit|usage limit|hit your limit|quota|\\b429\\b",
+              "billing": r"credit balance|billing|insufficient credits",
+              "model-unavailable": r"model.{0,40}(not found|not available|does not exist|unsupported)",
+              "service-unavailable": r"overloaded|api_error|\\b50[0234]\\b",
+          }
+          matched = [label for label, pattern in categories.items() if re.search(pattern, error_text)]
+          print("Claude diagnostic categories: " + (", ".join(matched) or "unclassified"))
+          print("Claude diagnostic result present: " + str(bool(results)))
+          PY
+
       - name: Enforce verdict from review comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
