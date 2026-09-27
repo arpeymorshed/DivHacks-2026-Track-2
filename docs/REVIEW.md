@@ -2,6 +2,19 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-26: FI / T01a frontend integration, PR #11 `frontend-integration` @ 7aa3979: ✅ approved
+**Ran from a clean scratch copy of 7aa3979:** `npm ci` · `next build` ✅ (`/` and `/demo` prerender) · `npm run typecheck` (strict `tsconfig.server.json`, TypeScript 5.9.3) ✅ · `npm run test:guardian` 18/18 ✅. The Builder's `/merge-check` (review, build/test, run-locally) also passed.
+- **Follows the plan.** It's cut from `main`, Kashish's `app/`, `public/` and configs are transplanted, and the commit credits Kashish (`Co-authored-by`). The app code is identical to `origin/frontend` apart from the 5 typed `useRef`s (`app/page.tsx`).
+- **Configs are right.** There's one `package.json` (Next 14.2 / React 18.3 / Tailwind 3.4 added; xrpl/express/tsx kept; `typescript ^5.4`). The root `tsconfig.json` is Next's plus `target: ES2022`, needed for the scripts' top-level await, with `bot/` and `.secrets` excluded. The previous strict config is kept as-is in `tsconfig.server.json`, and `.gitignore` adds `*.tsbuildinfo`.
+- The money layer is untouched, so the Guardian/Render deploy still works. Note: Render's `npm install` now also pulls Next/React (~200 packages). That's a slower deploy, but not a slower wake-up.
+
+Non-blocking:
+- `FRONTEND.md` still says `cd rentrelay-project` and has the Xcode WebView steps. Update when convenient.
+- The dark-mode toast bug is already in `docs/BUGS.md`, for the Debugger.
+- The UI is still all mocks. Wiring to `/api/*` is the next step (T19/T20/T32/T38 notes).
+
+**Merge:** PR #11 needs Arpey's yes. CI (build-test, smoke, claude-review) was still pending when checked. After merge, Kashish continues on `main`/`frontend-integration`, not `frontend`.
+
 ## 2026-09-26: `origin/frontend` @ 819665e (Kashish; tenant app, group chat, landlord view, dark mode): ⚠️ not mergeable yet (no PR open)
 Looked at because the user asked. It isn't on the board as In review.
 **Ran (in a scratch copy, not this checkout):** `npm ci` OK · `next build` **fails** · `tsc` 5 errors · `next dev` renders the tenant dashboard with no console errors.
