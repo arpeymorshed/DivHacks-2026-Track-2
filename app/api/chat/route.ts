@@ -12,6 +12,9 @@ import {
 } from "@/agent/gemini";
 
 import { evaluatePayLaterRequest } from "@/agent/paymentNegotiation";
+import { clockOf, getDemoState } from "@/services/demoState";
+
+const MAX_TEXT_CHARS = 1000;
 
 import type {
   ChatRequest,
@@ -52,6 +55,16 @@ export async function POST(request: Request) {
   try {
     const { tenantId, text } = body;
 
+    if (text.length > MAX_TEXT_CHARS) {
+      return NextResponse.json(
+        { error: `text must be ${MAX_TEXT_CHARS} characters or fewer` },
+        { status: 400 }
+      );
+    }
+
+    // Use the demo clock (not the real date) so answers match rent day and GET /api/state.
+    const clock = clockOf(await getDemoState());
+
     const tenant = await getTenantById(tenantId);
 
     if (!tenant) {
@@ -61,7 +74,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const due = await getDueForTenant(tenantId);
+    const due = await getDueForTenant(tenantId, clock.month);
 
     if (!due) {
       return NextResponse.json({
@@ -97,7 +110,8 @@ export async function POST(request: Request) {
     if (intent?.intent === "pay_later") {
       const decision = evaluatePayLaterRequest(
         due,
-        intent.requestedDay
+        intent.requestedDay,
+        new Date(`${clock.today}T00:00:00Z`)
       );
 
       if (!decision.approved || !decision.payLaterUntil) {

@@ -1,8 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
+export type UnitCharge = { unit: string; chargeUsd: number };
+
 export type ExtractedUtilityBill = {
   provider: string;
   totalUsd: number;
+  // Per-unit lines on a sub-metered building bill (e.g. "Unit 4B $76.00"); [] when the bill has none.
+  units: UnitCharge[];
   billingPeriod: string | null;
   dueDate: string | null;
 };
@@ -37,6 +41,19 @@ function validateExtractedUtilityBill(
   const totalUsd = parsed.totalUsd;
   const billingPeriod = parsed.billingPeriod;
   const dueDate = parsed.dueDate;
+  const units = parsed.units ?? [];
+
+  if (!Array.isArray(units)) {
+    throw new Error("Gemini returned invalid unit charges");
+  }
+  const validatedUnits: UnitCharge[] = units.map((u) => {
+    const unit = (u as Record<string, unknown>)?.unit;
+    const chargeUsd = (u as Record<string, unknown>)?.chargeUsd;
+    if (typeof unit !== "string" || unit.trim().length === 0 || typeof chargeUsd !== "number" || !Number.isFinite(chargeUsd) || chargeUsd < 0) {
+      throw new Error("Gemini returned an invalid unit charge");
+    }
+    return { unit: unit.trim(), chargeUsd };
+  });
 
   if (
     typeof provider !== "string" ||
@@ -82,6 +99,7 @@ function validateExtractedUtilityBill(
   return {
     provider: provider.trim(),
     totalUsd,
+    units: validatedUnits,
     billingPeriod: validatedBillingPeriod,
     dueDate: validatedDueDate,
   };
@@ -111,6 +129,8 @@ Read this utility bill and extract ONLY these facts:
 
 - provider: utility company name
 - totalUsd: total bill amount as a number
+- units: if the bill lists separate charges per apartment/unit (sub-metered, e.g. "Unit 4B $76.00"),
+  each one as {"unit": "4B", "chargeUsd": 76}; otherwise an empty array
 - billingPeriod: billing period as text, or null if unavailable
 - dueDate: due date in YYYY-MM-DD format, or null if unavailable
 
@@ -119,6 +139,7 @@ Return ONLY JSON in this exact shape:
 {
   "provider": "string",
   "totalUsd": 0,
+  "units": [{ "unit": "string", "chargeUsd": 0 }],
   "billingPeriod": "string or null",
   "dueDate": "YYYY-MM-DD or null"
 }

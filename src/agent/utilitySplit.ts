@@ -112,3 +112,17 @@ export function splitUtilityBillByShares(
     amountUsd: allocation.cents / 100,
   }));
 }
+
+// The Guardian's per-tenant utilities limit (guardian policy maxUtilitiesUsd). Shares above it would make
+// every rent payment for that tenant refused, so the bill route rejects them instead of writing them.
+export const MAX_UTILITIES_USD = 100;
+
+const normUnit = (s: string) => s.toLowerCase().replace(/\bunit\b|apt\.?|apartment|#|\s/g, "");
+
+// The amount the selected unit owes: its own line on a sub-metered bill, or the whole total when the
+// bill has no per-unit lines. null when the bill has unit lines but none for this unit.
+export function unitChargeFor(bill: { totalUsd: number; units: { unit: string; chargeUsd: number }[] }, unitName: string): number | null {
+  if (bill.units.length === 0) return bill.totalUsd;
+  const line = bill.units.find((u) => normUnit(u.unit) === normUnit(unitName));
+  return line ? line.chargeUsd : null;
+}

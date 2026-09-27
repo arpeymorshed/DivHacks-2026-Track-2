@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { extractUtilityBill } from "@/agent/billVision";
-import { splitUtilityBillByShares } from "@/agent/utilitySplit";
+import { MAX_UTILITIES_USD, splitUtilityBillByShares, unitChargeFor } from "@/agent/utilitySplit";
+import { requireDemoKey } from "@/lib/demoKey";
 
 import {
   getBuilding,
@@ -19,6 +20,9 @@ const SUPPORTED_MIME_TYPES = new Set([
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
+  const denied = requireDemoKey(request);
+  if (denied) return denied;
+
   try {
     const formData = await request.formData();
 
@@ -141,10 +145,33 @@ export async function POST(request: Request) {
      * Deterministic backend code calculates each tenant's share.
      * Gemini never performs the authoritative money calculation.
      */
+    // A sub-metered building bill lists each unit's charge; use this unit's line (not the building total).
+    const unitCharge = unitChargeFor(extractedBill, unit.name);
+
+    if (unitCharge === null) {
+      return NextResponse.json(
+        { error: `This bill has no charge for unit ${unit.name}`, bill: extractedBill },
+        { status: 400 }
+      );
+    }
+
     const shares = splitUtilityBillByShares(
-      extractedBill.totalUsd,
+      unitCharge,
       trustedTenants
     );
+
+    const overLimit = shares.filter((share) => share.amountUsd > MAX_UTILITIES_USD);
+
+    if (overLimit.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Utility share over the $${MAX_UTILITIES_USD} per-tenant limit; not saved (the Guardian would refuse that rent)`,
+          bill: extractedBill,
+          shares,
+        },
+        { status: 400 }
+      );
+    }
 
     /*
      * Step 5:
@@ -161,6 +188,7 @@ export async function POST(request: Request) {
         id: unit.id,
         name: unit.name,
       },
+      unitChargeUsd: unitCharge,
       shares,
       updatedDues: updatedDues.map((due) => ({
         tenantId: due.tenantId,

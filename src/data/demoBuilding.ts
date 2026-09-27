@@ -101,7 +101,7 @@ export const dues: Due[] = [
     tenantId: "musammat",
     month: "2026-10",
     rentUsd: 1450, // Unit 2A is $1,450 at 100%; the Guardian enforces rent == share exactly
-    utilitiesUsd: 52,
+    utilitiesUsd: 38, // 2A's line on the fixture ConEd bill (fixtures/utility-bill-building.png)
     dueDate: "2026-10-01",
     daysLate: 0,
     lateFeeUsd: 0,
