@@ -2,6 +2,53 @@
 
 _Owned by the Reviewer chat. Newest first. Each entry: date, task, verdict (approved / changes needed), findings._
 
+## 2026-09-27: PR #19 re-review, `p2-gemini` @ facdba1 (Builder's fixes) + Musammat's 9edc641/2ab7815: ✅ approved; needs `main` merged in first
+**Ran on the trial merge of `origin/main` + `p2-gemini`** (`git merge-tree`, tree d7eff6b): `next build` ✅ · `typecheck` ✅ · `test:guardian` 18/18 ✅ · `npm test` exit 0 ✅, including "Per-unit bill split checks passed: 4B $38/$38, 2A $38, missing unit → null, over-limit detected". So the fixes work together with T30's late-fee changes on `main`.
+- **#1 bill split: fixed.** `billVision` extracts validated `units[{unit, chargeUsd}]`. `unitChargeFor` uses the selected unit's line and falls back to `totalUsd` only when the bill has no unit lines (`src/agent/utilitySplit.ts`). The route returns 400 when the bill lists units but not this one, and 400 with **nothing written** if any share is over `MAX_UTILITIES_USD` $100 (the Guardian limit). The seed has Musammat's utilities at 52 → 38, matching the fixture's 2A line, with tests updated.
+- **#2 demo key: fixed.** `requireDemoKey` is at the top of `/api/bill`, and `/api/chat` stays open.
+- **#3 workflow: fixed.** `merge-gate.yml` is byte-identical to `main`'s.
+- **#4 demo clock / #5 length cap: fixed** in `/api/chat` (`clockOf(getDemoState())` for the month and "today"; `text` > 1,000 chars → 400).
+- **#6: fixed.** `npm test` runs `testPaymentNegotiation`, `testUtilitySplit` and `testReminderMessage`. `testUtilityShares` needs Mongo, so it's left out.
+- **Musammat's new commits:** `POST /api/tick` (2ab7815) has `requireDemoKey`, and reminders read the demo clock via `buildState()` and dedupe per month/stage/tenant (`src/agent/reminders.ts`). Minor: the dedupe key has no `run`, so after a demo reset a stage's reminder only re-sends if reset also clears the outbox. `resetDemoOutbox` should cover it, but check once.
+- The `CLAUDE_CODE_OAUTH_TOKEN` repo secret is back (checked).
+
+**Before merging:** the PR is `DIRTY`. The only conflict is `docs/BOARD.md`, and GitHub won't run the gate on a conflicted PR. Merge `origin/main` into `p2-gemini`, resolve BOARD.md (T31/T34 → Done, keep `main`'s T30 lines), and push. The gate then runs with the restored token. Squash-merge.
+
+## 2026-09-27: PR #19 `p2-gemini` @ 670d0bf (Musammat: Gemini chat, pay-later negotiation, utility bill upload, reminders): ❌ changes needed
+**Why it's blocked right now:** `claude-review` fails at "Check the Claude token is set". **The repo has 0 Actions secrets**: `CLAUDE_CODE_OAUTH_TOKEN` was deleted between 05:42 (Cursor PR #23's run reviewed fine) and 05:48. Every PR's gate will now fail, on `main`'s workflow too. **Arpey:** run `claude setup-token` and re-add the repo secret. Before that, #19's earlier runs failed on a real `VERDICT: FAIL` that called the Gemini model IDs fake. **That was a false positive:** I checked Google's docs, and `gemini-3.8-flash` (stable, Sep 2026) and `gemini-3.5-flash-lite` both exist.
+**Ran from a clean scratch copy:** `next build` ✅ · `typecheck` ✅ · `test:guardian` 18/18 ✅ · `npm test` ✅ · the PR's `testPaymentNegotiation`, `testUtilitySplit`, `testReminderMessage` ✅ (not wired into `npm test`, see #6). `testBillVision`/`testGemini` are live scripts that need a key and an image.
+Good: Gemini only extracts or phrases; **money is computed in code** (`splitUtilityBillByShares`, integer cents). Pay-later is validated deterministically (days 1–5 only, `src/agent/paymentNegotiation.ts`). The bill route limits file type and size and takes the unit from the DB. The key comes from env. `@google/genai` is declared.
+
+Blocking:
+1. **The fixture bill gives the wrong split, and can make the Guardian refuse rent.** `fixtures/utility-bill-building.png` is a sub-metered **building** bill: 4B $76 (so $38 each), 2A $38, total $114. `billVision` only extracts `totalUsd`, and `/api/bill` splits that total among the chosen unit's tenants (`app/api/bill/route.ts:134-147`). Uploading for 4B gives $57 each (expected $38). Uploading for 2A gives Musammat $114, **over the Guardian's $100 `maxUtilitiesUsd`**, so her next rent is refused (`cap`). Fix: have Gemini extract the per-unit lines and use the selected unit's charge (match `unit.name` "4B"/"2A"), then split by share. Also refuse (400) any share over $100 instead of writing a due the Guardian will reject. That meets T34's done-when ("fixture bill gives the $38 share").
+2. **`/api/bill` has no demo key.** It's the only state-changing route without `requireDemoKey` (the other 6 have it since #22), and demo reset doesn't restore `dues`, so one bad public upload sticks across resets. Add `requireDemoKey(request)` at the top. (`/api/chat` should stay open: judges chat with it.)
+3. **The merge-gate workflow rewrite doesn't belong in this PR.** It changes `.github/workflows/merge-gate.yml` (+264), and a `pull_request` run uses the PR's own workflow, so this PR edits the gate that judges it. It also **reverses the team's advisory setup** (486bd8f: review flakes are advisory, build-test + smoke gate the merge; this PR makes a missing verdict a hard FAIL). It adds `WebSearch`/`WebFetch` to a reviewer that reads untrusted PR content (a leak path for a private repo), and repeats the prompt 3×. Fix: restore `main`'s `merge-gate.yml` in this PR. If the team wants "verify model/API claims against docs" or retries, propose that separately for Arpey to decide.
+
+Should fix:
+4. **Chat negotiation ignores the demo clock.** `evaluatePayLaterRequest(due, day)` defaults `now` to the real date, and `getDueForTenant(tenantId)` defaults to `"2026-10"` (`app/api/chat/route.ts:64, 98`). Pass `clockOf(await getDemoState())`: `month` for the due, `new Date(today)` for `now`. Otherwise "pay on the 5th" can be approved when the demo date is already day 8.
+5. There's no length cap on chat `text` (Gemini cost and latency). Something like 1,000 chars is enough.
+6. Add the deterministic tests (`testPaymentNegotiation`, `testUtilitySplit`, `testReminderMessage`, `testUtilityShares` if it's offline) to `npm test` so CI runs them.
+7. Squash-merge (16 commits, including "fffffffff").
+
+FYI, seed vs fixture: the seeded dues put Musammat's utilities at $52, but the fixture says 2A is $38. Align them when fixing #1.
+
+## 2026-09-27: PR #23 `cursor/tailwind-ui-5063` @ 09b0660 (Cursor: restyle frontend with Tailwind tokens): ✅ approved, no blocking issues
+**Ran from a clean scratch copy:** `npm ci` · `next build` ✅. PR CI (build-test, smoke, claude-review, merge-gate) is green, and the branch is up to date with `main` (863a08b).
+**Checked in the browser (`next start`):** `/` light + dark, `/demo` Building + Guardian tabs, rent day, an attack, and phone width (375px, no horizontal scroll). No console errors.
+- **Restyle only.** `app/page.tsx` and `app/demo/page.tsx` swap inline styles for Tailwind classes plus token CSS variables (`tailwind.config.ts`, `app/globals.css`). The mock data and flows are unchanged: the `AUD` rows and amounts are identical to `main`, and the extra `useState`s are only added types. No API wiring was lost, because `main`'s pages had none yet.
+- **The dark-mode toast bug is fixed.** I verified the `/demo` "Blocked: …" toast shows light text on a dark surface. It's correctly moved to Fixed in `docs/BUGS.md`.
+- Fonts load via `next/font` (IBM Plex Sans/Mono), with no CSS `@import` from Google and no leftover Syne/DM Sans references.
+
+Minor (cosmetic, fine to merge as is):
+- **Squash-merge.** The 5 commits are Cursor's design iterations (tokens → minimal → "Gen Z"/Syne → IBM Plex). The PR description is stale: it says DM Sans, but the final font is IBM Plex.
+- **`/demo` always forces dark** and sets `light` when you leave (`app/demo/page.tsx`, new `useEffect`), which ignores the theme toggle.
+- The toast briefly covers `/demo`'s Reset button. At phone width, the floating chat button covers the end of the last Rules row until you scroll.
+
+Pre-existing, not from this PR (for the team):
+- **Branding:** the UI and page title say "RentRelay", while the bot (#17) and domain (`aartee.tech`) say "Aartee". PLAN doesn't record a rename, so pick one before judging.
+- **The UI is still all mocks.** For example, the tenant view shows landlord `rLndQ7v…`, not the real `rLD4K9…`. Wiring to `/api/state` (T18 is merged) is still open.
+- `layout.tsx` viewport has `user-scalable=no`, which blocks pinch-zoom (accessibility). It was already on `main`.
+
 ## 2026-09-26: PR #16 `p1-real-payments` @ 9a18f37 (T21a real money layer in P2's backend; routes for T33/T35/T37): ✅ approved
 **Ran from a clean scratch copy:** `npm ci` · `next build` ✅ (all 11 API routes compile) · `npm run typecheck` ✅ · `test:guardian` 18/18 ✅ · P2 `npm test` (mock mode) ✅. PR CI (build-test, smoke, claude-review, merge-gate) is green.
 **Not run:** `scripts/check-real-rent-day.ts`, because it moves real RLUSD. The Builder reports it live.

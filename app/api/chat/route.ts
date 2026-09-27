@@ -1,57 +1,48 @@
 import { NextResponse } from "next/server";
-import { getTenantById, getDueForTenant } from "@/services/rentRepository";
-import type { ChatRequest, ChatResponse, Due, Tenant } from "@/types/rent";
-import {
-  asksWhenDue,
-  formatMoneyReply,
-  formatWalletBalanceReply,
-  isCapIntent,
-  isMoneyIntent,
-  isOweIntent,
-  isWalletBalanceIntent,
-  normalizeChatText,
-} from "@/lib/chatIntent";
-import { dues as demoDues, tenants as demoTenants } from "@/data/demoBuilding";
 
-/** Demo UI balances used when the ledger isn't reachable (mock mode). */
-const DEMO_BALANCES: Record<string, number> = {
-  abhimanyu: 1520,
-  kashish: 980,
-  musammat: 1550,
-};
+import {
+  getTenantById,
+  getDueForTenant,
+  setPayLaterUntil,
+} from "@/services/rentRepository";
+
+import {
+  generateTenantReply,
+  parseTenantRequest,
+} from "@/agent/gemini";
+
+import { evaluatePayLaterRequest } from "@/agent/paymentNegotiation";
+import { clockOf, getDemoState } from "@/services/demoState";
+
+const MAX_TEXT_CHARS = 1000;
+
+import type {
+  ChatRequest,
+  ChatResponse,
+} from "@/types/rent";
 
 function isChatRequest(value: unknown): value is ChatRequest {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    && "tenantId" in value && typeof value.tenantId === "string" && value.tenantId.trim().length > 0
-    && "text" in value && typeof value.text === "string" && value.text.trim().length > 0;
-}
-
-async function resolveTenant(tenantId: string): Promise<Tenant | null> {
-  try {
-    const t = await getTenantById(tenantId);
-    if (t) return t;
-  } catch {
-    // Mongo unavailable — fall through to demo seed
-  }
-  return demoTenants.find((t) => t.id === tenantId) ?? null;
-}
-
-async function resolveDue(tenantId: string): Promise<Due | null> {
-  try {
-    const d = await getDueForTenant(tenantId);
-    if (d) return d;
-  } catch {
-    // Mongo unavailable
-  }
-  return demoDues.find((d) => d.tenantId === tenantId) ?? null;
+  return typeof value === "object"
+    && value !== null
+    && !Array.isArray(value)
+    && "tenantId" in value
+    && typeof value.tenantId === "string"
+    && value.tenantId.trim().length > 0
+    && "text" in value
+    && typeof value.text === "string"
+    && value.text.trim().length > 0;
 }
 
 export async function POST(request: Request) {
   let body: unknown;
+
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400 }
+    );
   }
 
   if (!isChatRequest(body)) {
@@ -63,63 +54,147 @@ export async function POST(request: Request) {
 
   try {
     const { tenantId, text } = body;
-    const tenant = await resolveTenant(tenantId);
 
-    if (!tenant) {
-      return NextResponse.json({ error: "Unknown tenant" }, { status: 404 });
+    if (text.length > MAX_TEXT_CHARS) {
+      return NextResponse.json(
+        { error: `text must be ${MAX_TEXT_CHARS} characters or fewer` },
+        { status: 400 }
+      );
     }
 
-    const due = await resolveDue(tenantId);
-    const message = normalizeChatText(text);
-    const greetingOnly = /^(hi|hello|hey|yo|sup)$/.test(message);
+    // Use the demo clock (not the real date) so answers match rent day and GET /api/state.
+    const clock = clockOf(await getDemoState());
 
-    let reply = `Hi ${tenant.name}! How can I help with your rent?`;
+    const tenant = await getTenantById(tenantId);
 
-    const topUpAsk =
-      /\b(top\s*up|topup|deposit|fund)\b/.test(message) ||
-      message.includes("add to my wallet") ||
-      message.includes("add money");
+    if (!tenant) {
+      return NextResponse.json(
+        { error: "Unknown tenant" },
+        { status: 404 }
+      );
+    }
 
-    const balanceUsd = DEMO_BALANCES[tenantId] ?? null;
+    const due = await getDueForTenant(tenantId, clock.month);
 
-    if (!greetingOnly && isWalletBalanceIntent(text)) {
-      const dueTotal = due
-        ? due.rentUsd + due.utilitiesUsd + due.lateFeeUsd
-        : undefined;
-      reply = formatWalletBalanceReply({
-        name: tenant.name,
-        balanceUsd,
-        capUsd: tenant.capUsd,
-        dueTotalUsd: dueTotal,
-      });
-    } else if (!greetingOnly && isCapIntent(text)) {
-      const bal = balanceUsd ?? 0;
-      const room = Math.max(0, Math.round((tenant.capUsd - bal) * 100) / 100);
-      reply = balanceUsd == null
-        ? `Your wallet cap is $${tenant.capUsd}.`
-        : `Your wallet cap is $${tenant.capUsd}. Balance $${balanceUsd}, so you can still add up to $${room}.`;
-    } else if (!greetingOnly && topUpAsk && !isOweIntent(text) && !asksWhenDue(text)) {
-      reply = `To add money, use Top up in the app or say e.g. “Top up $100” in RT chat. `
-        + `Your wallet cap is $${tenant.capUsd}. `
-        + `If a top-up would exceed the cap, you'll get an error and should retry with a smaller amount.`;
-    } else if (!greetingOnly && (isMoneyIntent(text) || asksWhenDue(text))) {
-      if (!due) {
-        reply = `I couldn't find current dues for ${tenant.name}.`;
-      } else {
-        reply = formatMoneyReply({
-          name: tenant.name,
+    if (!due) {
+      return NextResponse.json({
+        reply: `I couldn't find a current balance for ${tenant.name}.`,
+      } satisfies ChatResponse);
+    }
+
+    /*
+     * Step 1:
+     * Let Gemini understand what the tenant is asking.
+     *
+     * If Gemini is temporarily unavailable, we fail safely:
+     * no payment-date change is made.
+     */
+    let intent:
+      | Awaited<ReturnType<typeof parseTenantRequest>>
+      | null = null;
+
+    try {
+      intent = await parseTenantRequest(text);
+    } catch (error) {
+      console.error(
+        "Gemini intent parsing failed:",
+        error instanceof Error ? error.name : "UnknownError"
+      );
+    }
+
+    /*
+     * Step 2:
+     * RentRelay—not Gemini—decides whether a delayed payment
+     * request is allowed.
+     */
+    if (intent?.intent === "pay_later") {
+      const decision = evaluatePayLaterRequest(
+        due,
+        intent.requestedDay,
+        new Date(`${clock.today}T00:00:00Z`)
+      );
+
+      if (!decision.approved || !decision.payLaterUntil) {
+        return NextResponse.json({
+          reply: decision.reason,
+        } satisfies ChatResponse);
+      }
+
+      const updatedDue = await setPayLaterUntil(
+        tenantId,
+        decision.payLaterUntil,
+        due.month
+      );
+
+      if (!updatedDue) {
+        return NextResponse.json(
+          { error: "Unable to update payment arrangement" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        reply:
+          `Yes — I can schedule your payment for `
+          + `${decision.payLaterUntil}. `
+          + `That date is within the grace period, so no late fee applies.`,
+      } satisfies ChatResponse);
+    }
+
+    /*
+     * Step 3:
+     * Normal rent questions go through Gemini using trusted
+     * MongoDB values.
+     */
+    const totalUsd =
+      due.rentUsd
+      + due.utilitiesUsd
+      + due.lateFeeUsd;
+
+    let reply: string;
+
+    try {
+      reply = await generateTenantReply({
+        userText: text,
+        facts: {
+          tenantName: tenant.name,
           rentUsd: due.rentUsd,
           utilitiesUsd: due.utilitiesUsd,
           lateFeeUsd: due.lateFeeUsd,
+          totalUsd,
           dueDate: due.dueDate,
-          includeWhen: asksWhenDue(text),
-        });
-      }
+          daysLate: due.daysLate,
+          reason: due.reason,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Gemini reply failed:",
+        error instanceof Error ? error.name : "UnknownError"
+      );
+
+      reply =
+        `Hi ${tenant.name}. You currently owe $${totalUsd}: `
+        + `$${due.rentUsd} rent + $${due.utilitiesUsd} utilities`
+        + (
+          due.lateFeeUsd > 0
+            ? ` + $${due.lateFeeUsd} late fee.`
+            : "."
+        );
     }
 
-    return NextResponse.json({ reply } satisfies ChatResponse);
+    return NextResponse.json(
+      { reply } satisfies ChatResponse
+    );
   } catch (error) {
-    console.error("Chat failed:", error instanceof Error ? error.message : "UnknownError");
-    return NextResponse.json({ error: "Chat failed" }, { status: 500 });
+    console.error(
+      "Chat failed:",
+      error instanceof Error ? error.name : "UnknownError"
+    );
+
+    return NextResponse.json(
+      { error: "Chat failed" },
+      { status: 500 }
+    );
   }
 }

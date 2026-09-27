@@ -28,7 +28,7 @@ const intents = results.map((result) => result.intent);
 deepStrictEqual(outbox.map(({ tenantId, text }) => ({ tenantId, text })), [
   { tenantId: "abhimanyu", text: "Abhimanyu, your 2026-10 total is $1488." },
   { tenantId: "kashish", text: "Kashish, your 2026-10 total is $1488." },
-  { tenantId: "musammat", text: "Musammat, your 2026-10 total is $1502." },
+  { tenantId: "musammat", text: "Musammat, your 2026-10 total is $1488." },
 ]);
 deepStrictEqual(outbox.map((message) => message.dedupeKey), [
   "rent-due:2026-10:abhimanyu",
@@ -59,7 +59,7 @@ deepStrictEqual(intents, [
     tenantId: "musammat",
     agentId: "agent-musammat",
     destination: "rLD4K9gFjsGMwVormQmV8DBfGkJWfVVxZS",
-    amountUsd: 1502,
+    amountUsd: 1488,
     currency: "RLUSD",
     month: "2026-10",
     reason: "October rent + ConEd share",

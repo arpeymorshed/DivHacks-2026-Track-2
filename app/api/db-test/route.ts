@@ -9,7 +9,7 @@ export async function GET() {
     const db = await getDb();
     const collection = db.collection("connectionTests");
     const document = {
-      message: "RentRelay MongoDB connection works",
+      message: "Aartee MongoDB connection works",
       createdAt: new Date(),
     };
     const result = await collection.insertOne(document);
