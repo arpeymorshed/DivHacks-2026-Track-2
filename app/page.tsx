@@ -125,25 +125,114 @@ function Toasts({ ts }: { ts: any[] }) {
   );
 }
 
-function Chat1({ tid, tn, open, close }: { tid: string; tn: ReturnType<typeof initT>[keyof ReturnType<typeof initT>]; open: boolean; close: () => void }) {
+type TopUpResult =
+  | { ok: true; bal: number; added: number }
+  | { ok: false; error: string; room: number };
+
+function parseTopUpAmount(text: string): number | null {
+  const q = text.toLowerCase().replace(/,/g, "").trim();
+  const patterns = [
+    /\b(?:top\s*up|add|deposit|fund|put)\b(?:\s+\w+){0,4}\s*\$?\s*(\d+(?:\.\d{1,2})?)/i,
+    /^\$?\s*(\d+(?:\.\d{1,2})?)\s*(?:please)?$/,
+    /\$\s*(\d+(?:\.\d{1,2})?)\s*(?:to\s+(?:my\s+)?wallet|into\s+(?:my\s+)?wallet)/i,
+  ];
+  for (const re of patterns) {
+    const m = q.match(re);
+    if (m) {
+      const n = parseFloat(m[1]);
+      if (Number.isFinite(n) && n > 0) return Math.round(n * 100) / 100;
+    }
+  }
+  return null;
+}
+
+function wantsTopUp(text: string): boolean {
+  const q = text.toLowerCase();
+  return /\b(top\s*up|topup|deposit|fund|add\s+(?:money|funds|\$)|put\s+\$)/.test(q)
+    || q.includes("add to my wallet")
+    || q.includes("add to wallet");
+}
+
+function Chat1({
+  tid, tn, open, close, onTopUp,
+}: {
+  tid: string;
+  tn: ReturnType<typeof initT>[keyof ReturnType<typeof initT>];
+  open: boolean;
+  close: () => void;
+  onTopUp: (amount: number) => TopUpResult;
+}) {
   const d = CHAT1[tid as keyof typeof CHAT1];
-  const [ms, sM] = useState<any[]>([]);
+  const [ms, sM] = useState<{ id: number | string; r: "u" | "a" | "err"; t: string }[]>([]);
   const [inp, sI] = useState("");
   const [typ, sT] = useState(false);
-  const [sg, sS] = useState<string[]>([]);
   const br = useRef<HTMLDivElement>(null);
   const ir = useRef<HTMLInputElement>(null);
+
+  const totDue = tn.rS + tn.ut + tn.lf;
+  const shortAmt = Math.max(0, Math.round((totDue - tn.bal) * 100) / 100);
+  const room = Math.max(0, Math.round((tn.cap - tn.bal) * 100) / 100);
+
+  const widgets = (() => {
+    const items: { tag: string; label: string; prompt: string }[] = [
+      { tag: "Balance", label: "What do I owe?", prompt: "What do I owe?" },
+      { tag: "Schedule", label: "When is rent due?", prompt: "When is rent due?" },
+      { tag: "Wallet", label: "Wallet balance", prompt: "What's my wallet balance?" },
+      { tag: "Limits", label: "What's my cap?", prompt: "What's my cap?" },
+    ];
+    if (shortAmt > 0 && shortAmt <= room) {
+      items.unshift({ tag: "Top up", label: `Add $${f$(shortAmt)} to cover`, prompt: `Top up $${f$(shortAmt)}` });
+    }
+    for (const amt of [100, 250, 500]) {
+      if (amt <= room) items.push({ tag: "Top up", label: `Top up $${amt}`, prompt: `Top up $${amt}` });
+    }
+    if (room > 0 && room < 100) {
+      items.push({ tag: "Top up", label: `Top up $${f$(room)} (max)`, prompt: `Top up $${f$(room)}` });
+    }
+    for (const s of d.sg) {
+      if (!items.some((i) => i.prompt === s)) items.push({ tag: "Ask", label: s, prompt: s });
+    }
+    return items.slice(0, 8);
+  })();
+
   useEffect(() => {
-    sM([]); sS([]); sT(false);
-    if (open && d) setTimeout(() => { sM([{ id: "g", r: "a", t: d.hi }]); setTimeout(() => sS(d.sg), 280); }, 120);
+    sM([]); sT(false);
+    if (open && d) setTimeout(() => { sM([{ id: "g", r: "a", t: d.hi }]); }, 120);
   }, [open, tid]);
   useEffect(() => { br.current?.scrollIntoView({ behavior: "smooth" }); }, [ms, typ]);
   useEffect(() => { if (open) setTimeout(() => ir.current?.focus(), 180); }, [open]);
-  function answer(text: string) {
+
+  function answer(text: string): { t: string; r: "a" | "err" } {
     const exact = d.an[text as keyof typeof d.an];
-    if (exact) return exact;
+    if (exact) return { t: exact, r: "a" };
 
     const q = text.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
+
+    if (wantsTopUp(text) || (parseTopUpAmount(text) !== null && /\b(top\s*up|add|deposit|fund|wallet)\b/.test(q))) {
+      const amt = parseTopUpAmount(text);
+      if (amt === null) {
+        return {
+          t: room <= 0
+            ? `Your wallet is at the $${f$(tn.cap)} cap (balance $${f$(tn.bal)}). You can't add more right now.`
+            : `How much should I add? You can top up up to $${f$(room)} before hitting your $${f$(tn.cap)} cap. Try “Top up $100”.`,
+          r: "a",
+        };
+      }
+      const result = onTopUp(amt);
+      if (result.ok === false) return { t: result.error, r: "err" };
+      return {
+        t: `Done — added $${f$(result.added)} to your rent wallet. New balance: $${f$(result.bal)} (cap $${f$(tn.cap)}).`,
+        r: "a",
+      };
+    }
+
+    if (/\bcap\b/.test(q) || q.includes("limit")) {
+      return {
+        t: `Your wallet cap is $${f$(tn.cap)}. Balance $${f$(tn.bal)}, so you can still add up to $${f$(room)}.`,
+        r: "a",
+      };
+    }
+
     const asksWhen =
       /\bwhen\b/.test(q) ||
       q.includes("due date") ||
@@ -160,52 +249,65 @@ function Chat1({ tid, tn, open, close }: { tid: string; tn: ReturnType<typeof in
       q.includes("still need");
 
     if (asksMoney || asksWhen) {
-      const total = tn.rS + tn.ut + tn.lf;
       const parts = [`$${f$(tn.rS)} rent`, `$${f$(tn.ut)} ConEd`];
       if (tn.lf > 0) parts.push(`$${f$(tn.lf)} late fee`);
-      const breakdown = `${parts.join(" + ")} = $${f$(total)}`;
-      const short = Math.max(0, total - tn.bal);
+      const breakdown = `${parts.join(" + ")} = $${f$(totDue)}`;
       const wallet = `Wallet has $${f$(tn.bal)}.`;
-      const topUp = short > 0 ? ` Top up $${f$(short)} to cover it.` : "";
+      const tip = shortAmt > 0 ? ` You're short $${f$(shortAmt)} — say “Top up $${f$(shortAmt)}” to cover it.` : "";
 
       if (asksWhen) {
         if (tn.st === "late") {
-          return `You're ${tn.dl} days overdue. You owe ${breakdown}. ${wallet}${topUp}`;
+          return { t: `You're ${tn.dl} days overdue. You owe ${breakdown}. ${wallet}${tip}`, r: "a" };
         }
         if (tn.st === "paid") {
-          return `September is settled. Next payment of $${f$(total)} is due Oct 1 (${breakdown}). ${wallet}`;
+          return { t: `September is settled. Next payment of $${f$(totDue)} is due Oct 1 (${breakdown}). ${wallet}`, r: "a" };
         }
-        return `Your next payment of $${f$(total)} is due Oct 1. Breakdown: ${breakdown}. ${wallet}${topUp}`;
+        return { t: `Your next payment of $${f$(totDue)} is due Oct 1. Breakdown: ${breakdown}. ${wallet}${tip}`, r: "a" };
       }
-      return `You currently owe ${breakdown}. ${wallet}${topUp}`;
+      if (q.includes("wallet") || q.includes("balance")) {
+        return { t: `${wallet} Cap $${f$(tn.cap)} — room for $${f$(room)} more.${tip}`, r: "a" };
+      }
+      return { t: `You currently owe ${breakdown}. ${wallet}${tip}`, r: "a" };
     }
 
     const fuzzy = Object.keys(d.an).find((k) => {
       const key = k.toLowerCase().replace(/[?.!,]/g, " ").replace(/\s+/g, " ").trim();
       return q.includes(key) || key.includes(q);
     });
-    if (fuzzy) return d.an[fuzzy as keyof typeof d.an];
-    return "I can help with what you owe, your wallet balance, or when rent is due.";
+    if (fuzzy) return { t: d.an[fuzzy as keyof typeof d.an], r: "a" };
+    return {
+      t: "I can check what you owe, your wallet balance, when rent is due, or top up your wallet (e.g. “Top up $100”).",
+      r: "a",
+    };
   }
+
   function send(t: string) {
-    sM((m) => [...m, { id: Date.now(), r: "u", t }]); sS([]); sI(""); sT(true);
+    sM((m) => [...m, { id: Date.now(), r: "u", t }]); sI(""); sT(true);
     const a = answer(t);
-    setTimeout(() => { sT(false); sM((m) => [...m, { id: Date.now() + 1, r: "a", t: a }]); setTimeout(() => sS(d.sg.filter((s) => s !== t)), 250); }, 650 + Math.random() * 350);
+    setTimeout(() => {
+      sT(false);
+      sM((m) => [...m, { id: Date.now() + 1, r: a.r, t: a.t }]);
+    }, 550 + Math.random() * 300);
   }
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-bg animate-fade-in">
       <div className="flex items-center justify-between border-b border-line px-4 py-3 pt-11">
         <div>
           <p className="text-[15px] font-medium">Polo</p>
-          <p className="text-xs text-ink-faint">Agent · Unit {tn.unit}</p>
+          <p className="text-xs text-ink-faint">Agent · Unit {tn.unit} · Cap ${f$(tn.cap)}</p>
         </div>
         <button onClick={close} className="rounded-md p-1.5 text-ink-muted hover:bg-line-soft"><X size={16} /></button>
       </div>
       <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-4">
         {ms.map((m) => (
           <div key={m.id} className={`flex animate-rise ${m.r === "u" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[82%] whitespace-pre-wrap rounded-md px-3 py-2 text-[14px] leading-relaxed ${m.r === "u" ? "bg-ink text-bg" : "border border-line bg-surface text-ink"}`}>
+            <div className={`max-w-[82%] whitespace-pre-wrap rounded-md px-3 py-2 text-[14px] leading-relaxed ${
+              m.r === "u" ? "bg-ink text-bg"
+                : m.r === "err" ? "border border-danger/30 bg-danger-soft text-danger"
+                : "border border-line bg-surface text-ink"
+            }`}>
               {m.t}
             </div>
           </div>
@@ -219,15 +321,32 @@ function Chat1({ tid, tn, open, close }: { tid: string; tn: ReturnType<typeof in
         )}
         <div ref={br} />
       </div>
-      {sg.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-line px-4 py-2.5">
-          {sg.map((s) => (
-            <button key={s} onClick={() => send(s)} className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink-muted hover:border-ink/20 hover:text-ink">{s}</button>
+
+      <div className="border-t border-line bg-bg px-4 py-2.5">
+        <p className="mb-1.5 text-[11px] font-medium text-ink-faint">Suggestions</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {widgets.map((w) => (
+            <button
+              key={w.tag + w.prompt}
+              onClick={() => send(w.prompt)}
+              className="shrink-0 rounded-md border border-line bg-surface px-2.5 py-1.5 text-left hover:border-ink/25 hover:bg-bg"
+            >
+              <span className="block text-[10px] uppercase tracking-wide text-ink-faint">{w.tag}</span>
+              <span className="text-[12.5px] font-medium text-ink">{w.label}</span>
+            </button>
           ))}
         </div>
-      )}
+      </div>
+
       <div className="flex gap-2 border-t border-line px-3 py-3 pb-7">
-        <input ref={ir} value={inp} onChange={(e) => sI(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }} placeholder="Ask anything" className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30" />
+        <input
+          ref={ir}
+          value={inp}
+          onChange={(e) => sI(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && inp.trim()) send(inp.trim()); }}
+          placeholder='Try “Top up $100” or ask what you owe'
+          className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[14px] focus:border-ink/30"
+        />
         <button onClick={() => { if (inp.trim()) send(inp.trim()); }} className="rounded-md bg-ink px-3 text-bg hover:opacity-90"><Send size={16} /></button>
       </div>
     </div>
@@ -317,27 +436,37 @@ function GroupChat() {
   );
 }
 
-function TopUp({ tn, open, close, go }: { tn: any; open: boolean; close: () => void; go: (a: number) => void }) {
+function TopUp({ tn, open, close, go }: { tn: any; open: boolean; close: () => void; go: (a: number) => TopUpResult }) {
   const [a, sA] = useState("");
+  const [err, sErr] = useState("");
   if (!open) return null;
   const tot = tn.rS + tn.ut + tn.lf;
   const sf = Math.max(0, tot - tn.bal);
-  const ps = [100, 250, 500];
-  if (sf > 0 && !ps.includes(Math.ceil(sf))) ps.push(Math.ceil(sf));
+  const room = Math.max(0, Math.round((tn.cap - tn.bal) * 100) / 100);
+  const ps = [100, 250, 500].filter((v) => v <= room);
+  if (sf > 0 && sf <= room && !ps.includes(Math.ceil(sf))) ps.push(Math.ceil(sf));
+  if (room > 0 && room < 100 && !ps.includes(room)) ps.push(room);
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center bg-ink/20 p-4 sm:items-center" onClick={close}>
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm animate-rise rounded-lg border border-line bg-surface p-5 shadow-panel">
         <p className="text-[15px] font-medium">Top up</p>
-        <p className="mt-0.5 text-[13px] text-ink-muted">Simulated RLUSD transfer</p>
+        <p className="mt-0.5 text-[13px] text-ink-muted">Simulated RLUSD · cap ${f$(tn.cap)} · room ${f$(room)}</p>
         <div className="mt-4 flex flex-wrap gap-1.5">
           {ps.map((v) => (
-            <button key={v} onClick={() => sA("" + v)} className={`rounded-md px-3 py-1.5 text-[13px] font-medium ${a === "" + v ? "bg-ink text-bg" : "border border-line text-ink hover:bg-bg"}`}>${v}</button>
+            <button key={v} onClick={() => { sA("" + v); sErr(""); }} className={`rounded-md px-3 py-1.5 text-[13px] font-medium ${a === "" + v ? "bg-ink text-bg" : "border border-line text-ink hover:bg-bg"}`}>${v}</button>
           ))}
         </div>
-        <input value={a} onChange={(e) => sA(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Custom amount" className="mt-3 w-full rounded-md border border-line bg-bg px-3 py-2 text-center text-[14px] focus:border-ink/30" />
+        <input value={a} onChange={(e) => { sA(e.target.value.replace(/[^0-9.]/g, "")); sErr(""); }} placeholder="Custom amount" className="mt-3 w-full rounded-md border border-line bg-bg px-3 py-2 text-center text-[14px] focus:border-ink/30" />
+        {err && <p className="mt-2 text-[12px] text-danger">{err}</p>}
         <div className="mt-4 flex gap-2">
           <button onClick={close} className="flex-1 rounded-md px-3 py-2 text-[13px] text-ink-muted hover:bg-bg">Cancel</button>
-          <button onClick={() => { if (parseFloat(a) > 0) { go(parseFloat(a)); close(); sA(""); } }} className="flex-1 rounded-md bg-accent px-3 py-2 text-[13px] font-medium text-white hover:opacity-90">Confirm</button>
+          <button onClick={() => {
+            const n = parseFloat(a);
+            if (!(n > 0)) { sErr("Enter an amount greater than $0."); return; }
+            const result = go(n);
+            if (result.ok === false) { sErr(result.error); return; }
+            close(); sA(""); sErr("");
+          }} className="flex-1 rounded-md bg-accent px-3 py-2 text-[13px] font-medium text-white hover:opacity-90">Confirm</button>
         </div>
       </div>
     </div>
@@ -544,9 +673,23 @@ export default function App() {
   const tot = t.rS + t.ut + t.lf;
   const short = t.bal < tot;
   const vis = useSt(acts.length, 35);
-  function topUp(id: string, a: number) {
-    sT((p) => ({ ...p, [id]: { ...p[id as keyof typeof p], bal: p[id as keyof typeof p].bal + a } }));
+  function topUp(id: string, a: number): TopUpResult {
+    const cur = tenants[id as keyof typeof tenants];
+    const room = Math.max(0, Math.round((cur.cap - cur.bal) * 100) / 100);
+    if (!(a > 0)) {
+      return { ok: false, error: "Enter an amount greater than $0 and try again.", room };
+    }
+    if (cur.bal + a > cur.cap + 0.001) {
+      return {
+        ok: false,
+        error: `That would put your wallet over the $${f$(cur.cap)} cap (balance $${f$(cur.bal)}). You can add up to $${f$(room)}. Please retry with a smaller amount.`,
+        room,
+      };
+    }
+    const next = Math.round((cur.bal + a) * 100) / 100;
+    sT((p) => ({ ...p, [id]: { ...p[id as keyof typeof p], bal: next } }));
     nf.push("Topped up +$" + f$(a), "ok");
+    return { ok: true, bal: next, added: a };
   }
 
   const roles = [
@@ -748,7 +891,7 @@ export default function App() {
         </button>
       )}
 
-      {!isLandlord && <Chat1 tid={tid} tn={t} open={c1} close={() => sC1(false)} />}
+      {!isLandlord && <Chat1 tid={tid} tn={t} open={c1} close={() => sC1(false)} onTopUp={(a) => topUp(tid, a)} />}
       {!isLandlord && <TopUp tn={t} open={tu} close={() => sTU(false)} go={(a) => topUp(tid, a)} />}
     </div>
   );

@@ -43,7 +43,16 @@ export async function POST(request: Request) {
 
     let reply = `Hi ${tenant.name}! How can I help with your rent?`;
 
-    if (!greetingOnly && (isMoneyIntent(text) || asksWhenDue(text))) {
+    const topUpAsk =
+      /\b(top\s*up|topup|deposit|fund)\b/.test(message) ||
+      message.includes("add to my wallet") ||
+      message.includes("add money");
+
+    if (!greetingOnly && topUpAsk) {
+      reply = `To add money, use Top up in the app or say e.g. “Top up $100” in Polo chat. `
+        + `Your wallet cap is $${tenant.capUsd}. `
+        + `If a top-up would exceed the cap, you'll get an error and should retry with a smaller amount.`;
+    } else if (!greetingOnly && (isMoneyIntent(text) || asksWhenDue(text))) {
       if (!due) {
         reply = `I couldn't find a current balance for ${tenant.name}.`;
       } else {
